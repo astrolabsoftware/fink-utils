@@ -72,8 +72,6 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
 
     # reference flux and its error
     magdiff = magzpref - magnr
-    if magdiff > 12.0:
-        magdiff = 12.0
     ref_flux = 10**(0.4 * magdiff)
     ref_sigflux = (sigmagnr / 1.0857) * ref_flux
 
@@ -81,8 +79,6 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     if magzpsci == 0.0:
         magzpsci = magzpref
     magdiff = magzpsci - magpsf
-    if magdiff > 12.0:
-        magdiff = 12.0
     difference_flux = 10**(0.4 * magdiff)
     difference_sigflux = (sigmapsf / 1.0857) * difference_flux
 
