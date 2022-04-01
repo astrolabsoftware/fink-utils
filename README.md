@@ -1,3 +1,6 @@
+[![pypi](https://img.shields.io/pypi/v/fink-utils.svg)](https://pypi.python.org/pypi/fink-utils)
+[![PEP8](https://github.com/astrolabsoftware/fink-utils/workflows/PEP8/badge.svg)](https://github.com/astrolabsoftware/fink-utils/actions?query=workflow%3APEP8)
+
 # fink-utils
 
 Collection of useful functionalities used across the Fink ecosystem:
