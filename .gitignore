@@ -1,0 +1,10 @@
+.coverage
+.coverage.*
+dist/
+*.pyc
+htmlcov
+.ipynb_checkpoints
+.DS_Store
+fink_utils.egg-info/
+*.crc
+default.profraw
