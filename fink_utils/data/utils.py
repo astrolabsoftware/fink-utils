@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from fink_science.conversion import mag2fluxcal_snana
+from fink_utils.photometry.conversion import mag2fluxcal_snana
 
 def format_data_as_snana(
         jd, measurement, error, fid, candid, mask,
