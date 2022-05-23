@@ -26,4 +26,4 @@ jobs:
         pip install -U pytest
     - name: Lint utilities
       run: |
-        pytest -q test.py
+        pytest -q fink_utils/photometry/test.py
