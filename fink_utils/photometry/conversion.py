@@ -120,9 +120,9 @@ def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
 
     Returns
     --------
-    dc_flux: float
+    dc_mag: float
         Apparent magnitude
-    dc_sigflux: float
+    dc_sigmag: float
         Error on apparent magnitude
     """
     # zero points. Looks like they are fixed.
