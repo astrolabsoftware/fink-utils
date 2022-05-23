@@ -32,10 +32,8 @@ def requests_alerts():
         json={"class": "Seyfert_2", "n": "500", "columns": "i:objectId"},
     )
 
-    print(r.content)
-
     # Format output in a DataFrame
-    pdf = pd.read_json(r.content)
+    pdf = pd.DataFrame.from_dict(r.json())
 
     request_object = ",".join(list(pdf["i:objectId"]))
     request_object += ",ZTF21abeyuqh,ZTF21abeyutr,ZTF21abeyuua"
