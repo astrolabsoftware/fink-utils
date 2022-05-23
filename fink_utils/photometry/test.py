@@ -49,7 +49,7 @@ def requests_alerts():
     )
 
     # Format output in a DataFrame
-    pdf = pd.read_json(r.content)
+    pdf = pd.DataFrame.from_dict(r.json())
 
     return pdf
 
