@@ -37,8 +37,8 @@ def vect_mag2fluxcal_snana(
 
     """
 
-    magpsf = np.where(magpsf == None, np.nan, magpsf)
-    sigmapsf = np.where(sigmapsf == None, np.nan, sigmapsf)
+    magpsf = np.where(np.equal(magpsf, None), np.nan, magpsf)
+    sigmapsf = np.where(np.equal(sigmapsf, None), np.nan, sigmapsf)
 
     fluxcal = 10 ** (-0.4 * magpsf) * 10 ** (11)
     fluxcal_err = 9.21034 * 10**10 * np.exp(-0.921034 * magpsf) * sigmapsf
@@ -83,7 +83,7 @@ def vect_apparent_flux(
         Error on apparent flux
     """
 
-    magpsf = np.where(magpsf == None, np.nan, magpsf)
+    magpsf = np.where(np.equal(magpsf, None), np.nan, magpsf)
     magnr = np.where(magnr < 0.0, np.nan, magnr)
 
     # zero points. Looks like they are fixed.
@@ -153,7 +153,7 @@ def vect_dc_mag(
     magzpref = np.select([fid == 1, fid == 2, fid == 3], [26.325, 26.275, 25.660])
 
     # difference flux and its error
-    magzpsci = np.where(magzpsci == None, magzpref, magzpsci)
+    magzpsci = np.where(np.equal(magzpsci, None), magzpref, magzpsci)
 
     dc_flux, dc_sigflux = vect_apparent_flux(
         fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos

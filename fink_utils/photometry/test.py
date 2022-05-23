@@ -24,15 +24,12 @@ from conversion import mag2fluxcal_snana
 from vect_conversion import vect_mag2fluxcal_snana
 from vect_conversion import vect_dc_mag
 
+
 @pytest.fixture
 def requests_alerts():
     r = requests.post(
-        'https://fink-portal.org/api/v1/latests',
-        json={
-            'class': 'Seyfert_2',
-            'n': '500',
-            'columns': 'i:objectId'
-        }
+        "https://fink-portal.org/api/v1/latests",
+        json={"class": "Seyfert_2", "n": "500", "columns": "i:objectId"},
     )
 
     # Format output in a DataFrame
@@ -92,6 +89,7 @@ def test_dc_mag(requests_alerts):
 
     assert np.all(np.equal(t1, t2))
     assert t_vect < t_loop
+
 
 def test_flux_snana(requests_alerts):
 
