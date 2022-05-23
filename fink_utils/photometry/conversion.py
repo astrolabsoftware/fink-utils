@@ -42,7 +42,8 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     """ Compute apparent flux from difference magnitude supplied by ZTF
     This was heavily influenced by the computation provided by Lasair:
     https://github.com/lsst-uk/lasair/blob/master/src/alert_stream_ztf/common/mag.py
-    Paramters
+
+    Parameters
     ---------
     fid
         filter, 1 for green and 2 for red
@@ -60,12 +61,13 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     Returns
     --------
     dc_flux: float
-        Apparent magnitude
+        Apparent flux
     dc_sigflux: float
-        Error on apparent magnitude
+        Error on apparent flux
     """
-    if magpsf is None:
-        return None, None
+    if magpsf is None or magnr < 0:
+        return float("Nan"), float("Nan")
+        
     # zero points. Looks like they are fixed.
     ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
     magzpref = ref_zps[fid]
@@ -97,6 +99,8 @@ def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     """ Compute apparent magnitude from difference magnitude supplied by ZTF
     Parameters
     Stolen from Lasair.
+
+    Parameters
     ----------
     fid
         filter, 1 for green and 2 for red
@@ -108,8 +112,15 @@ def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     magzpsci
         Magnitude zero point for photometry estimates
     isdiffpos
-        t or 1 => candidate is from positive (sci minus ref) subtraction;
+        t or 1 => candidate is from positive (sci minus ref) subtraction
         f or 0 => candidate is from negative (ref minus sci) subtraction
+
+    Returns
+    --------
+    dc_flux: float
+        Apparent magnitude
+    dc_sigflux: float
+        Error on apparent magnitude
     """
     # zero points. Looks like they are fixed.
     ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
