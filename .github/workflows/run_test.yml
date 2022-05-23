@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -U pytest
-    - name: Lint utilities
+        pip install -r requirements.txt
+    - name: Run tests
       run: |
         pytest -q fink_utils/photometry/test.py
