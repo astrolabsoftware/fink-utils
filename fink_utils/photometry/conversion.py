@@ -17,7 +17,7 @@ from typing import Tuple
 
 
 def mag2fluxcal_snana(magpsf: float, sigmapsf: float) -> Tuple[float, float]:
-    """ Conversion from magnitude to Fluxcal from SNANA manual
+    """Conversion from magnitude to Fluxcal from SNANA manual
 
     Parameters
     ----------
@@ -36,13 +36,21 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float) -> Tuple[float, float]:
     if magpsf is None:
         return None, None
     fluxcal = 10 ** (-0.4 * magpsf) * 10 ** (11)
-    fluxcal_err = 9.21034 * 10 ** 10 * np.exp(-0.921034 * magpsf) * sigmapsf
+    fluxcal_err = 9.21034 * 10**10 * np.exp(-0.921034 * magpsf) * sigmapsf
 
     return fluxcal, fluxcal_err
 
 
-def apparent_flux(fid: int, magpsf: float, sigmapsf: float, magnr: float, sigmagnr: float, magzpsci: float, isdiffpos: int) -> Tuple[float, float]:
-    """ Compute apparent flux from difference magnitude supplied by ZTF
+def apparent_flux(
+    fid: int,
+    magpsf: float,
+    sigmapsf: float,
+    magnr: float,
+    sigmagnr: float,
+    magzpsci: float,
+    isdiffpos: int,
+) -> Tuple[float, float]:
+    """Compute apparent flux from difference magnitude supplied by ZTF
     This was heavily influenced by the computation provided by Lasair:
     https://github.com/lsst-uk/lasair/blob/master/src/alert_stream_ztf/common/mag.py
 
@@ -78,18 +86,18 @@ def apparent_flux(fid: int, magpsf: float, sigmapsf: float, magnr: float, sigmag
 
     # reference flux and its error
     magdiff = magzpref - magnr
-    ref_flux = 10**(0.4 * magdiff)
+    ref_flux = 10 ** (0.4 * magdiff)
     ref_sigflux = (sigmagnr / 1.0857) * ref_flux
 
     # difference flux and its error
     if magzpsci == 0.0:
         magzpsci = magzpref
     magdiff = magzpsci - magpsf
-    difference_flux = 10**(0.4 * magdiff)
+    difference_flux = 10 ** (0.4 * magdiff)
     difference_sigflux = (sigmapsf / 1.0857) * difference_flux
 
     # add or subract difference flux based on isdiffpos
-    if isdiffpos == 't':
+    if isdiffpos == "t":
         dc_flux = ref_flux + difference_flux
     else:
         dc_flux = ref_flux - difference_flux
@@ -100,8 +108,16 @@ def apparent_flux(fid: int, magpsf: float, sigmapsf: float, magnr: float, sigmag
     return dc_flux, dc_sigflux
 
 
-def dc_mag(fid: int, magpsf: float, sigmapsf: float, magnr: float, sigmagnr: float, magzpsci: float, isdiffpos: int) -> Tuple[float, float]:
-    """ Compute apparent magnitude from difference magnitude supplied by ZTF
+def dc_mag(
+    fid: int,
+    magpsf: float,
+    sigmapsf: float,
+    magnr: float,
+    sigmagnr: float,
+    magzpsci: float,
+    isdiffpos: int,
+) -> Tuple[float, float]:
+    """Compute apparent magnitude from difference magnitude supplied by ZTF
     Parameters
     Stolen from Lasair.
 
