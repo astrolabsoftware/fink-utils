@@ -14,6 +14,7 @@
 # limitations under the License.
 import numpy as np
 
+
 def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     """ Conversion from magnitude to Fluxcal from SNANA manual
 
@@ -37,6 +38,7 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     fluxcal_err = 9.21034 * 10 ** 10 * np.exp(-0.921034 * magpsf) * sigmapsf
 
     return fluxcal, fluxcal_err
+
 
 def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     """ Compute apparent flux from difference magnitude supplied by ZTF
@@ -67,7 +69,7 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     """
     if magpsf is None or magnr < 0:
         return float("Nan"), float("Nan")
-        
+
     # zero points. Looks like they are fixed.
     ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
     magzpref = ref_zps[fid]
@@ -94,6 +96,7 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     dc_sigflux = np.sqrt(difference_sigflux**2 + ref_sigflux**2)
 
     return dc_flux, dc_sigflux
+
 
 def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     """ Compute apparent magnitude from difference magnitude supplied by ZTF
