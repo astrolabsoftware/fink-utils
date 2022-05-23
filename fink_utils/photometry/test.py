@@ -18,11 +18,11 @@ import pandas as pd
 import numpy as np
 import time as t
 
-from conversion import dc_mag
-from conversion import mag2fluxcal_snana
+from fink_utils.photometry.conversion import dc_mag
+from fink_utils.photometry.conversion import mag2fluxcal_snana
 
-from vect_conversion import vect_mag2fluxcal_snana
-from vect_conversion import vect_dc_mag
+from fink_utils.photometry.vect_conversion import vect_mag2fluxcal_snana
+from fink_utils.photometry.vect_conversion import vect_dc_mag
 
 
 @pytest.fixture
