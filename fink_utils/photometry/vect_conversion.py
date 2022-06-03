@@ -144,9 +144,9 @@ def vect_dc_mag(
 
     Returns
     --------
-    dc_flux: float
+    dc_mag: float
         Apparent magnitude
-    dc_sigflux: float
+    dc_sigmag: float
         Error on apparent magnitude
     """
     # zero points. Looks like they are fixed.
