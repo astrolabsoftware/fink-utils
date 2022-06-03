@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
+from typing import Tuple
 
-def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
-    """ Conversion from magnitude to Fluxcal from SNANA manual
+
+def mag2fluxcal_snana(magpsf: float, sigmapsf: float) -> Tuple[float, float]:
+    """Conversion from magnitude to Fluxcal from SNANA manual
 
     Parameters
     ----------
@@ -34,15 +36,25 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float):
     if magpsf is None:
         return None, None
     fluxcal = 10 ** (-0.4 * magpsf) * 10 ** (11)
-    fluxcal_err = 9.21034 * 10 ** 10 * np.exp(-0.921034 * magpsf) * sigmapsf
+    fluxcal_err = 9.21034 * 10**10 * np.exp(-0.921034 * magpsf) * sigmapsf
 
     return fluxcal, fluxcal_err
 
-def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
-    """ Compute apparent flux from difference magnitude supplied by ZTF
+
+def apparent_flux(
+    fid: int,
+    magpsf: float,
+    sigmapsf: float,
+    magnr: float,
+    sigmagnr: float,
+    magzpsci: float,
+    isdiffpos: int,
+) -> Tuple[float, float]:
+    """Compute apparent flux from difference magnitude supplied by ZTF
     This was heavily influenced by the computation provided by Lasair:
     https://github.com/lsst-uk/lasair/blob/master/src/alert_stream_ztf/common/mag.py
-    Paramters
+
+    Parameters
     ---------
     fid
         filter, 1 for green and 2 for red
@@ -60,30 +72,32 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     Returns
     --------
     dc_flux: float
-        Apparent magnitude
+        Apparent flux
     dc_sigflux: float
-        Error on apparent magnitude
+        Error on apparent flux
     """
-    if magpsf is None:
-        return None, None
+
+    if magpsf is None or magnr < 0:
+        return float("Nan"), float("Nan")
+
     # zero points. Looks like they are fixed.
     ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
     magzpref = ref_zps[fid]
 
     # reference flux and its error
     magdiff = magzpref - magnr
-    ref_flux = 10**(0.4 * magdiff)
+    ref_flux = 10 ** (0.4 * magdiff)
     ref_sigflux = (sigmagnr / 1.0857) * ref_flux
 
     # difference flux and its error
     if magzpsci == 0.0:
         magzpsci = magzpref
     magdiff = magzpsci - magpsf
-    difference_flux = 10**(0.4 * magdiff)
+    difference_flux = 10 ** (0.4 * magdiff)
     difference_sigflux = (sigmapsf / 1.0857) * difference_flux
 
     # add or subract difference flux based on isdiffpos
-    if isdiffpos == 't':
+    if isdiffpos == "t":
         dc_flux = ref_flux + difference_flux
     else:
         dc_flux = ref_flux - difference_flux
@@ -93,10 +107,21 @@ def apparent_flux(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
 
     return dc_flux, dc_sigflux
 
-def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
-    """ Compute apparent magnitude from difference magnitude supplied by ZTF
+
+def dc_mag(
+    fid: int,
+    magpsf: float,
+    sigmapsf: float,
+    magnr: float,
+    sigmagnr: float,
+    magzpsci: float,
+    isdiffpos: int,
+) -> Tuple[float, float]:
+    """Compute apparent magnitude from difference magnitude supplied by ZTF
     Parameters
     Stolen from Lasair.
+
+    Parameters
     ----------
     fid
         filter, 1 for green and 2 for red
@@ -108,8 +133,15 @@ def dc_mag(fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos):
     magzpsci
         Magnitude zero point for photometry estimates
     isdiffpos
-        t or 1 => candidate is from positive (sci minus ref) subtraction;
+        t or 1 => candidate is from positive (sci minus ref) subtraction
         f or 0 => candidate is from negative (ref minus sci) subtraction
+
+    Returns
+    --------
+    dc_mag: float
+        Apparent magnitude
+    dc_sigmag: float
+        Error on apparent magnitude
     """
     # zero points. Looks like they are fixed.
     ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
