@@ -1,4 +1,4 @@
-name: PEP8
+name: Sentinel
 
 on:
   push:
@@ -23,7 +23,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8
-    - name: Lint utilities
+        pip install -r requirements.txt
+        pip install .
+    - name: Run tests
       run: |
-        flake8 fink_utils/*/*.py --count --show-source --statistics --ignore=E302,E501
+        pytest -q fink_utils/photometry/test.py
