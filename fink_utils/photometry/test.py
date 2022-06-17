@@ -83,11 +83,11 @@ def test_dc_mag(requests_alerts):
     )
     t_loop = t.time() - t_before
 
-    t1 = np.equal(res_dc_mag, _dc_mag[0])
+    t1 = np.allclose(res_dc_mag, _dc_mag[0])
 
-    t2 = np.equal(res_sig_mag, _dc_mag[1])
+    t2 = np.allclose(res_sig_mag, _dc_mag[1])
 
-    assert np.all(np.equal(t1, t2))
+    assert np.all(np.allclose(t1, t2))
     assert t_vect < t_loop
 
 
@@ -107,9 +107,9 @@ def test_flux_snana(requests_alerts):
     )
     t_loop = t.time() - t_before
 
-    t1 = np.equal(vect_flux, _flux_snana[0])
+    t1 = np.allclose(vect_flux, _flux_snana[0])
 
-    t2 = np.equal(vect_sigflux, _flux_snana[1])
+    t2 = np.allclose(vect_sigflux, _flux_snana[1])
 
-    assert np.all(np.equal(t1, t2))
+    assert np.all(np.allclose(t1, t2))
     assert t_vect < t_loop
