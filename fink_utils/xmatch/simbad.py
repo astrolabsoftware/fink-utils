@@ -12,8 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pandas as pd
+import numpy as np
 
-def return_list_of_eg_host():
+def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     """ Return potential SN host names
 
     This includes:
@@ -23,6 +25,30 @@ def return_list_of_eg_host():
 
     In practice, this exclude galactic objects from SIMBAD.
 
+    Parameters
+    ----------
+    full_simbad_conversion: bool
+        If True, download the file containing the taxonomy change, and
+        include old and new taxonomy in the output. If False, we only add
+        manually the new labels we know have changed. In principle, we make sure
+        that we do not miss ones, but if the taxonomy changed, the output could
+        be incomplete. The former is in principle the most robust technics, but
+        it is much slower (x1000) than the latter. Default is False.
+
+    Returns
+    ---------
+    out: list
+        List of labels
+
+    Examples
+    ---------
+    >>> gals = return_list_of_eg_host(full_simbad_conversion=True)
+    >>> print(len(gals))
+    33
+
+    >>> gals = return_list_of_eg_host(full_simbad_conversion=False)
+    >>> print(len(gals))
+    22
     """
     list_simbad_galaxies = [
         "galaxy",
@@ -43,8 +69,186 @@ def return_list_of_eg_host():
         "PartofG",
     ]
 
-    keep_cds = \
+    cds = \
         ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
         list_simbad_galaxies
 
-    return keep_cds
+    if full_simbad_conversion:
+        conv = get_conversion_dic()
+        cds_with_new_taxonomy = [old2new(conv, i) for i in cds]
+    else:
+        # fields that really changed
+        cds_with_new_taxonomy = ['SN*_Candidate']
+
+    out = np.concatenate((cds, cds_with_new_taxonomy))
+
+    return np.unique(out)
+
+def get_conversion_dic(path: str = None) -> pd.DataFrame:
+    """ Read the file containing the mapping between old and new otypes
+
+    Parameters
+    ----------
+    path: str
+        Path to the file. Can be an URL:
+        https://simbad.cds.unistra.fr/guide/otypes.labels.txt
+
+    Returns
+    ----------
+    pdf: pd.DataFrame
+        Data formatted in a pandas DataFrame: otype, old_label, new_label
+
+    Examples
+    ----------
+    >>> pdf = get_conversion_dic()
+    >>> print(len(pdf))
+    199
+    """
+    if path is None:
+        path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+
+    pdf = pd.read_csv(
+        path,
+        sep='|',
+        skiprows=[0, 1, 3],
+        skipfooter=2,
+        dtype='str',
+        header=0,
+        engine='python'
+    )
+
+    pdf = pdf.rename(columns={i: i.strip() for i in pdf.columns})
+
+    pdf = pdf[['otype', 'old_label', 'new_label']]
+
+    pdf = pdf.applymap(lambda x: x.strip())
+
+    return pdf
+
+def old2new(conv, old_label=''):
+    """ Return the new label name in SIMBAD from an old label
+
+    Parameters
+    ----------
+    conv: pd.DataFrame
+        DataFrame containing all the labels (see `get_conversion_dic`)
+    old_label: str
+        Old label in SIMBAD
+
+    Returns
+    ----------
+    new_label: str
+        New label in SIMBAD corresponding to the old label
+
+    Examples
+    ----------
+    >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+    >>> pdf = get_conversion_dic(path)
+    >>> new_label = old2new(pdf, 'BlueCompG')
+    >>> print(new_label)
+    BlueCompactG
+    """
+    out = conv[conv['old_label'] == old_label]['new_label'].values
+
+    if len(out) == 1:
+        return out[0]
+    elif len(out) == 0:
+        return ''
+
+    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(old_label, out))
+
+def new2old(conv, new_label=''):
+    """ Return the old label name in SIMBAD from a new label
+
+    Parameters
+    ----------
+    conv: pd.DataFrame
+        DataFrame containing all the labels (see `get_conversion_dic`)
+    new_label: str
+        New label in SIMBAD
+
+    Returns
+    ----------
+    old_label: str
+        Old label in SIMBAD corresponding to the new label
+
+    Examples
+    ----------
+    >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+    >>> pdf = get_conversion_dic(path)
+    >>> old_label = new2old(pdf, 'GtowardsGroup')
+    >>> print(old_label)
+    GinGroup
+    """
+    out = conv[conv['new_label'] == new_label]['old_label'].values
+
+    if len(out) == 1:
+        return out[0]
+    elif len(out) == 0:
+        return ''
+
+    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(new_label, out))
+
+
+def get_simbad_labels(which: str):
+    """ Get list of labels in SIMBAD.
+
+    Parameters
+    ----------
+    which: str
+        Choose between: `old`, `new`, `old_and_new`, `otype`.
+        `old_and_new` is the unique concatenation of old and new labels.
+
+    Returns
+    ----------
+    out: list
+        List of labels (str)
+
+
+    Examples
+    ----------
+    >>> labels = get_simbad_labels(which='old')
+    >>> print(len(labels))
+    199
+
+    >>> assert 'Candidate_YSO' in labels
+
+    >>> labels = get_simbad_labels(which='new')
+    >>> print(len(labels))
+    199
+
+    >>> assert 'YSO_Candidate' in labels
+
+    >>> labels = get_simbad_labels(which='old_and_new')
+    >>> print(len(labels))
+    316
+
+    >>> assert 'Candidate_YSO' in labels
+    >>> assert 'YSO_Candidate' in labels
+
+    >>> labels = get_simbad_labels(which='otype')
+    >>> print(len(labels))
+    199
+
+    >>> assert 'Y*?' in labels
+    """
+    pdf = get_conversion_dic()
+    if which == 'old':
+        return pdf['old_label'].values
+    elif which == 'new':
+        return pdf['new_label'].values
+    elif which == 'old_and_new':
+        old = pdf['old_label'].values
+        new = pdf['new_label'].values
+        out = np.concatenate((old, new))
+        return np.unique(out)
+    elif which == 'otype':
+        return pdf['otype'].values
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+    import sys
+    import doctest
+
+    sys.exit(doctest.testmod()[0])
