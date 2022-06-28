@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pandas as pd
 
 def return_list_of_eg_host():
     """ Return potential SN host names
@@ -48,3 +49,49 @@ def return_list_of_eg_host():
         list_simbad_galaxies
 
     return keep_cds
+
+def read_conversion_dic(path: str) -> pd.DataFrame:
+    """ Read the file containing the mapping between old and new otypes
+
+    Parameters
+    ----------
+    path: str
+        Path to the file. Can be an URL:
+        https://simbad.cds.unistra.fr/guide/otypes.labels.txt
+
+    Returns
+    ----------
+    pdf: pd.DataFrame
+        Data formatted in a pandas DataFrame: otype, old_label, new_label
+
+    Examples
+    ----------
+    >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+    >>> pdf = read_conversion_dic(path)
+    >>> print(len(pdf))
+    199
+    """
+    pdf = pd.read_csv(
+        path,
+        sep='|',
+        skiprows=[0, 1, 3],
+        skipfooter=2,
+        dtype='str',
+        header=0
+    )
+
+    pdf = pdf.rename(columns={i: i.strip() for i in pdf.columns})
+
+    pdf = pdf[['otype', 'old_label', 'new_label']]
+
+    pdf = pdf.applymap(lambda x: x.strip())
+
+    return pdf
+
+
+if __name__ == "__main__":
+    """ Execute the test suite """
+    import sys
+    import doctest
+
+    sys.exit(doctest.testmod()[0])
