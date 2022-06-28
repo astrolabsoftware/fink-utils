@@ -187,7 +187,7 @@ def new2old(conv, new_label=''):
     elif len(out) == 0:
         return ''
 
-    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(old_label, out))
+    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(new_label, out))
 
 
 def get_simbad_labels(which: str):
@@ -244,6 +244,7 @@ def get_simbad_labels(which: str):
         return np.unique(out)
     elif which == 'otype':
         return pdf['otype'].values
+
 
 if __name__ == "__main__":
     """ Execute the test suite """
