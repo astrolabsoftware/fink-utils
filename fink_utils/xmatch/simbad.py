@@ -74,7 +74,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
         list_simbad_galaxies
 
     if full_simbad_conversion:
-        conv = read_conversion_dic()
+        conv = get_conversion_dic()
         cds_with_new_taxonomy = [old2new(conv, i) for i in cds]
     else:
         # fields that really changed
@@ -84,7 +84,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
 
     return np.unique(out)
 
-def read_conversion_dic(path: str = None) -> pd.DataFrame:
+def get_conversion_dic(path: str = None) -> pd.DataFrame:
     """ Read the file containing the mapping between old and new otypes
 
     Parameters
@@ -100,7 +100,7 @@ def read_conversion_dic(path: str = None) -> pd.DataFrame:
 
     Examples
     ----------
-    >>> pdf = read_conversion_dic()
+    >>> pdf = get_conversion_dic()
     >>> print(len(pdf))
     199
     """
@@ -131,7 +131,7 @@ def old2new(conv, old_label=''):
     Parameters
     ----------
     conv: pd.DataFrame
-        DataFrame containing all the labels (see `read_conversion_dic`)
+        DataFrame containing all the labels (see `get_conversion_dic`)
     old_label: str
         Old label in SIMBAD
 
@@ -143,7 +143,7 @@ def old2new(conv, old_label=''):
     Examples
     ----------
     >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
-    >>> pdf = read_conversion_dic(path)
+    >>> pdf = get_conversion_dic(path)
     >>> new_label = old2new(pdf, 'BlueCompG')
     >>> print(new_label)
     BlueCompactG
@@ -163,7 +163,7 @@ def new2old(conv, new_label=''):
     Parameters
     ----------
     conv: pd.DataFrame
-        DataFrame containing all the labels (see `read_conversion_dic`)
+        DataFrame containing all the labels (see `get_conversion_dic`)
     new_label: str
         New label in SIMBAD
 
@@ -175,7 +175,7 @@ def new2old(conv, new_label=''):
     Examples
     ----------
     >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
-    >>> pdf = read_conversion_dic(path)
+    >>> pdf = get_conversion_dic(path)
     >>> old_label = new2old(pdf, 'GtowardsGroup')
     >>> print(old_label)
     GinGroup
@@ -189,6 +189,61 @@ def new2old(conv, new_label=''):
 
     raise ValueError('Label conversion is ambiguous: {} --> {}'.format(old_label, out))
 
+
+def get_simbad_labels(which: str):
+    """ Get list of labels in SIMBAD.
+
+    Parameters
+    ----------
+    which: str
+        Choose between: `old`, `new`, `old_and_new`, `otype`.
+        `old_and_new` is the unique concatenation of old and new labels.
+
+    Returns
+    ----------
+    out: list
+        List of labels (str)
+
+
+    Examples
+    ----------
+    >>> labels = get_simbad_labels(which='old')
+    >>> print(len(labels))
+    199
+
+    >>> assert 'Candidate_YSO' in labels
+
+    >>> labels = get_simbad_labels(which='new')
+    >>> print(len(labels))
+    199
+
+    >>> assert 'YSO_Candidate' in labels
+
+    >>> labels = get_simbad_labels(which='old_and_new')
+    >>> print(len(labels))
+    316
+
+    >>> assert 'Candidate_YSO' in labels
+    >>> assert 'YSO_Candidate' in labels
+
+    >>> labels = get_simbad_labels(which='otype')
+    >>> print(len(labels))
+    199
+
+    >>> assert 'Y*?' in labels
+    """
+    pdf = get_conversion_dic()
+    if which == 'old':
+        return pdf['old_label'].values
+    elif which == 'new':
+        return pdf['new_label'].values
+    elif which == 'old_and_new':
+        old = pdf['old_label'].values
+        new = pdf['new_label'].values
+        out = np.concatenate((old, new))
+        return np.unique(out)
+    elif which == 'otype':
+        return pdf['otype'].values
 
 if __name__ == "__main__":
     """ Execute the test suite """
