@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pandas as pd
+import numpy as np
 
-def return_list_of_eg_host():
+def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     """ Return potential SN host names
 
     This includes:
@@ -24,6 +25,30 @@ def return_list_of_eg_host():
 
     In practice, this exclude galactic objects from SIMBAD.
 
+    Parameters
+    ----------
+    full_simbad_conversion: bool
+        If True, download the file containing the taxonomy change, and
+        include old and new taxonomy in the output. If False, we only add
+        manually the new labels we know have changed. In principle, we make sure
+        that we do not miss ones, but if the taxonomy changed, the output could
+        be incomplete. The former is in principle the most robust technics, but
+        it is much slower (x1000) than the latter. Default is False.
+
+    Returns
+    ---------
+    out: list
+        List of labels
+
+    Examples
+    ---------
+    >>> gals = return_list_of_eg_host(full_simbad_conversion=True)
+    >>> print(len(gals))
+    33
+
+    >>> gals = return_list_of_eg_host(full_simbad_conversion=False)
+    >>> print(len(gals))
+    22
     """
     list_simbad_galaxies = [
         "galaxy",
@@ -44,13 +69,22 @@ def return_list_of_eg_host():
         "PartofG",
     ]
 
-    keep_cds = \
+    cds = \
         ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
         list_simbad_galaxies
 
-    return keep_cds
+    if full_simbad_conversion:
+        conv = read_conversion_dic()
+        cds_with_new_taxonomy = [old2new(conv, i) for i in cds]
+    else:
+        # fields that really changed
+        cds_with_new_taxonomy = ['SN*_Candidate']
 
-def read_conversion_dic(path: str) -> pd.DataFrame:
+    out = np.concatenate((cds, cds_with_new_taxonomy))
+
+    return np.unique(out)
+
+def read_conversion_dic(path: str = None) -> pd.DataFrame:
     """ Read the file containing the mapping between old and new otypes
 
     Parameters
@@ -66,18 +100,21 @@ def read_conversion_dic(path: str) -> pd.DataFrame:
 
     Examples
     ----------
-    >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
-    >>> pdf = read_conversion_dic(path)
+    >>> pdf = read_conversion_dic()
     >>> print(len(pdf))
     199
     """
+    if path is None:
+        path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+
     pdf = pd.read_csv(
         path,
         sep='|',
         skiprows=[0, 1, 3],
         skipfooter=2,
         dtype='str',
-        header=0
+        header=0,
+        engine='python'
     )
 
     pdf = pdf.rename(columns={i: i.strip() for i in pdf.columns})
@@ -87,6 +124,70 @@ def read_conversion_dic(path: str) -> pd.DataFrame:
     pdf = pdf.applymap(lambda x: x.strip())
 
     return pdf
+
+def old2new(conv, old_label=''):
+    """ Return the new label name in SIMBAD from an old label
+
+    Parameters
+    ----------
+    conv: pd.DataFrame
+        DataFrame containing all the labels (see `read_conversion_dic`)
+    old_label: str
+        Old label in SIMBAD
+
+    Returns
+    ----------
+    new_label: str
+        New label in SIMBAD corresponding to the old label
+
+    Examples
+    ----------
+    >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+    >>> pdf = read_conversion_dic(path)
+    >>> new_label = old2new(pdf, 'BlueCompG')
+    >>> print(new_label)
+    BlueCompactG
+    """
+    out = conv[conv['old_label'] == old_label]['new_label'].values
+
+    if len(out) == 1:
+        return out[0]
+    elif len(out) == 0:
+        return ''
+
+    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(old_label, out))
+
+def new2old(conv, new_label=''):
+    """ Return the old label name in SIMBAD from a new label
+
+    Parameters
+    ----------
+    conv: pd.DataFrame
+        DataFrame containing all the labels (see `read_conversion_dic`)
+    new_label: str
+        New label in SIMBAD
+
+    Returns
+    ----------
+    old_label: str
+        Old label in SIMBAD corresponding to the new label
+
+    Examples
+    ----------
+    >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+    >>> pdf = read_conversion_dic(path)
+    >>> old_label = new2old(pdf, 'GtowardsGroup')
+    >>> print(old_label)
+    GinGroup
+    """
+    out = conv[conv['new_label'] == new_label]['old_label'].values
+
+    if len(out) == 1:
+        return out[0]
+    elif len(out) == 0:
+        return ''
+
+    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(old_label, out))
 
 
 if __name__ == "__main__":
