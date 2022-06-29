@@ -84,7 +84,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
 
     return np.unique(out)
 
-def get_conversion_dic(path: str = None) -> pd.DataFrame:
+def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.DataFrame:
     """ Read the file containing the mapping between old and new otypes
 
     Parameters
@@ -92,6 +92,9 @@ def get_conversion_dic(path: str = None) -> pd.DataFrame:
     path: str
         Path to the file. Can be an URL:
         https://simbad.cds.unistra.fr/guide/otypes.labels.txt
+    remove_unknown: bool
+        If True, remove the row containing the class `Unknown` from
+        the DataFrame. Default is True.
 
     Returns
     ----------
@@ -100,9 +103,13 @@ def get_conversion_dic(path: str = None) -> pd.DataFrame:
 
     Examples
     ----------
-    >>> pdf = get_conversion_dic()
+    >>> pdf = get_conversion_dic(remove_unknown=False)
     >>> print(len(pdf))
     199
+
+    >>> pdf = get_conversion_dic()
+    >>> print(len(pdf))
+    198
     """
     if path is None:
         path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
@@ -122,6 +129,9 @@ def get_conversion_dic(path: str = None) -> pd.DataFrame:
     pdf = pdf[['otype', 'old_label', 'new_label']]
 
     pdf = pdf.applymap(lambda x: x.strip())
+
+    if remove_unknown:
+        pdf = pdf[pdf['old_label'] != 'Unknown']
 
     return pdf
 
@@ -190,7 +200,7 @@ def new2old(conv, new_label=''):
     raise ValueError('Label conversion is ambiguous: {} --> {}'.format(new_label, out))
 
 
-def get_simbad_labels(which: str):
+def get_simbad_labels(which: str, remove_unknown=True):
     """ Get list of labels in SIMBAD.
 
     Parameters
@@ -198,6 +208,9 @@ def get_simbad_labels(which: str):
     which: str
         Choose between: `old`, `new`, `old_and_new`, `otype`.
         `old_and_new` is the unique concatenation of old and new labels.
+    remove_unknown: bool
+        If True, remove the row containing the class `Unknown` from
+        the DataFrame. Default is True.
 
     Returns
     ----------
@@ -209,30 +222,30 @@ def get_simbad_labels(which: str):
     ----------
     >>> labels = get_simbad_labels(which='old')
     >>> print(len(labels))
-    199
+    198
 
     >>> assert 'Candidate_YSO' in labels
 
     >>> labels = get_simbad_labels(which='new')
     >>> print(len(labels))
-    199
+    198
 
     >>> assert 'YSO_Candidate' in labels
 
     >>> labels = get_simbad_labels(which='old_and_new')
     >>> print(len(labels))
-    316
+    315
 
     >>> assert 'Candidate_YSO' in labels
     >>> assert 'YSO_Candidate' in labels
 
     >>> labels = get_simbad_labels(which='otype')
     >>> print(len(labels))
-    199
+    198
 
     >>> assert 'Y*?' in labels
     """
-    pdf = get_conversion_dic()
+    pdf = get_conversion_dic(remove_unknown=remove_unknown)
     if which == 'old':
         return pdf['old_label'].values
     elif which == 'new':
