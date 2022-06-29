@@ -84,7 +84,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
 
     return np.unique(out)
 
-def get_conversion_dic(path: str = None) -> pd.DataFrame:
+def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.DataFrame:
     """ Read the file containing the mapping between old and new otypes
 
     Parameters
@@ -92,6 +92,9 @@ def get_conversion_dic(path: str = None) -> pd.DataFrame:
     path: str
         Path to the file. Can be an URL:
         https://simbad.cds.unistra.fr/guide/otypes.labels.txt
+    remove_unknown: bool
+        If True, remove the row containing the class `Unknown` from
+        the DataFrame. Default is True.
 
     Returns
     ----------
@@ -122,6 +125,9 @@ def get_conversion_dic(path: str = None) -> pd.DataFrame:
     pdf = pdf[['otype', 'old_label', 'new_label']]
 
     pdf = pdf.applymap(lambda x: x.strip())
+
+    if remove_unknown:
+        pdf = pdf[pdf['old_label'] != 'Unknown']
 
     return pdf
 
