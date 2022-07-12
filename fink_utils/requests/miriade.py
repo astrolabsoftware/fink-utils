@@ -11,6 +11,7 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
     Limitations:
         - Color ephemerides are returned only for asteroids
         - Temporary designations (C/... or YYYY...) do not have ephemerides available
+
     Parameters
     ----------
     ident: str

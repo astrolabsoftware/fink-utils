@@ -13,7 +13,7 @@ def fit_phase_function(pdf, switch_func: str):
     Parameters
     ----------
     pdf : pd.DataFrame
-        observations of one solar system objects
+        observations (fomr ZTF/Fink) of one solar system objects
     switch_func : string
         select the phase function between : [HG1G2, HG12, HG]
     
@@ -85,28 +85,3 @@ def fit_phase_function(pdf, switch_func: str):
                 df_table[param][df_table[param].index == filters[f]] = '{:.2f} plus_minus {:.2f}'.format(model_func.parameters[pindex], perr[pindex])
 
     return df_table
-
-
-if __name__ == "__main__":
-
-    from fink_utils.requests.miriade import get_miriade_data
-    import requests
-    import io
-
-    import astropy
-
-    r = requests.post(
-        'https://fink-portal.org/api/v1/sso',
-        json={
-            'n_or_d': '265',
-            'output-format': 'json'
-        }
-    )
-
-    pdf = pd.read_json(io.BytesIO(r.content))
-
-    pdf_ephem = get_miriade_data(pdf)
-
-    df = fit_phase_function(pdf_ephem, "HG1G2")
-
-    print(df)

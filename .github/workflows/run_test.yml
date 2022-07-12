@@ -27,5 +27,4 @@ jobs:
         pip install .
     - name: Run tests
       run: |
-        pytest -q fink_utils/photometry/test.py
-        python fink_utils/xmatch/simbad.py
+        ./run_test.sh
