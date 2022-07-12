@@ -41,7 +41,7 @@ def vect_mag2fluxcal_snana(
     sigmapsf = np.where(np.equal(sigmapsf, None), np.nan, sigmapsf)
 
     fluxcal = 10 ** (-0.4 * magpsf) * 10 ** (11)
-    fluxcal_err = 9.21034 * 10**10 * np.exp(-0.921034 * magpsf) * sigmapsf
+    fluxcal_err = 9.21034 * 10 ** 10 * np.exp(-0.921034 * magpsf) * sigmapsf
 
     return fluxcal, fluxcal_err
 
@@ -108,7 +108,7 @@ def vect_apparent_flux(
     )
 
     # assumes errors are independent. Maybe too conservative.
-    dc_sigflux = np.sqrt(difference_sigflux**2 + ref_sigflux**2)
+    dc_sigflux = np.sqrt(difference_sigflux ** 2 + ref_sigflux ** 2)
 
     return dc_flux, dc_sigflux
 

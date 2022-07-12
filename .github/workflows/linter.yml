@@ -26,4 +26,4 @@ jobs:
         pip install flake8
     - name: Lint utilities
       run: |
-        flake8 fink_utils/*/*.py --count --show-source --statistics --ignore=E302,E501
+        flake8 fink_utils/*/*.py --count --statistics --ignore=E302,E501

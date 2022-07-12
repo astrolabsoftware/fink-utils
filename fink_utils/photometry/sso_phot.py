@@ -6,6 +6,7 @@ from sbpy.photometry import HG1G2, HG12, HG
 import astropy.units as u
 from sbpy.data import Obs
 
+
 def fit_phase_function(pdf, switch_func: str):
     """
     Compute the absolute magnitude model for one solar system objects
@@ -16,7 +17,7 @@ def fit_phase_function(pdf, switch_func: str):
         observations (fomr ZTF/Fink) of one solar system objects
     switch_func : string
         select the phase function between : [HG1G2, HG12, HG]
-    
+
     Returns
     -------
     df_table : pd.DataFrame
@@ -24,64 +25,59 @@ def fit_phase_function(pdf, switch_func: str):
     """
     pdf = pdf.sort_values("Phase")
 
-    pdf['i:fid'] = pdf['i:fid'].astype(int)
-    filters = {1: 'g', 2: 'R', 3: 'i'}
+    pdf["i:fid"] = pdf["i:fid"].astype(int)
+    filters = {1: "g", 2: "R", 3: "i"}
 
     # instanciate the fitter
     fitter = LevMarLSQFitter(calc_uncertainties=True)
 
     # select the phase function
-    if switch_func == 'HG1G2':
+    if switch_func == "HG1G2":
         fitfunc = HG1G2
-        params = ['H', 'G1', 'G2']
-    elif switch_func == 'HG12':
+        params = ["H", "G1", "G2"]
+    elif switch_func == "HG12":
         fitfunc = HG12
-        params = ['H', 'G12']
-    elif switch_func == 'HG':
+        params = ["H", "G12"]
+    elif switch_func == "HG":
         fitfunc = HG
-        params = ['H', 'G']
+        params = ["H", "G"]
 
-    filts = pdf['i:fid'].unique()
+    filts = pdf["i:fid"].unique()
 
-    dd = {'': [filters[f] + ' band' for f in filts]}
-    dd.update({i: [''] * len(filts) for i in params})
-    df_table = pd.DataFrame(
-        dd,
-        index=[filters[f] for f in filts]
-    )
+    dd = {"": [filters[f] + " band" for f in filts]}
+    dd.update({i: [""] * len(filts) for i in params})
+    df_table = pd.DataFrame(dd, index=[filters[f] for f in filts])
 
     for i, f in enumerate(filts):
 
-
-        cond = pdf['i:fid'] == f
-        ydata = pdf.loc[cond, 'i:magpsf_red']  # + color_sso
+        cond = pdf["i:fid"] == f
+        ydata = pdf.loc[cond, "i:magpsf_red"]  # + color_sso
 
         try:
             obs = Obs.from_dict(
                 {
-                    'alpha': pdf.loc[cond, 'Phase'].values * u.deg,
-                    'mag': ydata.values * u.mag
+                    "alpha": pdf.loc[cond, "Phase"].values * u.deg,
+                    "mag": ydata.values * u.mag,
                 }
             )
 
-
             model_func = fitfunc.from_obs(
-                obs,
-                fitter,
-                'mag',
-                weights = 1 / pdf.loc[cond, 'i:sigmapsf'] * u.mag
+                obs, fitter, "mag", weights=1 / pdf.loc[cond, "i:sigmapsf"] * u.mag
             )
 
-        except RuntimeError as e:
+        except RuntimeError:
             return print("The fitting procedure could not converge.")
 
-        
         if model_func.cov_matrix is not None:
             perr = np.sqrt(np.diag(model_func.cov_matrix.cov_matrix))
         else:
             perr = [np.nan] * len(params)
 
         for pindex, param in enumerate(params):
-                df_table[param][df_table[param].index == filters[f]] = '{:.2f} plus_minus {:.2f}'.format(model_func.parameters[pindex], perr[pindex])
+            df_table[param][
+                df_table[param].index == filters[f]
+            ] = "{:.2f} plus_minus {:.2f}".format(
+                model_func.parameters[pindex], perr[pindex]
+            )
 
     return df_table

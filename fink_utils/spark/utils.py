@@ -19,9 +19,14 @@ from pyspark.sql.types import StructType
 
 import importlib
 
+
 def concat_col(
-        df, colname: str, prefix: str = 'c',
-        current: str = 'candidate', history: str = 'prv_candidates'):
+    df,
+    colname: str,
+    prefix: str = "c",
+    current: str = "candidate",
+    history: str = "prv_candidates",
+):
     """ Add new column to the DataFrame named `prefix`+`colname`, containing
     the concatenation of historical and current measurements.
 
@@ -51,16 +56,18 @@ def concat_col(
     return df.withColumn(
         prefix + colname,
         F.when(
-            df['{}.{}'.format(history, colname)].isNotNull(),
+            df["{}.{}".format(history, colname)].isNotNull(),
             F.concat(
-                df['{}.{}'.format(history, colname)],
-                F.array(df['{}.{}'.format(current, colname)])
-            )
-        ).otherwise(F.array(df['{}.{}'.format(current, colname)]))
+                df["{}.{}".format(history, colname)],
+                F.array(df["{}.{}".format(current, colname)]),
+            ),
+        ).otherwise(F.array(df["{}.{}".format(current, colname)])),
     )
 
+
 def return_flatten_names(
-        df: DataFrame, pref: str = "", flatten_schema: list = []) -> list:
+    df: DataFrame, pref: str = "", flatten_schema: list = []
+) -> list:
     """From a nested schema (using struct), retrieve full paths for entries
     in the form level1.level2.etc.entry.
 
@@ -103,8 +110,7 @@ def return_flatten_names(
             flatten_schema.append(colname)
 
     # If the entry is not top level, it is then hidden inside a nested structure
-    l_struct_names = [
-        i.name for i in df.schema if isinstance(i.dataType, StructType)]
+    l_struct_names = [i.name for i in df.schema if isinstance(i.dataType, StructType)]
 
     for l_struct_name in l_struct_names:
         colnames = df.select("{}.*".format(l_struct_name)).columns
@@ -118,9 +124,11 @@ def return_flatten_names(
         flatten_schema = return_flatten_names(
             df.select("{}.*".format(l_struct_name)),
             pref=l_struct_name,
-            flatten_schema=flatten_schema)
+            flatten_schema=flatten_schema,
+        )
 
     return flatten_schema
+
 
 def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataFrame:
     """Apply a user filter to keep only wanted alerts.
@@ -180,8 +188,8 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
     flatten_schema = return_flatten_names(df, pref="", flatten_schema=[])
 
     # Load the filter
-    filter_name = toapply.split('.')[-1]
-    module_name = toapply.split('.' + filter_name)[0]
+    filter_name = toapply.split(".")[-1]
+    module_name = toapply.split("." + filter_name)[0]
     module = importlib.import_module(module_name)
     filter_func = getattr(module, filter_name, None)
 
@@ -193,21 +201,24 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
     argnames = filter_func.func.__code__.co_varnames[:ninput]
     colnames = []
     for argname in argnames:
-        colname = [
-            col(i) for i in flatten_schema
-            if i.endswith("{}".format(argname))]
+        colname = [col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
         if len(colname) == 0:
-            raise AssertionError("""
+            raise AssertionError(
+                """
                 Column name {} is not a valid column of the DataFrame.
-                """.format(argname))
+                """.format(
+                    argname
+                )
+            )
         colnames.append(colname[0])
 
     if logger is not None:
         logger.info(
-            "new filter/topic registered: {} from {}".format(
-                filter_name, module_name))
+            "new filter/topic registered: {} from {}".format(filter_name, module_name)
+        )
 
-    return df\
-        .withColumn("toKeep", filter_func(*colnames))\
-        .filter("toKeep == true")\
+    return (
+        df.withColumn("toKeep", filter_func(*colnames))
+        .filter("toKeep == true")
         .drop("toKeep")
+    )

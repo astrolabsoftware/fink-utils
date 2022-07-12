@@ -5,7 +5,8 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 import json
 
-def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
+
+def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5):
     """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
     Original function by M. Mahlke
     Limitations:
@@ -34,30 +35,28 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
         appended False if query failed somehow
     """
     # Miriade URL
-    url = 'https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php'
+    url = "https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php"
 
-    if rplane == '2':
-        tcoor = '1'
+    if rplane == "2":
+        tcoor = "1"
 
     # Query parameters
-    if ident.endswith('P') or ident.startswith('C/'):
-        otype = 'c'
+    if ident.endswith("P") or ident.startswith("C/"):
+        otype = "c"
     else:
-        otype = 'a'
+        otype = "a"
     params = {
-        '-name': f'{otype}:{ident}',
-        '-mime': 'json',
-        '-rplane': rplane,
-        '-tcoor': tcoor,
-        '-output': '--jd,--colors(SDSS:r,SDSS:g)',
-        '-observer': observer,
-        '-tscale': 'UTC'
+        "-name": f"{otype}:{ident}",
+        "-mime": "json",
+        "-rplane": rplane,
+        "-tcoor": tcoor,
+        "-output": "--jd,--colors(SDSS:r,SDSS:g)",
+        "-observer": observer,
+        "-tscale": "UTC",
     }
 
     # Pass sorted list of epochs to speed up query
-    files = {
-        'epochs': ('epochs', '\n'.join(['%.6f' % epoch for epoch in jd]))
-    }
+    files = {"epochs": ("epochs", "\n".join(["%.6f" % epoch for epoch in jd]))}
 
     # Execute query
     try:
@@ -71,7 +70,7 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
 
         # Read JSON response
         try:
-            ephem = pd.DataFrame.from_dict(j['data'])
+            ephem = pd.DataFrame.from_dict(j["data"])
         except KeyError:
             return pd.DataFrame()
 
@@ -87,38 +86,38 @@ def get_miriade_data(pdf):
     Parameters
     ----------
     pdf : pd.DataFrame
-        Observation of one or multiple solar system objects. 
+        Observation of one or multiple solar system objects.
             must contains at least the following columns: i:ssnamenr, i:jd
-    
+
     Return
     ------
     info_out : pd.DataFrame
         concatenation of the observations with the ephemeries
     """
     pdf["i:ssnamenr"] = pdf["i:ssnamenr"].astype(str)
-    ssnamenrs = pdf['i:ssnamenr'].unique()
-    ztf_code = 'I41'
+    ssnamenrs = pdf["i:ssnamenr"].unique()
+    ztf_code = "I41"
 
     infos = []
     for ssnamenr in ssnamenrs:
-        mask = pdf['i:ssnamenr'] == ssnamenr
+        mask = pdf["i:ssnamenr"] == ssnamenr
         pdf_sub = pdf[mask]
 
-        eph = query_miriade(ssnamenr, pdf_sub['i:jd'], observer=ztf_code)
+        eph = query_miriade(ssnamenr, pdf_sub["i:jd"], observer=ztf_code)
 
         if not eph.empty:
-            sc = SkyCoord(eph['RA'], eph['DEC'], unit=(u.deg, u.deg))
+            sc = SkyCoord(eph["RA"], eph["DEC"], unit=(u.deg, u.deg))
 
-            eph = eph.drop(columns=['RA', 'DEC'])
-            eph['RA'] = sc.ra.value * 15
-            eph['Dec'] = sc.dec.value
+            eph = eph.drop(columns=["RA", "DEC"])
+            eph["RA"] = sc.ra.value * 15
+            eph["Dec"] = sc.dec.value
 
             # Add Ecliptic coordinates
-            eph_ec = query_miriade(ssnamenr, pdf_sub['i:jd'], rplane='2')
+            eph_ec = query_miriade(ssnamenr, pdf_sub["i:jd"], rplane="2")
 
-            sc = SkyCoord(eph_ec['Longitude'], eph_ec['Latitude'], unit=(u.deg, u.deg))
-            eph['Longitude'] = sc.ra.value
-            eph['Latitude'] = sc.dec.value
+            sc = SkyCoord(eph_ec["Longitude"], eph_ec["Latitude"], unit=(u.deg, u.deg))
+            eph["Longitude"] = sc.ra.value
+            eph["Latitude"] = sc.dec.value
 
             # Merge fink & Eph
             info = pd.concat([eph.reset_index(), pdf_sub.reset_index()], axis=1)
@@ -127,7 +126,9 @@ def get_miriade_data(pdf):
             info = info.loc[:, ~info.columns.duplicated()]
 
             # Compute magnitude reduced to unit distance
-            info['i:magpsf_red'] = info['i:magpsf'] - 5 * np.log10(info['Dobs'] * info['Dhelio'])
+            info["i:magpsf_red"] = info["i:magpsf"] - 5 * np.log10(
+                info["Dobs"] * info["Dhelio"]
+            )
             infos.append(info)
         else:
             infos.append(pdf_sub)
