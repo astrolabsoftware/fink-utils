@@ -89,15 +89,11 @@ def fit_phase_function(pdf, switch_func: str):
 
 if __name__ == "__main__":
 
-    from fink_utils.miriade.request_miriade import get_miriade_data
+    from fink_utils.requests.miriade import get_miriade_data
     import requests
     import io
 
     import astropy
-
-    import warnings
-    warnings.filterwarnings("ignore")
-
 
     r = requests.post(
         'https://fink-portal.org/api/v1/sso',
