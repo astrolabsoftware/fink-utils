@@ -57,7 +57,7 @@ def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
 
     # Format output in a DataFrame
     pdf_sso = pd.read_json(io.BytesIO(r.content))
-    
+
     if withComplement:
         l1 = []
         l2 = []
@@ -135,13 +135,13 @@ def get_full_gault(pdf_fink, pdf_activation):
     pdf_obs: pd.DataFrame
         Pandas DataFrame with concatenated data
     pdf_ephem_sub: pd.DataFrame
-        Pandas DataFrame with ephemerides corresponding to `pdf_obs`. 
+        Pandas DataFrame with ephemerides corresponding to `pdf_obs`.
     """
     conv = {'g': 1, 'r': 2}
     mag_obs = np.concatenate((pdf_activation['m'], pdf_fink['i:magpsf']))
     jds = np.concatenate((pdf_activation['jd'], pdf_fink['i:jd']))
     filters_ = np.concatenate((pdf_activation['filter'].apply(lambda x: conv[x]), pdf_fink['i:fid']))
-    
+
     pdf_obs = pd.DataFrame(
         {
             'i:magpsf': mag_obs,
@@ -152,7 +152,7 @@ def get_full_gault(pdf_fink, pdf_activation):
     )
 
     pdf_ephem_sub = get_miriade_data(pdf_obs)
-    
+
     return pdf_obs, pdf_ephem_sub
 
 def compute_residual_hg(pdf, gaussfit='', compute_ephem=False, observer='I41', rplane='1', tcoor=5):
@@ -165,7 +165,7 @@ def compute_residual_hg(pdf, gaussfit='', compute_ephem=False, observer='I41', r
     gaussfit: str, optional
         Choose between '1comp', '2comp' (not available), or '' (no fit)
     compute_ephem: bool, optional
-        If True, compute ephemerides. Default is False, namely ephemerides are 
+        If True, compute ephemerides. Default is False, namely ephemerides are
         already contained in `pdf`.
     observer: str, optional
         IAU Obs code - default to ZTF
@@ -194,16 +194,16 @@ def compute_residual_hg(pdf, gaussfit='', compute_ephem=False, observer='I41', r
     if compute_ephem is True:
         # Compute ephemerides using Miriade
         pdf_ephem = query_miriade(
-            str(pdf['i:ssnamenr'].values[0]), 
-            pdf['i:jd'].values, 
+            str(pdf['i:ssnamenr'].values[0]),
+            pdf['i:jd'].values,
             observer=observer, rplane=rplane, tcoor=tcoor
         )
     else:
         pdf_ephem = pdf
-    
+
     residual = (pdf['i:magpsf'] + pdf['color_corr'] - pdf_ephem['VMag']).values
     amplitude, mu, sigma = fit_residual(residual, gaussfit=gaussfit)
-    
+
     return residual, amplitude, mu, sigma
 
 def compute_residual_hg1g2(pdf, gaussfit='', compute_ephem=False, observer='I41', rplane='1', tcoor=5):
@@ -216,7 +216,7 @@ def compute_residual_hg1g2(pdf, gaussfit='', compute_ephem=False, observer='I41'
     gaussfit: str, optional
         Choose between '1comp', '2comp' (not available), or '' (default, no fit)
     compute_ephem: bool, optional
-        If True, compute ephemerides. Default is False, namely ephemerides are 
+        If True, compute ephemerides. Default is False, namely ephemerides are
         already contained in `pdf`.
     observer: str, optional
         IAU Obs code - default to ZTF
@@ -245,13 +245,13 @@ def compute_residual_hg1g2(pdf, gaussfit='', compute_ephem=False, observer='I41'
     if compute_ephem is True:
         # Compute ephemerides using Miriade
         pdf_ephem = query_miriade(
-            str(pdf['i:ssnamenr'].values[0]), 
-            pdf['i:jd'].values, 
+            str(pdf['i:ssnamenr'].values[0]),
+            pdf['i:jd'].values,
             observer=observer, rplane=rplane, tcoor=tcoor
         )
     else:
         pdf_ephem = pdf
-    
+
     ydata = pdf_ephem['i:magpsf_red'] + pdf['color_corr']
 
     # Values in radians
@@ -259,19 +259,19 @@ def compute_residual_hg1g2(pdf, gaussfit='', compute_ephem=False, observer='I41'
 
     try:
         popt, pcov = curve_fit(
-            func_hg1g2, 
-            alpha, 
-            ydata.values, 
+            func_hg1g2,
+            alpha,
+            ydata.values,
             sigma=pdf['i:sigmapsf'],
             bounds=([0, 0, 0], [30, 1, 1]),
         )
 
         residual = ydata.values - HG1G2(popt[0] * u.mag, popt[1], popt[2]).to_mag(alpha * u.rad).value
         amplitude, mu, sigma = fit_residual(residual, gaussfit=gaussfit)
-        
+
     except RuntimeError as e:
         residual, amplitude, mu, sigma = None, None, None, None
-        
+
     return residual, amplitude, mu, sigma
 
 def compute_residual_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2]), gaussfit='', compute_ephem=False, observer='I41', rplane='1', tcoor=5):
@@ -284,7 +284,7 @@ def compute_residual_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 
     gaussfit: str, optional
         Choose between '1comp', '2comp' (not available), or '' (default, no fit)
     compute_ephem: bool, optional
-        If True, compute ephemerides. Default is False, namely ephemerides are 
+        If True, compute ephemerides. Default is False, namely ephemerides are
         already contained in `pdf`.
     observer: str, optional
         IAU Obs code - default to ZTF
@@ -313,13 +313,13 @@ def compute_residual_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 
     if compute_ephem is True:
         # Compute ephemerides using Miriade
         pdf_ephem = query_miriade(
-            str(pdf['i:ssnamenr'].values[0]), 
-            pdf['i:jd'].values, 
+            str(pdf['i:ssnamenr'].values[0]),
+            pdf['i:jd'].values,
             observer=observer, rplane=rplane, tcoor=tcoor
         )
     else:
         pdf_ephem = pdf
-    
+
     ydata = pdf_ephem['i:magpsf_red'] + pdf['color_corr']
 
     # Values in radians
@@ -330,9 +330,9 @@ def compute_residual_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 
 
     try:
         popt, pcov = curve_fit(
-            func_hg1g2_with_spin, 
+            func_hg1g2_with_spin,
             pha,
-            ydata.values, 
+            ydata.values,
             sigma=pdf['i:sigmapsf'],
             bounds=bounds,
             jac=Dfunc_hg1g2_with_spin
@@ -340,11 +340,11 @@ def compute_residual_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 
 
         residual = ydata.values - func_hg1g2_with_spin(pha, *popt)
         amplitude, mu, sigma = fit_residual(residual, gaussfit=gaussfit)
-        
+
     except RuntimeError as e:
         print(e)
         residual, amplitude, mu, sigma = None, None, None, None
-        
+
     return residual, amplitude, mu, sigma
 
 def gaussian(x, amplitude, mu, sigma):
@@ -388,7 +388,7 @@ def fit_residual(residual, gaussfit='', bins=20):
         pass
     else:
         amplitude, mu, sigma = None, None, None
-    
+
     return amplitude, mu, sigma
 
 def compute_spin_distance(spin1, spin2):
@@ -410,15 +410,15 @@ def compute_spin_distance(spin1, spin2):
     return distance
 
 def plot_mwd(
-        RA, Dec, err_ra, err_dec, 
-        color, scatter_color, 
-        ax, fig, 
-        withcb=False, cb_title='', 
-        cmap='viridis', 
+        RA, Dec, err_ra, err_dec,
+        color, scatter_color,
+        ax, fig,
+        withcb=False, cb_title='',
+        cmap='viridis',
         alpha=0.5, org=0, label='',
         projection='mollweide'):
-    ''' Project data on the 2D sphere 
-    
+    ''' Project data on the 2D sphere
+
     Parameters
     ----------
     RA: array-like
@@ -427,7 +427,7 @@ def plot_mwd(
         Dec in degrees between [-90, 90]
     err_ra, err_dec: array-like
         errors on RA, Dec
-    
+
     org is the origin of the plot, 0 or a multiple of 30 degrees in [0,360).
     projection is the kind of projection: 'mollweide', 'aitoff', 'hammer', 'lambert'
     '''
@@ -437,7 +437,7 @@ def plot_mwd(
     # scale conversion to [-180, 180]
     ind = x>180
     x[ind] -= 360
-    
+
     # reverse the scale: East to the left
     x=-x
 
@@ -449,7 +449,7 @@ def plot_mwd(
     error_kwargs = {"lw":.5, "zorder":0}
     ax.errorbar(
         np.radians(x),
-        np.radians(Dec), 
+        np.radians(Dec),
         xerr=np.radians(err_ra),
         yerr=np.radians(err_dec),
         color=color,
@@ -462,7 +462,7 @@ def plot_mwd(
     # Spins
     cm = ax.scatter(
         np.radians(x),
-        np.radians(Dec), 
+        np.radians(Dec),
         c=scatter_color,
         alpha=alpha,
         marker='o',
@@ -474,8 +474,8 @@ def plot_mwd(
     cb = fig.colorbar(cm)
     cb.set_label(cb_title)
     if not withcb:
-        cb.remove() 
-        
+        cb.remove()
+
     tick_labels = np.array(['', '120', '', '60', '', '0', '', '300', '', '240', ''])
     ax.set_xticklabels(tick_labels)
     ax.title.set_fontsize(15)

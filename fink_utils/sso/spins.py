@@ -59,7 +59,7 @@ def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
 
     # Format output in a DataFrame
     pdf_sso = pd.read_json(io.BytesIO(r.content))
-    
+
     if withComplement:
         l1 = []
         l2 = []
@@ -122,7 +122,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
         RA of the spin (radian)
     beta0: float
         Dec of the spin (radian)
-    """    
+    """
     ph = pha[0]
     ra = pha[1]
     dec = pha[2]
@@ -196,7 +196,7 @@ def Dfunc_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
 
 def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
     """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
-    
+
     Original function by M. Mahlke
 
     Limitations:
@@ -217,7 +217,7 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
     tcoor: int
         See https://ssp.imcce.fr/webservices/miriade/api/ephemcc/
         Default is 5 (dedicated to observation)
-    
+
     Returns
     ----------
     pd.DataFrame
@@ -297,10 +297,10 @@ def get_miriade_data(pdf, add_ecl=False, observer='I41', rplane='1', tcoor=5):
         pdf_sub = pdf[mask]
 
         eph = query_miriade(
-            str(ssnamenr), 
-            pdf_sub['i:jd'], 
-            observer=observer, 
-            rplane=rplane, 
+            str(ssnamenr),
+            pdf_sub['i:jd'],
+            observer=observer,
+            rplane=rplane,
             tcoor=tcoor
         )
 
@@ -314,9 +314,9 @@ def get_miriade_data(pdf, add_ecl=False, observer='I41', rplane='1', tcoor=5):
             if add_ecl:
                 # Add Ecliptic coordinates
                 eph_ec = query_miriade(
-                    str(ssnamenr), 
-                    pdf_sub['i:jd'], 
-                    observer=observer, 
+                    str(ssnamenr),
+                    pdf_sub['i:jd'],
+                    observer=observer,
                     rplane='2'
                 )
 
@@ -362,7 +362,7 @@ def add_fdist(pdf):
     pdf['fdist'] = 5 * np.log10(pdf['Dhelio'] * pdf['Dobs'])
 
     return pdf
-    
+
 
 def add_ztf_color_correction(pdf):
     """ Add a new column with ZTF color correction.
@@ -398,22 +398,22 @@ def add_ztf_color_correction(pdf):
             color_sso[cond] = V_minus_g
         else:
             color_sso[cond] = V_minus_r - V_minus_g
-            
+
     pdf['color_corr'] = color_sso
-    
+
     return pdf
 
 def estimate_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2])):
     """
     """
     ydata = pdf['i:magpsf_red'] + pdf['color_corr']
-    
+
     if not np.alltrue([i==i for i in ydata.values]):
         popt = [None] * 6
         perr = [None] * 6
         chisq_red = None
         return popt, perr, chisq_red
-        
+
 
     # Values in radians
     alpha = np.deg2rad(pdf['Phase'].values)
@@ -423,9 +423,9 @@ def estimate_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 1, 1, 2*
 
     try:
         popt, pcov = curve_fit(
-            func_hg1g2_with_spin, 
+            func_hg1g2_with_spin,
             pha,
-            ydata.values, 
+            ydata.values,
             sigma=pdf['i:sigmapsf'],
             bounds=bounds,
             jac=Dfunc_hg1g2_with_spin
@@ -436,11 +436,11 @@ def estimate_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 1, 1, 2*
         r = ydata.values - func_hg1g2_with_spin(pha, *popt)
         chisq = np.sum((r / pdf['i:sigmapsf'])**2)
         chisq_red = 1. / len(ydata.values - 1 - 6) * chisq
-        
+
     except RuntimeError as e:
         print(e)
         popt = [None] * 6
         perr = [None] * 6
         chisq_red = None
-        
+
     return popt, perr, chisq_red
