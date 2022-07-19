@@ -24,6 +24,7 @@ from sbpy.photometry import HG1G2
 
 from scipy.optimize import curve_fit
 
+
 def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
     """ Fetch data for `ssname` from the Fink API.
 
@@ -42,19 +43,19 @@ def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
     pdf_sso: pd.DataFrame
         Pandas DataFrame containing data for all observations in Fink
     """
-    cols = 'i:magpsf,i:sigmapsf,i:fid,i:jd,i:ssnamenr,i:ra,i:dec'
+    cols = "i:magpsf,i:sigmapsf,i:fid,i:jd,i:ssnamenr,i:ra,i:dec"
 
     if withComplement:
-        cols += ',i:objectId'
+        cols += ",i:objectId"
 
     r = requests.post(
-      'https://fink-portal.org/api/v1/sso',
-      json={
-        'n_or_d': ssname,
-        'withEphem': withEphem,
-        'columns': cols,
-        'output-format': 'json'
-      }
+        "https://fink-portal.org/api/v1/sso",
+        json={
+            "n_or_d": ssname,
+            "withEphem": withEphem,
+            "columns": cols,
+            "output-format": "json",
+        },
     )
 
     # Format output in a DataFrame
@@ -63,24 +64,22 @@ def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
     if withComplement:
         l1 = []
         l2 = []
-        for index, oid in enumerate(pdf_sso['i:objectId'].values):
+        for index, oid in enumerate(pdf_sso["i:objectId"].values):
 
             r = requests.post(
-                'https://fink-portal.org/api/v1/objects',
-                json={
-                    'objectId': oid,
-                    'columns': 'i:bimagerat,i:aimagerat',
-                }
+                "https://fink-portal.org/api/v1/objects",
+                json={"objectId": oid, "columns": "i:bimagerat,i:aimagerat",},
             )
 
             tmp = pd.read_json(io.BytesIO(r.content))
-            l1.append(tmp['i:aimagerat'].values[0])
-            l2.append(tmp['i:bimagerat'].values[0])
+            l1.append(tmp["i:aimagerat"].values[0])
+            l2.append(tmp["i:bimagerat"].values[0])
 
-        pdf_sso['i:aimagerat'] = l1
-        pdf_sso['i:bimagerat'] = l2
+        pdf_sso["i:aimagerat"] = l1
+        pdf_sso["i:bimagerat"] = l2
 
     return pdf_sso
+
 
 def func_hg1g2(ph, h, g1, g2):
     """ Return f(H, G1, G2) part of the lightcurve in mag space
@@ -98,10 +97,13 @@ def func_hg1g2(ph, h, g1, g2):
     """
 
     # Standard G1G2 part
-    func1 = g1*HG1G2._phi1(ph)+g2*HG1G2._phi2(ph)+(1-g1-g2)*HG1G2._phi3(ph)
+    func1 = (
+        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
+    )
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
+
 
 def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
     """ Return f(H, G1, G2, R, lambda0, beta0) part of the lightcurve in mag space
@@ -131,11 +133,14 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
     func1 = func_hg1g2(ph, h, g1, g2)
 
     # Spin part
-    geo = np.sin(dec) * np.sin(beta0) + np.cos(dec) * np.cos(beta0) * np.cos(ra - lambda0)
+    geo = np.sin(dec) * np.sin(beta0) + np.cos(dec) * np.cos(beta0) * np.cos(
+        ra - lambda0
+    )
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = -2.5 * np.log10(func2)
 
     return func1 + func2
+
 
 def Dfunc_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
     """ Return partial derivatives of f(H, G1, G2, R, lambda0, beta0)
@@ -174,27 +179,48 @@ def Dfunc_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
     phi1 = HG1G2._phi1(ph)
     phi2 = HG1G2._phi2(ph)
     phi3 = HG1G2._phi3(ph)
-    dom = (g1*phi1+g2*phi2+(1-g1-g2)*phi3)
+    dom = g1 * phi1 + g2 * phi2 + (1 - g1 - g2) * phi3
 
-    ddg1 = 1.085736205*(phi3-phi1)/dom
-    ddg2 = 1.085736205*(phi3-phi2)/dom
+    ddg1 = 1.085736205 * (phi3 - phi1) / dom
+    ddg2 = 1.085736205 * (phi3 - phi2) / dom
 
     # R
-    geo = np.sin(dec) * np.sin(beta0) + np.cos(dec) * np.cos(beta0) * np.cos(ra - lambda0)
+    geo = np.sin(dec) * np.sin(beta0) + np.cos(dec) * np.cos(beta0) * np.cos(
+        ra - lambda0
+    )
     F2 = 1 - (1 - R) * np.abs(geo)
 
     ddR = -2.5 * np.abs(geo) / F2
 
     # lambda0
-    ddlambda0 = 2.5 * (1 - R) / F2 * geo / np.abs(geo) * np.sin(ra - lambda0) * np.cos(dec) * np.cos(beta0)
+    ddlambda0 = (
+        2.5
+        * (1 - R)
+        / F2
+        * geo
+        / np.abs(geo)
+        * np.sin(ra - lambda0)
+        * np.cos(dec)
+        * np.cos(beta0)
+    )
 
     # beta0
-    ddbeta0 = 2.5 * (1 - R) / F2 * geo / np.abs(geo) * (np.sin(dec)*np.cos(beta0) - np.cos(dec)*np.cos(ra-lambda0)*np.sin(beta0))
-
+    ddbeta0 = (
+        2.5
+        * (1 - R)
+        / F2
+        * geo
+        / np.abs(geo)
+        * (
+            np.sin(dec) * np.cos(beta0)
+            - np.cos(dec) * np.cos(ra - lambda0) * np.sin(beta0)
+        )
+    )
 
     return np.transpose([ddh, ddg1, ddg2, ddR, ddlambda0, ddbeta0])
 
-def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
+
+def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5):
     """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
     Original function by M. Mahlke
@@ -225,29 +251,32 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
         appended False if query failed somehow
     """
     # Miriade URL
-    url = 'https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php'
+    url = "https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php"
 
-    if rplane == '2':
-        tcoor = '1'
+    if rplane == "2":
+        tcoor = "1"
 
     # Query parameters
-    if ident.endswith('P') or ident.startswith('C/'):
-        otype = 'c'
+    if ident.endswith("P") or ident.startswith("C/"):
+        otype = "c"
     else:
-        otype = 'a'
+        otype = "a"
     params = {
-        '-name': f'{otype}:{ident}',
-        '-mime': 'json',
-        '-rplane': rplane,
-        '-tcoor': tcoor,
-        '-output': '--jd,--colors(SDSS:r,SDSS:g)',
-        '-observer': observer,
-        '-tscale': 'UTC'
+        "-name": f"{otype}:{ident}",
+        "-mime": "json",
+        "-rplane": rplane,
+        "-tcoor": tcoor,
+        "-output": "--jd,--colors(SDSS:r,SDSS:g)",
+        "-observer": observer,
+        "-tscale": "UTC",
     }
 
     # Pass sorted list of epochs to speed up query
     files = {
-        'epochs': ('epochs', '\n'.join(['{:.6f}'.format(epoch + 15./24/3600) for epoch in jd]))
+        "epochs": (
+            "epochs",
+            "\n".join(["{:.6f}".format(epoch + 15.0 / 24 / 3600) for epoch in jd]),
+        )
     }
 
     # Execute query
@@ -260,13 +289,14 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5):
 
     # Read JSON response
     try:
-        ephem = pd.DataFrame.from_dict(j['data'])
+        ephem = pd.DataFrame.from_dict(j["data"])
     except KeyError:
         return pd.DataFrame()
 
     return ephem
 
-def get_miriade_data(pdf, add_ecl=False, observer='I41', rplane='1', tcoor=5):
+
+def get_miriade_data(pdf, add_ecl=False, observer="I41", rplane="1", tcoor=5):
     """ Concatenate ephemerides data to the ZTF data
 
     Parameters
@@ -289,40 +319,39 @@ def get_miriade_data(pdf, add_ecl=False, observer='I41', rplane='1', tcoor=5):
         Pandas Dataframe with the same length as the input but
         more columns from the Miriade service.
     """
-    ssnamenrs = np.unique(pdf['i:ssnamenr'].values)
+    ssnamenrs = np.unique(pdf["i:ssnamenr"].values)
 
     infos = []
     for ssnamenr in ssnamenrs:
-        mask = pdf['i:ssnamenr'] == ssnamenr
+        mask = pdf["i:ssnamenr"] == ssnamenr
         pdf_sub = pdf[mask]
 
         eph = query_miriade(
             str(ssnamenr),
-            pdf_sub['i:jd'],
+            pdf_sub["i:jd"],
             observer=observer,
             rplane=rplane,
-            tcoor=tcoor
+            tcoor=tcoor,
         )
 
         if not eph.empty:
-            sc = SkyCoord(eph['RA'], eph['DEC'], unit=(u.deg, u.deg))
+            sc = SkyCoord(eph["RA"], eph["DEC"], unit=(u.deg, u.deg))
 
-            eph = eph.drop(columns=['RA', 'DEC'])
-            eph['RA'] = sc.ra.value * 15
-            eph['Dec'] = sc.dec.value
+            eph = eph.drop(columns=["RA", "DEC"])
+            eph["RA"] = sc.ra.value * 15
+            eph["Dec"] = sc.dec.value
 
             if add_ecl:
                 # Add Ecliptic coordinates
                 eph_ec = query_miriade(
-                    str(ssnamenr),
-                    pdf_sub['i:jd'],
-                    observer=observer,
-                    rplane='2'
+                    str(ssnamenr), pdf_sub["i:jd"], observer=observer, rplane="2"
                 )
 
-                sc = SkyCoord(eph_ec['Longitude'], eph_ec['Latitude'], unit=(u.deg, u.deg))
-                eph['Longitude'] = sc.ra.value
-                eph['Latitude'] = sc.dec.value
+                sc = SkyCoord(
+                    eph_ec["Longitude"], eph_ec["Latitude"], unit=(u.deg, u.deg)
+                )
+                eph["Longitude"] = sc.ra.value
+                eph["Latitude"] = sc.dec.value
 
             # Merge fink & Eph
             info = pd.concat([eph.reset_index(), pdf_sub.reset_index()], axis=1)
@@ -331,7 +360,9 @@ def get_miriade_data(pdf, add_ecl=False, observer='I41', rplane='1', tcoor=5):
             info = info.loc[:, ~info.columns.duplicated()]
 
             # Compute magnitude reduced to unit distance
-            info['i:magpsf_red'] = info['i:magpsf'] - 5 * np.log10(info['Dobs'] * info['Dhelio'])
+            info["i:magpsf_red"] = info["i:magpsf"] - 5 * np.log10(
+                info["Dobs"] * info["Dhelio"]
+            )
             infos.append(info)
         else:
             infos.append(pdf_sub)
@@ -359,7 +390,7 @@ def add_fdist(pdf):
     out: pd.DataFrame
         Input Pandas DataFrame with a new column `fdist`
     """
-    pdf['fdist'] = 5 * np.log10(pdf['Dhelio'] * pdf['Dobs'])
+    pdf["fdist"] = 5 * np.log10(pdf["Dhelio"] * pdf["Dobs"])
 
     return pdf
 
@@ -384,14 +415,14 @@ def add_ztf_color_correction(pdf):
     out: pd.DataFrame
         Input Pandas DataFrame with a new column `color_corr`
     """
-    filts = np.unique(pdf['i:fid'].values)
-    color_sso = np.ones_like(pdf['i:magpsf'])
+    filts = np.unique(pdf["i:fid"].values)
+    color_sso = np.ones_like(pdf["i:magpsf"])
     for i, filt in enumerate(filts):
         # SSO Color index
         V_minus_g = -0.32
         V_minus_r = 0.13
 
-        cond = pdf['i:fid'] == filt
+        cond = pdf["i:fid"] == filt
 
         # Color conversion
         if filt == 1:
@@ -399,26 +430,28 @@ def add_ztf_color_correction(pdf):
         else:
             color_sso[cond] = V_minus_r - V_minus_g
 
-    pdf['color_corr'] = color_sso
+    pdf["color_corr"] = color_sso
 
     return pdf
 
-def estimate_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2])):
-    """
-    """
-    ydata = pdf['i:magpsf_red'] + pdf['color_corr']
 
-    if not np.alltrue([i==i for i in ydata.values]):
+def estimate_hg1g2re(
+    pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+):
+    """
+    """
+    ydata = pdf["i:magpsf_red"] + pdf["color_corr"]
+
+    if not np.alltrue([i == i for i in ydata.values]):
         popt = [None] * 6
         perr = [None] * 6
         chisq_red = None
         return popt, perr, chisq_red
 
-
     # Values in radians
-    alpha = np.deg2rad(pdf['Phase'].values)
-    ra = np.deg2rad(pdf['i:ra'].values)
-    dec = np.deg2rad(pdf['i:dec'].values)
+    alpha = np.deg2rad(pdf["Phase"].values)
+    ra = np.deg2rad(pdf["i:ra"].values)
+    dec = np.deg2rad(pdf["i:dec"].values)
     pha = np.transpose([[i, j, k] for i, j, k in zip(alpha, ra, dec)])
 
     try:
@@ -426,16 +459,16 @@ def estimate_hg1g2re(pdf, bounds=([0, 0, 0, 1e-2, 0, -np.pi/2], [30, 1, 1, 1, 2*
             func_hg1g2_with_spin,
             pha,
             ydata.values,
-            sigma=pdf['i:sigmapsf'],
+            sigma=pdf["i:sigmapsf"],
             bounds=bounds,
-            jac=Dfunc_hg1g2_with_spin
+            jac=Dfunc_hg1g2_with_spin,
         )
 
         perr = np.sqrt(np.diag(pcov))
 
         r = ydata.values - func_hg1g2_with_spin(pha, *popt)
-        chisq = np.sum((r / pdf['i:sigmapsf'])**2)
-        chisq_red = 1. / len(ydata.values - 1 - 6) * chisq
+        chisq = np.sum((r / pdf["i:sigmapsf"]) ** 2)
+        chisq_red = 1.0 / len(ydata.values - 1 - 6) * chisq
 
     except RuntimeError as e:
         print(e)
