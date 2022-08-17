@@ -44,11 +44,11 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     ---------
     >>> gals = return_list_of_eg_host(full_simbad_conversion=True)
     >>> print(len(gals))
-    33
+    41
 
     >>> gals = return_list_of_eg_host(full_simbad_conversion=False)
     >>> print(len(gals))
-    22
+    29
     """
     # old taxonomy
     list_simbad_galaxies = [
