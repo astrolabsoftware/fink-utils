@@ -19,13 +19,14 @@ import numpy as np
 import io
 
 from sbpy.photometry import HG1G2
-from sbpy.data import Obs
 
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from scipy.optimize import curve_fit
+
+from fink_utils.sso.data import get_miriade_data
 
 
 def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
@@ -66,7 +67,7 @@ def get_sso_fink(ssname: str, withEphem: bool = True, withComplement=True):
 
             r = requests.post(
                 "https://fink-portal.org/api/v1/objects",
-                json={"objectId": oid, "columns": "i:bimagerat,i:aimagerat",},
+                json={"objectId": oid, "columns": "i:bimagerat,i:aimagerat"},
             )
 
             tmp = pd.read_json(io.BytesIO(r.content))
