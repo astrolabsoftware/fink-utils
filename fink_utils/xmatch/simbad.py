@@ -50,6 +50,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     >>> print(len(gals))
     22
     """
+    # old taxonomy
     list_simbad_galaxies = [
         "galaxy",
         "Galaxy",
@@ -67,6 +68,13 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
         "BClG",
         "GinCl",
         "PartofG",
+        "Compact_Gr_G",
+        "IG",
+        "PairG",
+        "GroupG",
+        "ClG",
+        "SuperClG",
+        "Void",
     ]
 
     cds = \
