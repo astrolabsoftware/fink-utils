@@ -15,6 +15,8 @@
 import pandas as pd
 import numpy as np
 
+from urllib.error import URLError
+
 def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     """ Return potential SN host names
 
@@ -122,15 +124,18 @@ def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.Data
     if path is None:
         path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
 
-    pdf = pd.read_csv(
-        path,
-        sep='|',
-        skiprows=[0, 1, 3],
-        skipfooter=2,
-        dtype='str',
-        header=0,
-        engine='python'
-    )
+    try:
+        pdf = pd.read_csv(
+            path,
+            sep='|',
+            skiprows=[0, 1, 3],
+            skipfooter=2,
+            dtype='str',
+            header=0,
+            engine='python'
+        )
+    except URLError:
+        pdf = pd.read_csv('otypes.txt')
 
     pdf = pdf.rename(columns={i: i.strip() for i in pdf.columns})
 
