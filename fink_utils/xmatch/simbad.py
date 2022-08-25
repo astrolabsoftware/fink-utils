@@ -12,10 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import pandas as pd
 import numpy as np
 
 from urllib.error import URLError
+
+from fink_utils import __file__
 
 def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     """ Return potential SN host names
@@ -135,7 +138,17 @@ def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.Data
             engine='python'
         )
     except URLError:
-        pdf = pd.read_csv('otypes.txt')
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        fn = curdir + '/xmatch/otypes.txt'
+        pdf = pd.read_csv(
+            fn,
+            sep='|',
+            skiprows=[0, 1, 3],
+            skipfooter=2,
+            dtype='str',
+            header=0,
+            engine='python'
+        )
 
     pdf = pdf.rename(columns={i: i.strip() for i in pdf.columns})
 
