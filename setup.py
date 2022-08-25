@@ -38,4 +38,9 @@ setuptools.setup(
     project_urls={
         'Source': 'https://github.com/astrolabsoftware/fink-utils'
     },
+    package_data={
+        'fink_utils': [
+            'xmatch/otypes.txt'
+        ]
+    }
 )
