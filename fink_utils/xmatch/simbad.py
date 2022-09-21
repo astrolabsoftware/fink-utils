@@ -49,11 +49,11 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     ---------
     >>> gals = return_list_of_eg_host(full_simbad_conversion=True)
     >>> print(len(gals))
-    41
+    42
 
     >>> gals = return_list_of_eg_host(full_simbad_conversion=False)
     >>> print(len(gals))
-    29
+    30
     """
     # old taxonomy
     list_simbad_galaxies = [
@@ -83,7 +83,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     ]
 
     cds = \
-        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
+        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail", "Fail 504"] + \
         list_simbad_galaxies
 
     if full_simbad_conversion:
