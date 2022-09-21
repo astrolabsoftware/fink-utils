@@ -83,7 +83,7 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
     ]
 
     cds = \
-        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail"] + \
+        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail", "Fail 504"] + \
         list_simbad_galaxies
 
     if full_simbad_conversion:
