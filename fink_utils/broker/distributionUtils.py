@@ -183,7 +183,7 @@ def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
     schema_path: str
         Path where the avro schema to decode the Kafka message is stored
     Returns
-    ----------
+    -------
     df: DataFrame
         A Spark DataFrame with a StructType Column with decoded data of
         the avro(binary) column named "value"
@@ -206,12 +206,11 @@ def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
     |ZTF18acsbjvw|697251921215010004|  20.4233877|  -27.0588511|                     Unknown|
     +------------+------------------+------------+-------------+----------------------------+
     <BLANKLINE>
-    >>> temp_schema = os.path.join(os.environ["PWD"], "temp_schema")
+    >>> temp_schema = os.path.join("file:///", os.environ["PWD"][1:], "temp_schema")
+    >>> print(temp_schema)
     >>> save_avro_schema(df, temp_schema)
-    # Encode the data into avro
-    >>> df_kafka = get_kafka_df(df, '')
-    # Decode the avro df
-    >>> df_decoded = decode_kafka_df(df_kafka, temp_schema)
+    >>> df_kafka = get_kafka_df(df, '', "2.2", "2.0.0") # Encode the data into avro
+    >>> df_decoded = decode_kafka_df(df_kafka, temp_schema) # Decode the avro df
     >>> df_decoded.printSchema()
     root
      |-- struct: struct (nullable = true)

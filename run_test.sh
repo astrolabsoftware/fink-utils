@@ -20,20 +20,30 @@ set -e
 python -m pip install .
 
 export ROOTPATH=`pwd`
+source conf/fink_utils.conf
 
-echo "pytest -q fink_utils/photometry/test.py"
-pytest -q fink_utils/photometry/test.py
+export FINK_PACKAGES=$FINK_PACKAGES
+export FINK_JARS=$FINK_JARS
 
-echo "fink_utils/xmatch/simbad.py"
-coverage run \
-    --source=${ROOTPATH} \
-    fink_utils/xmatch/simbad.py
+# Add coverage_daemon to the pythonpath. See python/fink_broker/tester.py
+export PYTHONPATH="${SPARK_HOME}/python/test_coverage:$PYTHONPATH"
+export COVERAGE_PROCESS_START=".coveragerc"
+
+# echo "pytest -q fink_utils/photometry/test.py"
+# pytest -q fink_utils/photometry/test.py
+
+# echo "fink_utils/xmatch/simbad.py"
+# coverage run \
+#     --source=${ROOTPATH} \
+#     --rcfile .coveragerc \
+#     fink_utils/xmatch/simbad.py
 
 for filename in fink_utils/broker/*.py
 do
     echo $filename
     coverage run \
     --source=${ROOTPATH} \
+    --rcfile .coveragerc \
     $filename
 done
 
@@ -42,8 +52,14 @@ do
     echo $filename
     coverage run \
     --source=${ROOTPATH} \
+    --rcfile .coveragerc \
     $filename
 done
+
+coverage combine
+
+unset FINK_PACKAGES
+unset FINK_JARS
 
 coverage report -m
 coverage html
