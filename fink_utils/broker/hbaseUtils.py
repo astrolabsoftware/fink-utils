@@ -307,10 +307,10 @@ def construct_hbase_catalog_from_flatten_schema(
     >>> df = spark.read.format("parquet").load(ztf_alert_sample_scidatabase)
     >>> cols_i, cols_d, cols_b = load_science_portal_column_names()
     >>> cf = assign_column_family_names(df, cols_i, [], [])
-    # Flatten the DataFrame
-    >>> df_flat = df.select(cols_i)
-    Attach the row key
-    >>> df_rk, row_key_name = attach_rowkey(df_flat)
+    
+    >>> df_flat = df.select(cols_i) # Flatten the DataFrame
+
+    >>> df_rk, row_key_name = attach_rowkey(df_flat) # Attach the row key
     >>> catalog = construct_hbase_catalog_from_flatten_schema(
     ...     df_rk.schema, "mycatalogname", row_key_name, cf)
     """
@@ -388,8 +388,8 @@ def construct_schema_row(df, rowkeyname, version):
     # Read alert from the raw database
     >>> from pyspark.sql.functions import lit
     >>> df = spark.read.format("parquet").load(ztf_alert_sample_scidatabase)
-    # inplace replacement
-    >>> df = df.select(['objectId', 'candidate.jd', 'candidate.candid', col('cutoutScience.stampData').alias('cutoutScience_stampData')])
+
+    >>> df = df.select(['objectId', 'candidate.jd', 'candidate.candid', col('cutoutScience.stampData').alias('cutoutScience_stampData')]) # inplace replacement
     >>> df = df.withColumn('schema_version', lit(''))
     >>> df = construct_schema_row(df, rowkeyname='schema_version', version='schema_v0')
     >>> df.show()

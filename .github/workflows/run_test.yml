@@ -12,14 +12,41 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.9]
+        container: ["julienpeloton/fink-ci:prod", "julienpeloton/fink-ci:dev"]
+
+    container:
+      image: ${{ matrix.container }}
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+    - name: Set up env from container variables
+      run: |
+        echo "FINK_UTILS=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
+        echo "${BINPATH}" >> $GITHUB_PATH
+    - name: Download test data
+      run: |
+        cd $FINK_UTILS/datasim
+        source $FINK_UTILS/datasim/download_ztf_alert_data.sh
+        cd $FINK_UTILS
+    - name: Download simulator
+      run: |
+        git clone https://github.com/astrolabsoftware/fink-alert-simulator.git
+        echo "FINK_ALERT_SIMULATOR=${FINK_UTILS}/fink-alert-simulator" >> $GITHUB_ENV
+    - name: Set up env [2/2]
+      run: |
+        echo "PYTHONPATH=${FINK_UTILS}:${FINK_ALERT_SIMULATOR}:${PYTHONPATH}" >> $GITHUB_ENV
+        echo "${FINK_UTILS}/bin:${FINK_ALERT_SIMULATOR}/bin" >> $GITHUB_PATH
+    - name: Check env
+      run: |
+        echo "FINK_UTILS: $FINK_UTILS"
+        echo "SPARK_HOME: $SPARK_HOME"
+        echo "SPARKLIB: $SPARKLIB"
+        echo "FINK_ALERT_SIMULATOR: $FINK_ALERT_SIMULATOR"
+        echo "KAFKA_HOME: $KAFKA_HOME"
+        echo "PYTHONPATH: $PYTHONPATH"
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo `python -V`
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -27,5 +54,4 @@ jobs:
         pip install .
     - name: Run tests
       run: |
-        pytest -q fink_utils/photometry/test.py
-        python fink_utils/xmatch/simbad.py
+        ./run_test.py
