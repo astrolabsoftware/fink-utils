@@ -15,7 +15,7 @@
 # limitations under the License.
 import os
 import slack
-from fink_utils.test.tester import spark_unit_tests
+from fink_utils.test.tester import spark_unit_tests_broker
 from pyspark.sql import DataFrame
 from fink_utils.broker.loggingUtils import get_fink_logger
 
@@ -206,6 +206,6 @@ if __name__ == "__main__":
     api_token = get_api_token()
 
     if api_token:
-        spark_unit_tests(globals())
+        spark_unit_tests_broker(globals())
     else:
         logger.info("Skipping Unit Tests")

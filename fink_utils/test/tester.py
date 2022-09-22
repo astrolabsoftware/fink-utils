@@ -118,16 +118,15 @@ def spark_unit_tests_broker(
     sys.exit(doctest.testmod(globs=global_args, verbose=verbose)[0])
 
 
-
 def spark_unit_tests_science(global_args: dict = None, verbose: bool = False):
-    """ Base commands for the Spark unit test suite (fink-science version)
+    """Base commands for the Spark unit test suite (fink-science version)
 
     Include this routine in the main of a module, and execute:
     python3 mymodule.py
     to run the tests.
     It should exit gracefully if no error (exit code 0),
     otherwise it will print on the screen the failure.
-    
+
     Parameters
     ----------
     global_args: dict, optional
@@ -146,31 +145,33 @@ def spark_unit_tests_science(global_args: dict = None, verbose: bool = False):
     spark = SparkSession.builder.getOrCreate()
 
     conf = SparkConf()
-    confdic = {
-        "spark.python.daemon.module": "coverage_daemon"
-    }
+    confdic = {"spark.python.daemon.module": "coverage_daemon"}
 
-    if spark.version.startswith('2'):
+    if spark.version.startswith("2"):
         confdic.update(
             {
-                "spark.jars.packages": 'org.apache.spark:spark-avro_2.11:{}'.format(spark.version)
+                "spark.jars.packages": "org.apache.spark:spark-avro_2.11:{}".format(
+                    spark.version
+                )
             }
         )
-    elif spark.version.startswith('3'):
+    elif spark.version.startswith("3"):
         confdic.update(
             {
-                "spark.jars.packages": 'org.apache.spark:spark-avro_2.12:{}'.format(spark.version)
+                "spark.jars.packages": "org.apache.spark:spark-avro_2.12:{}".format(
+                    spark.version
+                )
             }
         )
     conf.setMaster("local[2]")
     conf.setAppName("fink_science_test")
     for k, v in confdic.items():
         conf.set(key=k, value=v)
-    spark = SparkSession\
-        .builder\
-        .appName("fink_science_test")\
-        .config(conf=conf)\
+    spark = (
+        SparkSession.builder.appName("fink_science_test")
+        .config(conf=conf)
         .getOrCreate()
+    )
 
     global_args["spark"] = spark
 

@@ -19,19 +19,20 @@ import pandas as pd
 import numpy as np
 import healpy as hp
 
+
 def dec2theta(dec: float) -> float:
-    """ Convert Dec (deg) to theta (rad)
-    """
+    """Convert Dec (deg) to theta (rad)"""
     return np.pi / 2.0 - np.pi / 180.0 * dec
 
+
 def ra2phi(ra: float) -> float:
-    """ Convert RA (deg) to phi (rad)
-    """
+    """Convert RA (deg) to phi (rad)"""
     return np.pi / 180.0 * ra
+
 
 @pandas_udf(LongType(), PandasUDFType.SCALAR)
 def ang2pix(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
-    """ Compute pixel number at given nside
+    """Compute pixel number at given nside
     Parameters
     ----------
     ra: float
@@ -56,16 +57,13 @@ def ang2pix(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
     True
     """
     return pd.Series(
-        hp.ang2pix(
-            nside.values[0],
-            dec2theta(dec.values),
-            ra2phi(ra.values)
-        )
+        hp.ang2pix(nside.values[0], dec2theta(dec.values), ra2phi(ra.values))
     )
+
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def ang2pix_array(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
-    """ Return a col string with the pixel numbers corresponding to the nsides
+    """Return a col string with the pixel numbers corresponding to the nsides
     pix@nside[0]_pix@nside[1]_...etc
     Parameters
     ----------
@@ -93,18 +91,14 @@ def ang2pix_array(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
     3
     """
     pixs = [
-        hp.ang2pix(
-            int(nside_),
-            dec2theta(dec.values),
-            ra2phi(ra.values)
-        ) for nside_ in nside.values[0]
+        hp.ang2pix(int(nside_), dec2theta(dec.values), ra2phi(ra.values))
+        for nside_ in nside.values[0]
     ]
 
-    to_return = [
-        '_'.join(list(np.array(i, dtype=str))) for i in np.transpose(pixs)
-    ]
+    to_return = ["_".join(list(np.array(i, dtype=str))) for i in np.transpose(pixs)]
 
     return pd.Series(to_return)
+
 
 # if __name__ == "__main__":
 #     """ Execute the test suite with SparkSession initialised """

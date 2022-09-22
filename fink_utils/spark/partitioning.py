@@ -22,9 +22,10 @@ from astropy.time import Time
 
 # from fink_utils.test.tester import spark_unit_tests_broker
 
+
 @pandas_udf(TimestampType(), PandasUDFType.SCALAR)
 def convert_to_millitime(jd: pd.Series, format=None, now=None):
-    """ Convert date into unix milliseconds (long)
+    """Convert date into unix milliseconds (long)
     Parameters
     ----------
     jd: double
@@ -49,23 +50,21 @@ def convert_to_millitime(jd: pd.Series, format=None, now=None):
     >>> pdf = df.select('millis').toPandas()
     """
     if format is None:
-        formatval = 'jd'
+        formatval = "jd"
     else:
         formatval = format.values[0]
 
     if now is not None:
         times = [Time.now().to_datetime()] * len(jd)
     else:
-        times = Time(
-            jd.values,
-            format=formatval
-        ).to_datetime()
+        times = Time(jd.values, format=formatval).to_datetime()
 
     return pd.Series(times)
 
+
 @pandas_udf(TimestampType(), PandasUDFType.SCALAR)
 def convert_to_datetime(jd: pd.Series, format=None) -> pd.Series:
-    """ Convert date into datetime (timestamp)
+    """Convert date into datetime (timestamp)
     Be careful if you are using this outside Fink. First, you need to check
     you timezone defined in Spark:
     ```
@@ -93,14 +92,15 @@ def convert_to_datetime(jd: pd.Series, format=None) -> pd.Series:
     >>> pdf = df.select('datetime').toPandas()
     """
     if format is None:
-        formatval = 'jd'
+        formatval = "jd"
     else:
         formatval = format.values[0]
 
     return pd.Series(Time(jd.values, format=formatval).to_datetime())
 
-def numPart(df, partition_size=128.):
-    """ Compute the idle number of partitions of a DataFrame
+
+def numPart(df, partition_size=128.0):
+    """Compute the idle number of partitions of a DataFrame
     based on its size.
     Parameters
     ----------
@@ -123,19 +123,18 @@ def numPart(df, partition_size=128.):
     """
     # Grab the running Spark Session,
     # otherwise create it.
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
-    b = spark._jsparkSession\
-        .sessionState()\
-        .executePlan(df._jdf.queryExecution().logical())\
-        .optimizedPlan()\
-        .stats()\
+    b = (
+        spark._jsparkSession.sessionState()
+        .executePlan(df._jdf.queryExecution().logical())
+        .optimizedPlan()
+        .stats()
         .sizeInBytes()
+    )
 
     # Convert in MB
-    b_mb = b / 1024. / 1024.
+    b_mb = b / 1024.0 / 1024.0
 
     # Ceil it
     numpart = int(np.ceil(b_mb / partition_size))
