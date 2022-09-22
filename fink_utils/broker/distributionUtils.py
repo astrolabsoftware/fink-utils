@@ -27,14 +27,15 @@ from pyspark.sql.avro.functions import to_avro as to_avro_native
 
 from fink_utils.test.tester import spark_unit_tests
 
+
 def get_kafka_df(
-        df: DataFrame, 
-        schema_path: str, 
-        fink_broker_version: str,
-        fink_science_version: str,
-        saveschema: bool = False, 
-        elasticc: bool = False,
-    ) -> DataFrame:
+    df: DataFrame,
+    schema_path: str,
+    fink_broker_version: str,
+    fink_science_version: str,
+    saveschema: bool = False,
+    elasticc: bool = False,
+) -> DataFrame:
     """Create and return a df to pubish to Kafka
     For a kafka output the dataframe should have the following columns:
     key: (optional) Using a unique key can prevent reading duplicate data
@@ -78,20 +79,22 @@ def get_kafka_df(
         # The idea is to force the output schema
         # Need better handling of this though...
         jsonschema = open(
-            '/home/julien.peloton/elasticc/alert_schema/elasticc.v0_9.brokerClassification.avsc',
-            'r'
+            "/home/julien.peloton/elasticc/alert_schema/elasticc.v0_9.brokerClassification.avsc",
+            "r",
         ).read()
         df_kafka = df_struct.select(to_avro_native("struct", jsonschema).alias("value"))
     else:
         df_kafka = df_struct.select(to_avro("struct").alias("value"))
 
     # Add a key based on schema versions
-    df_kafka = df_kafka.withColumn('key', lit('{}_{}'.format(fink_broker_version, fink_science_version)))
+    df_kafka = df_kafka.withColumn(
+        "key", lit("{}_{}".format(fink_broker_version, fink_science_version))
+    )
 
     if saveschema:
         # Harcoded path that corresponds to the schema used
         # for alert redistribution.
-        schema_path = 'schemas/distribution_schema_new.avsc'
+        schema_path = "schemas/distribution_schema_new.avsc"
 
         # Do not work on a DFS like HDFS obviously.
         # Only local mode & for testing purposes
@@ -105,8 +108,11 @@ def get_kafka_df(
 
     return df_kafka
 
-def save_avro_schema_stream(df: DataFrame, epochid: int, schema_path=None, save_on_hdfs: bool = False):
-    """ Extract schema from an alert of the stream, and save it on disk.
+
+def save_avro_schema_stream(
+    df: DataFrame, epochid: int, schema_path=None, save_on_hdfs: bool = False
+):
+    """Extract schema from an alert of the stream, and save it on disk.
     Mostly for debugging purposes - do not work in cluster mode (local only).
     Typically:
     schema_path = ...
@@ -123,6 +129,7 @@ def save_avro_schema_stream(df: DataFrame, epochid: int, schema_path=None, save_
         Offset of the micro-batch
     """
     save_avro_schema(df, schema_path, save_on_hdfs)
+
 
 def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False):
     """Writes the avro schema to a file at schema_path
@@ -146,7 +153,9 @@ def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False
             prefix_path = "hdfs:///"
         else:
             prefix_path = "file:///"
-        path_for_avro = os.path.join(prefix_path, os.environ["PWD"][1:], "flatten_hbase.avro")
+        path_for_avro = os.path.join(
+            prefix_path, os.environ["PWD"][1:], "flatten_hbase.avro"
+        )
         if os.path.exists(path_for_avro):
             shutil.rmtree(path_for_avro)
         df.write.format("avro").save(path_for_avro)
@@ -156,11 +165,12 @@ def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False
             avro_file = glob.glob(path_for_avro + "/.part*")[0]
         else:
             avro_file = glob.glob(
-                os.path.join(os.environ["PWD"], "flatten_hbase.avro", ".part*"))[0]
+                os.path.join(os.environ["PWD"], "flatten_hbase.avro", ".part*")
+            )[0]
         avro_schema = readschemafromavrofile(avro_file)
 
         # Write the schema to a file for decoding Kafka messages
-        with open(schema_path, 'w') as f:
+        with open(schema_path, "w") as f:
             json.dump(avro_schema, f, indent=2)
 
         # Remove .avro files and directory
@@ -168,8 +178,11 @@ def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False
     else:
         msg = """
             {} already exists - cannot write the new schema
-        """.format(schema_path)
+        """.format(
+            schema_path
+        )
         print(msg)
+
 
 def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
     """Decode the DataFrame read from Kafka
@@ -246,8 +259,10 @@ def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
 
     return df
 
+
 def get_distribution_offset(
-        offsetfile: str, startingoffset_dist: str = "latest") -> int:
+    offsetfile: str, startingoffset_dist: str = "latest"
+) -> int:
     """Read and return distribution offset from file
     Parameters
     ----------
@@ -300,7 +315,7 @@ def get_distribution_offset(
         min_timestamp = 100
     else:
         if startingoffset_dist == "latest":
-            with open(offsetfile, 'r') as f:
+            with open(offsetfile, "r") as f:
                 line = f.readlines()[-1]
                 min_timestamp = int(line.split(", ")[-1])
         else:
@@ -308,6 +323,7 @@ def get_distribution_offset(
             min_timestamp = int(startingoffset_dist)
 
     return min_timestamp
+
 
 def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
     """Group columns of a df into a struct column
@@ -403,7 +419,7 @@ def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
 
 
 if __name__ == "__main__":
-    """ Execute the test suite with SparkSession initialised """
+    """Execute the test suite with SparkSession initialised"""
 
     # Run the Spark test suite
     spark_unit_tests(globals())

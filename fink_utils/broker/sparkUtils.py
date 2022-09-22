@@ -25,8 +25,9 @@ import json
 from fink_utils.broker.avroUtils import readschemafromavrofile
 from fink_utils.test.tester import spark_unit_tests
 
+
 def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
-    """ Decode the Avro data contained in a DataFrame column into a struct.
+    """Decode the Avro data contained in a DataFrame column into a struct.
     Note:
     Pyspark does not have all features contained in Spark core (Scala), hence
     we provide here a wrapper around the Scala function `from_avro`.
@@ -56,6 +57,7 @@ def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
     avro = sc._jvm.org.apache.spark.sql.avro
     f = getattr(getattr(avro, "package$"), "MODULE$").from_avro
     return Column(f(_to_java_column(dfcol), jsonformatschema))
+
 
 def to_avro(dfcol: Column) -> Column:
     """Serialize the structured data of a DataFrame column into
@@ -97,9 +99,9 @@ def to_avro(dfcol: Column) -> Column:
     f = getattr(getattr(avro, "package$"), "MODULE$").to_avro
     return Column(f(_to_java_column(dfcol)))
 
-def write_to_csv(
-        batchdf: DataFrame, batchid: int, fn: str = "web/data/simbadtype.csv"):
-    """ Write DataFrame data into a CSV file.
+
+def write_to_csv(batchdf: DataFrame, batchid: int, fn: str = "web/data/simbadtype.csv"):
+    """Write DataFrame data into a CSV file.
     The only supported Output Modes for File Sink is `Append`, but we need the
     complete table updated and dumped on disk here.
     Therefore this routine allows us to use CSV file sink with `Complete`
@@ -122,13 +124,14 @@ def write_to_csv(
     >>> write_to_csv(df, 0, fn="test.csv")
     >>> os.remove("test.csv")
     """
-    batchdf\
-        .toPandas()\
-        .to_csv(fn, index=False)
+    batchdf.toPandas().to_csv(fn, index=False)
     batchdf.unpersist()
 
-def init_sparksession(name: str, shuffle_partitions: int = None, tz=None) -> SparkSession:
-    """ Initialise SparkSession, the level of log for Spark and
+
+def init_sparksession(
+    name: str, shuffle_partitions: int = None, tz=None
+) -> SparkSession:
+    """Initialise SparkSession, the level of log for Spark and
     some configuration parameters
     Parameters
     ----------
@@ -151,10 +154,7 @@ def init_sparksession(name: str, shuffle_partitions: int = None, tz=None) -> Spa
     """
     # Grab the running Spark Session,
     # otherwise create it.
-    spark = SparkSession \
-        .builder \
-        .appName(name) \
-        .getOrCreate()
+    spark = SparkSession.builder.appName(name).getOrCreate()
 
     # keep the size of shuffles small
     if shuffle_partitions is not None:
@@ -167,6 +167,7 @@ def init_sparksession(name: str, shuffle_partitions: int = None, tz=None) -> Spa
     spark.sparkContext.setLogLevel("WARN")
 
     return spark
+
 
 def get_spark_context() -> SparkContext:
     """
@@ -187,11 +188,15 @@ def get_spark_context() -> SparkContext:
     else:
         raise RuntimeError("SparkContext must be initialized")
 
+
 def connect_to_kafka(
-        servers: str, topic: str,
-        startingoffsets: str = "latest",
-        failondataloss: bool = False, kerberos: bool = False) -> DataFrame:
-    """ Initialise SparkSession, and set default Kafka parameters
+    servers: str,
+    topic: str,
+    startingoffsets: str = "latest",
+    failondataloss: bool = False,
+    kerberos: bool = False,
+) -> DataFrame:
+    """Initialise SparkSession, and set default Kafka parameters
     Parameters
     ----------
     servers: str
@@ -220,46 +225,44 @@ def connect_to_kafka(
     True
     """
     # Grab the running Spark Session
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
     conf = spark.sparkContext.getConf().getAll()
 
     # Create a streaming DF from the incoming stream from Kafka
-    df = spark \
-        .readStream \
-        .format("kafka") \
-        .option("kafka.bootstrap.servers", servers)
+    df = spark.readStream.format("kafka").option("kafka.bootstrap.servers", servers)
 
     if kerberos:
         df = df.option(
             "kafka.sasl.kerberos.kinit.cmd",
-            'kinit -t "%{sasl.kerberos.keytab}" -k %{sasl.kerberos.principal}'
+            'kinit -t "%{sasl.kerberos.keytab}" -k %{sasl.kerberos.principal}',
         )
         df = df.option("kafka.sasl.kerberos.service.name", "kafka")
 
     # Naive check for secure connection - this can be improved...
-    to_secure = sum(
-        ["-Djava.security.auth.login.config=" in i[1] for i in conf])
+    to_secure = sum(["-Djava.security.auth.login.config=" in i[1] for i in conf])
     if to_secure > 0:
         if kerberos:
-            df = df.option("kafka.security.protocol", "SASL_PLAINTEXT")\
-                .option("kafka.sasl.mechanism", "GSSAPI")
+            df = df.option("kafka.security.protocol", "SASL_PLAINTEXT").option(
+                "kafka.sasl.mechanism", "GSSAPI"
+            )
         else:
-            df = df.option("kafka.sasl.mechanism", "PLAIN") \
-                .option("kafka.security.protocol", 'SASL_SSL')
+            df = df.option("kafka.sasl.mechanism", "PLAIN").option(
+                "kafka.security.protocol", "SASL_SSL"
+            )
 
-    df = df.option("subscribe", topic) \
-        .option("startingOffsets", startingoffsets) \
-        .option('failOnDataLoss', failondataloss)\
+    df = (
+        df.option("subscribe", topic)
+        .option("startingOffsets", startingoffsets)
+        .option("failOnDataLoss", failondataloss)
         .load()
+    )
 
     return df
 
-def connect_to_raw_database(
-        basepath: str, path: str, latestfirst: bool) -> DataFrame:
-    """ Initialise SparkSession, and connect to the raw database (Parquet)
+
+def connect_to_raw_database(basepath: str, path: str, latestfirst: bool) -> DataFrame:
+    """Initialise SparkSession, and connect to the raw database (Parquet)
     Parameters
     ----------
     basepath: str
@@ -281,29 +284,25 @@ def connect_to_raw_database(
     True
     """
     # Grab the running Spark Session
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
     # Create a DF from the database
-    userschema = spark\
-        .read\
-        .parquet(basepath)\
-        .schema
+    userschema = spark.read.parquet(basepath).schema
 
-    df = spark \
-        .readStream \
-        .format("parquet") \
-        .schema(userschema) \
-        .option("basePath", basepath) \
-        .option("path", path) \
-        .option("latestFirst", latestfirst) \
+    df = (
+        spark.readStream.format("parquet")
+        .schema(userschema)
+        .option("basePath", basepath)
+        .option("path", path)
+        .option("latestFirst", latestfirst)
         .load()
+    )
 
     return df
 
+
 def load_parquet_files(path: str) -> DataFrame:
-    """ Initialise SparkSession, and load parquet files with Spark
+    """Initialise SparkSession, and load parquet files with Spark
     Unlike connect_to_raw_database, you get a standard DataFrame, and
     not a Streaming DataFrame.
     Parameters
@@ -319,22 +318,16 @@ def load_parquet_files(path: str) -> DataFrame:
     >>> df = load_parquet_files(ztf_alert_sample)
     """
     # Grab the running Spark Session
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
     # TODO: add mergeSchema option
-    df = spark \
-        .read \
-        .format("parquet") \
-        .option('mergeSchema', "true") \
-        .load(path)
+    df = spark.read.format("parquet").option("mergeSchema", "true").load(path)
 
     return df
 
-def get_schemas_from_avro(
-        avro_path: str) -> Tuple[StructType, dict, str]:
-    """ Build schemas from an avro file (DataFrame & JSON compatibility)
+
+def get_schemas_from_avro(avro_path: str) -> Tuple[StructType, dict, str]:
+    """Build schemas from an avro file (DataFrame & JSON compatibility)
     Parameters
     ----------
     avro_path: str
@@ -359,31 +352,26 @@ def get_schemas_from_avro(
     <class 'str'>
     """
     # Grab the running Spark Session
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
     # Get Schema of alerts
     alert_schema = readschemafromavrofile(avro_path)
-    df_schema = spark.read\
-        .format("avro")\
-        .load("file://" + avro_path)\
-        .schema
+    df_schema = spark.read.format("avro").load("file://" + avro_path).schema
     alert_schema_json = json.dumps(alert_schema)
 
     return df_schema, alert_schema, alert_schema_json
 
 
 if __name__ == "__main__":
-    """ Execute the test suite with SparkSession initialised """
+    """Execute the test suite with SparkSession initialised"""
 
     globs = globals()
-    root = os.environ['FINK_HOME']
-    globs["ztf_alert_sample"] = os.path.join(
-        root, "online/raw")
+    root = os.environ["FINK_HOME"]
+    globs["ztf_alert_sample"] = os.path.join(root, "online/raw")
 
     globs["ztf_avro_sample"] = os.path.join(
-        root, "schemas/template_schema_ZTF_3p3.avro")
+        root, "schemas/template_schema_ZTF_3p3.avro"
+    )
 
     # Run the Spark test suite
     spark_unit_tests(globs, withstreaming=True)

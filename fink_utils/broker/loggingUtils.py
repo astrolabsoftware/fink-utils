@@ -19,8 +19,9 @@ from logging import Logger
 
 from fink_utils.test.tester import spark_unit_tests
 
+
 def get_fink_logger(name: str = "test", log_level: str = "INFO") -> Logger:
-    """ Initialise python logger. Suitable for both driver and executors.
+    """Initialise python logger. Suitable for both driver and executors.
     Parameters
     ----------
     name : str
@@ -56,6 +57,7 @@ def get_fink_logger(name: str = "test", log_level: str = "INFO") -> Logger:
 
     return logger
 
+
 def inspect_application(logger):
     """Print INFO and DEBUG statements about the current application such
     as the Spark configuration, the Spark & Python versions.
@@ -70,9 +72,9 @@ def inspect_application(logger):
     """
     spark = SparkSession.builder.getOrCreate()
 
-    logger.debug('Application started')
-    logger.debug('Python version: {}'.format(spark.sparkContext.pythonVer))
-    logger.debug('Spark version: {}'.format(spark.sparkContext.version))
+    logger.debug("Application started")
+    logger.debug("Python version: {}".format(spark.sparkContext.pythonVer))
+    logger.debug("Spark version: {}".format(spark.sparkContext.version))
 
     # Debug statements
     conf = "\n".join([str(i) for i in spark.sparkContext.getConf().getAll()])
@@ -80,7 +82,7 @@ def inspect_application(logger):
 
 
 if __name__ == "__main__":
-    """ Execute the test suite with SparkSession initialised """
+    """Execute the test suite with SparkSession initialised"""
     globs = globals()
     # Run the Spark test suite
     spark_unit_tests(globs, withstreaming=False)

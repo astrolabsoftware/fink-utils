@@ -18,11 +18,18 @@ import pickle
 
 from fink_utils.photometry.conversion import mag2fluxcal_snana
 
+
 def format_data_as_snana(
-        jd, measurement, error, fid, candid, mask,
-        filter_conversion_dic={1: 'g', 2: 'r'},
-        transform_to_flux=True):
-    """ Format data in SNANA units and format
+    jd,
+    measurement,
+    error,
+    fid,
+    candid,
+    mask,
+    filter_conversion_dic={1: "g", 2: "r"},
+    transform_to_flux=True,
+):
+    """Format data in SNANA units and format
 
     The resulting DataFrame is a concatenation of all alert data, with one
     measurement per row.
@@ -75,37 +82,36 @@ def format_data_as_snana(
 
     """
     # add an exploded column with SNID
-    df_tmp = pd.DataFrame.from_dict(
-        {
-            'jd': jd[mask],
-            'SNID': candid[mask]
-        }
-    )
-    df_tmp = df_tmp.explode('jd')
+    df_tmp = pd.DataFrame.from_dict({"jd": jd[mask], "SNID": candid[mask]})
+    df_tmp = df_tmp.explode("jd")
 
     if transform_to_flux:
         # compute flux and flux error
-        data = [mag2fluxcal_snana(*args) for args in zip(
-            measurement[mask].explode(),
-            error[mask].explode())]
+        data = [
+            mag2fluxcal_snana(*args)
+            for args in zip(measurement[mask].explode(), error[mask].explode())
+        ]
         flux, flux_error = np.transpose(data)
     else:
         flux = measurement[mask].explode()
         flux_error = error[mask].explode()
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict({
-        'SNID': df_tmp['SNID'],
-        'MJD': df_tmp['jd'].astype('float'),
-        'FLUXCAL': flux.astype('float'),
-        'FLUXCALERR': flux_error.astype('float'),
-        'FLT': fid[mask].explode().replace(filter_conversion_dic)
-    })
+    pdf = pd.DataFrame.from_dict(
+        {
+            "SNID": df_tmp["SNID"],
+            "MJD": df_tmp["jd"].astype("float"),
+            "FLUXCAL": flux.astype("float"),
+            "FLUXCALERR": flux_error.astype("float"),
+            "FLT": fid[mask].explode().replace(filter_conversion_dic),
+        }
+    )
 
     return pdf
 
+
 def extract_field(current: list, history: list) -> np.array:
-    """ Concatenate current and historical data.
+    """Concatenate current and historical data.
 
     If t1 is the first time the object has been seen, and the object has N
     historical measurements, the routine returns values ordered as:
@@ -137,8 +143,9 @@ def extract_field(current: list, history: list) -> np.array:
     conc = [np.concatenate((j, [i])) for i, j in zip(current, history)]
     return np.array(conc)
 
-def load_scikit_model(fn: str = ''):
-    """ Load a RandomForestClassifier model from disk (pickled).
+
+def load_scikit_model(fn: str = ""):
+    """Load a RandomForestClassifier model from disk (pickled).
 
     Parameters
     ----------
@@ -159,10 +166,11 @@ def load_scikit_model(fn: str = ''):
     >>> model.n_classes_
     2
     """
-    return pickle.load(open(fn, 'rb'))
+    return pickle.load(open(fn, "rb"))
+
 
 def load_pcs(fn, npcs):
-    """ Load PC from disk into a Pandas DataFrame
+    """Load PC from disk into a Pandas DataFrame
 
     Parameters
     ----------

@@ -35,12 +35,6 @@ setuptools.setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
     ],
-    project_urls={
-        'Source': 'https://github.com/astrolabsoftware/fink-utils'
-    },
-    package_data={
-        'fink_utils': [
-            'xmatch/otypes.txt'
-        ]
-    }
+    project_urls={"Source": "https://github.com/astrolabsoftware/fink-utils"},
+    package_data={"fink_utils": ["xmatch/otypes.txt"]},
 )

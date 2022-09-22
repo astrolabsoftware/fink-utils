@@ -22,8 +22,9 @@ from pyspark.sql import SparkSession, DataFrame
 
 from fink_utils.test.tester import spark_unit_tests
 
+
 def load_hbase_data(catalog: str, rowkey: str) -> DataFrame:
-    """ Load table data from HBase into a Spark DataFrame
+    """Load table data from HBase into a Spark DataFrame
     The row(s) containing the different schemas are skipped (only data is loaded)
     Parameters
     ----------
@@ -39,21 +40,22 @@ def load_hbase_data(catalog: str, rowkey: str) -> DataFrame:
     """
     # Grab the running Spark Session,
     # otherwise create it.
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
-    df = spark.read.option("catalog", catalog)\
-        .format("org.apache.hadoop.hbase.spark")\
-        .option("hbase.spark.use.hbasecontext", False)\
-        .option("hbase.spark.pushdown.columnfilter", True)\
-        .load()\
-        .filter(~col(rowkey).startswith('schema_'))
+    df = (
+        spark.read.option("catalog", catalog)
+        .format("org.apache.hadoop.hbase.spark")
+        .option("hbase.spark.use.hbasecontext", False)
+        .option("hbase.spark.pushdown.columnfilter", True)
+        .load()
+        .filter(~col(rowkey).startswith("schema_"))
+    )
 
     return df
 
+
 def write_catalog_on_disk(catalog, catalogname) -> None:
-    """ Save HBase catalog in json format on disk
+    """Save HBase catalog in json format on disk
     Parameters
     ----------
     catalog: str
@@ -62,20 +64,21 @@ def write_catalog_on_disk(catalog, catalogname) -> None:
     catalogname: str
         Name of the catalog on disk
     """
-    with open(catalogname, 'w') as json_file:
+    with open(catalogname, "w") as json_file:
         json.dump(catalog, json_file)
 
+
 def push_to_hbase(
-    df, 
-    table_name, 
-    rowkeyname, 
+    df,
+    table_name,
+    rowkeyname,
     cf,
     fink_broker_version,
     fink_science_version,
-    nregion=50, 
-    catfolder='.'
-    ) -> None:
-    """ Push DataFrame data to HBase
+    nregion=50,
+    catfolder=".",
+) -> None:
+    """Push DataFrame data to HBase
     Parameters
     ----------
     df: Spark DataFrame
@@ -93,57 +96,47 @@ def push_to_hbase(
     """
     # construct the catalog
     hbcatalog_index = construct_hbase_catalog_from_flatten_schema(
-        df.schema,
-        table_name,
-        rowkeyname=rowkeyname,
-        cf=cf
+        df.schema, table_name, rowkeyname=rowkeyname, cf=cf
     )
 
     # Push table
-    df.write\
-        .options(catalog=hbcatalog_index, newtable=nregion)\
-        .format("org.apache.hadoop.hbase.spark")\
-        .option("hbase.spark.use.hbasecontext", False)\
-        .save()
+    df.write.options(catalog=hbcatalog_index, newtable=nregion).format(
+        "org.apache.hadoop.hbase.spark"
+    ).option("hbase.spark.use.hbasecontext", False).save()
 
     # write catalog for the table data
-    file_name = table_name + '.json'
+    file_name = table_name + ".json"
     write_catalog_on_disk(hbcatalog_index, os.path.join(catfolder, file_name))
 
     # Construct the schema row - inplace replacement
-    schema_row_key_name = 'schema_version'
-    df = df.withColumnRenamed(
-        rowkeyname,
-        schema_row_key_name
-    )
+    schema_row_key_name = "schema_version"
+    df = df.withColumnRenamed(rowkeyname, schema_row_key_name)
 
     df_index_schema = construct_schema_row(
         df,
         rowkeyname=schema_row_key_name,
-        version='schema_{}_{}'.format(fink_broker_version, fink_science_version))
+        version="schema_{}_{}".format(fink_broker_version, fink_science_version),
+    )
 
     # construct the hbase catalog for the schema
     hbcatalog_index_schema = construct_hbase_catalog_from_flatten_schema(
-        df_index_schema.schema,
-        table_name,
-        rowkeyname=schema_row_key_name,
-        cf=cf)
-
-    # Push the data using the hbase connector
-    df_index_schema.write\
-        .options(catalog=hbcatalog_index_schema, newtable=nregion)\
-        .format("org.apache.hadoop.hbase.spark")\
-        .option("hbase.spark.use.hbasecontext", False)\
-        .save()
-
-    # write catalog for the schema row
-    file_name = table_name + '_schema_row.json'
-    write_catalog_on_disk(
-        hbcatalog_index_schema, os.path.join(catfolder, file_name)
+        df_index_schema.schema, table_name, rowkeyname=schema_row_key_name, cf=cf
     )
 
+    # Push the data using the hbase connector
+    df_index_schema.write.options(
+        catalog=hbcatalog_index_schema, newtable=nregion
+    ).format("org.apache.hadoop.hbase.spark").option(
+        "hbase.spark.use.hbasecontext", False
+    ).save()
+
+    # write catalog for the schema row
+    file_name = table_name + "_schema_row.json"
+    write_catalog_on_disk(hbcatalog_index_schema, os.path.join(catfolder, file_name))
+
+
 def load_science_portal_column_names():
-    """ Load names of the alert fields to use in the science portal.
+    """Load names of the alert fields to use in the science portal.
     These column names should match DataFrame column names. Careful when
     you update it, as it will change the structure of the HBase table.
     The column names are sorted by column family names:
@@ -162,43 +155,44 @@ def load_science_portal_column_names():
     """
     # Column family i
     cols_i = [
-        'objectId',
-        'schemavsn',
-        'publisher',
-        'fink_broker_version',
-        'fink_science_version',
-        'candidate.*'
+        "objectId",
+        "schemavsn",
+        "publisher",
+        "fink_broker_version",
+        "fink_science_version",
+        "candidate.*",
     ]
 
     # Column family d
     cols_d = [
-        'cdsxmatch',
-        'rf_snia_vs_nonia',
-        'snn_snia_vs_nonia',
-        'snn_sn_vs_all',
-        'mulens',
-        'roid',
-        'nalerthist',
-        'rf_kn_vs_nonkn',
-        'tracklet',
-        'DR3Name',
-        'Plx',
-        'e_Plx',
-        'gcvs',
-        'vsx'
+        "cdsxmatch",
+        "rf_snia_vs_nonia",
+        "snn_snia_vs_nonia",
+        "snn_sn_vs_all",
+        "mulens",
+        "roid",
+        "nalerthist",
+        "rf_kn_vs_nonkn",
+        "tracklet",
+        "DR3Name",
+        "Plx",
+        "e_Plx",
+        "gcvs",
+        "vsx",
     ]
 
     # Column family binary
     cols_b = [
-        col('cutoutScience.stampData').alias('cutoutScience_stampData'),
-        col('cutoutTemplate.stampData').alias('cutoutTemplate_stampData'),
-        col('cutoutDifference.stampData').alias('cutoutDifference_stampData')
+        col("cutoutScience.stampData").alias("cutoutScience_stampData"),
+        col("cutoutTemplate.stampData").alias("cutoutTemplate_stampData"),
+        col("cutoutDifference.stampData").alias("cutoutDifference_stampData"),
     ]
 
     return cols_i, cols_d, cols_b
 
+
 def assign_column_family_names(df, cols_i, cols_d, cols_b):
-    """ Assign a column family name to each column qualifier.
+    """Assign a column family name to each column qualifier.
     There are currently 3 column families:
         - i: for column that identify the alert (original alert)
         - d: for column that further describe the alert (Fink added value)
@@ -218,14 +212,15 @@ def assign_column_family_names(df, cols_i, cols_d, cols_b):
         Dictionary with keys being column names (also called
         column qualifiers), and the corresponding column family.
     """
-    cf = {i: 'i' for i in df.select(cols_i).columns}
-    cf.update({i: 'd' for i in df.select(cols_d).columns})
-    cf.update({i: 'b' for i in df.select(cols_b).columns})
+    cf = {i: "i" for i in df.select(cols_i).columns}
+    cf.update({i: "d" for i in df.select(cols_d).columns})
+    cf.update({i: "b" for i in df.select(cols_b).columns})
 
     return cf
 
+
 def retrieve_row_key_cols():
-    """ Retrieve the list of columns to be used to create the row key.
+    """Retrieve the list of columns to be used to create the row key.
     The column names are defined here. Be careful in not changing it frequently
     as you can replace (remove and add) columns for existing table,
     but you cannot change keys, you must copy the table into new table
@@ -235,14 +230,12 @@ def retrieve_row_key_cols():
     row_key_cols: list of string
     """
     # build the row key: objectId_jd
-    row_key_cols = [
-        'objectId',
-        'jd'
-    ]
+    row_key_cols = ["objectId", "jd"]
     return row_key_cols
 
-def attach_rowkey(df, sep='_'):
-    """ Create and attach the row key to an existing DataFrame.
+
+def attach_rowkey(df, sep="_"):
+    """Create and attach the row key to an existing DataFrame.
     The column used to define the row key are declared in
     `retrieve_row_key_cols`. the row key is made of a string concatenation
     of those column data, with a separator: str(col1_col2_col3_etc)
@@ -268,19 +261,18 @@ def attach_rowkey(df, sep='_'):
     True
     """
     row_key_cols = retrieve_row_key_cols()
-    row_key_name = '_'.join(row_key_cols)
+    row_key_name = "_".join(row_key_cols)
 
-    to_concat = [col(i).astype('string') for i in row_key_cols]
+    to_concat = [col(i).astype("string") for i in row_key_cols]
 
-    df = df.withColumn(
-        row_key_name,
-        concat_ws(sep, *to_concat)
-    )
+    df = df.withColumn(row_key_name, concat_ws(sep, *to_concat))
     return df, row_key_name
 
+
 def construct_hbase_catalog_from_flatten_schema(
-        schema: dict, catalogname: str, rowkeyname: str, cf: dict) -> str:
-    """ Convert a flatten DataFrame schema into a HBase catalog.
+    schema: dict, catalogname: str, rowkeyname: str, cf: dict
+) -> str:
+    """Convert a flatten DataFrame schema into a HBase catalog.
     From
     {'name': 'schemavsn', 'type': 'string', 'nullable': True, 'metadata': {}}
     To
@@ -307,7 +299,7 @@ def construct_hbase_catalog_from_flatten_schema(
     >>> df = spark.read.format("parquet").load(ztf_alert_sample_scidatabase)
     >>> cols_i, cols_d, cols_b = load_science_portal_column_names()
     >>> cf = assign_column_family_names(df, cols_i, [], [])
-    
+
     >>> df_flat = df.select(cols_i) # Flatten the DataFrame
 
     >>> df_rk, row_key_name = attach_rowkey(df_flat) # Attach the row key
@@ -316,7 +308,8 @@ def construct_hbase_catalog_from_flatten_schema(
     """
     schema_columns = schema.jsonValue()["fields"]
 
-    catalog = ''.join("""
+    catalog = "".join(
+        """
     {{
         'table': {{
             'namespace': 'default',
@@ -324,7 +317,8 @@ def construct_hbase_catalog_from_flatten_schema(
         }},
         'rowkey': '{}',
         'columns': {{
-    """).format(catalogname, rowkeyname)
+    """
+    ).format(catalogname, rowkeyname)
 
     sep = ","
     for column in schema_columns:
@@ -339,23 +333,21 @@ def construct_hbase_catalog_from_flatten_schema(
             # column["type"]["type"]
             column["type"] = "string"
 
-        if column["type"] == 'timestamp':
+        if column["type"] == "timestamp":
             # column["type"]["type"]
             column["type"] = "string"
 
         if column["name"] == rowkeyname:
             catalog += """
             '{}': {{'cf': 'rowkey', 'col': '{}', 'type': '{}'}}{}
-            """.format(column["name"], column["name"], column["type"], sep)
+            """.format(
+                column["name"], column["name"], column["type"], sep
+            )
         else:
             catalog += """
             '{}': {{'cf': '{}', 'col': '{}', 'type': '{}'}}{}
             """.format(
-                column["name"],
-                cf[column["name"]],
-                column["name"],
-                column["type"],
-                sep
+                column["name"], cf[column["name"]], column["name"], column["type"], sep
             )
 
     # Push an empty column family 'a' for later annotations
@@ -365,10 +357,11 @@ def construct_hbase_catalog_from_flatten_schema(
     }
     """
 
-    return catalog.replace("\'", "\"")
+    return catalog.replace("'", '"')
+
 
 def construct_schema_row(df, rowkeyname, version):
-    """ Construct a DataFrame whose columns are those of the
+    """Construct a DataFrame whose columns are those of the
     original ones, and one row containing schema types
     Parameters
     ----------
@@ -402,17 +395,15 @@ def construct_schema_row(df, rowkeyname, version):
     """
     # Grab the running Spark Session,
     # otherwise create it.
-    spark = SparkSession \
-        .builder \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
     # Original df columns, but values are types.
-    data = np.array([(c.jsonValue()['type']) for c in df.schema], dtype='<U75')
+    data = np.array([(c.jsonValue()["type"]) for c in df.schema], dtype="<U75")
 
     # binary types are too vague, so assign manually a description
-    names = np.array([(c.jsonValue()['name']) for c in df.schema])
-    mask = np.array(['cutout' in i for i in names])
-    data[mask] = 'fits/image'
+    names = np.array([(c.jsonValue()["name"]) for c in df.schema])
+    mask = np.array(["cutout" in i for i in names])
+    data[mask] = "fits/image"
 
     index = np.where(np.array(df.columns) == rowkeyname)[0][0]
     data[index] = version
@@ -424,13 +415,15 @@ def construct_schema_row(df, rowkeyname, version):
 
 
 if __name__ == "__main__":
-    """ Execute the test suite with SparkSession initialised """
+    """Execute the test suite with SparkSession initialised"""
 
     globs = globals()
     root = "fink_utils/test_data"
     globs["ztf_alert_sample"] = os.path.join(root, "template_schema_ZTF_3p3.avro")
 
-    globs["ztf_alert_sample_scidatabase"] = os.path.join(root, "online/science/day=04/alert_samples.parquet")
+    globs["ztf_alert_sample_scidatabase"] = os.path.join(
+        root, "online/science/day=04/alert_samples.parquet"
+    )
 
     # Run the Spark test suite
     spark_unit_tests(globs, withstreaming=False)
