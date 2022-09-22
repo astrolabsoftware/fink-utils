@@ -25,38 +25,39 @@ jobs:
         echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
         echo "${BINPATH}" >> $GITHUB_PATH
 
-    - name: Download simulator
-      run: |
-        git clone https://github.com/astrolabsoftware/fink-alert-simulator.git
-        echo "FINK_ALERT_SIMULATOR=${FINK_UTILS}/fink-alert-simulator" >> $GITHUB_ENV
+    # - name: Download simulator
+    #   run: |
+    #     git clone https://github.com/astrolabsoftware/fink-alert-simulator.git
+    #     echo "FINK_ALERT_SIMULATOR=${FINK_UTILS}/fink-alert-simulator" >> $GITHUB_ENV
 
-    - name: Download fink-broker
-      run: |
-        git clone https://github.com/astrolabsoftware/fink-broker.git
-        echo "FINK_BROKER=${FINK_UTILS}/fink-broker" >> $GITHUB_ENV
+    # - name: Download fink-broker
+    #   run: |
+    #     git clone https://github.com/astrolabsoftware/fink-broker.git
+    #     echo "FINK_BROKER=${FINK_UTILS}/fink-broker" >> $GITHUB_ENV
 
-    - name: Download test data
-      run: |
-        cd $FINK_BROKER/datasim
-        source $FINK_BROKER/datasim/download_ztf_alert_data.sh
-        cd $FINK_UTILS
+    # - name: Download test data
+    #   run: |
+    #     cd $FINK_BROKER/datasim
+    #     source $FINK_BROKER/datasim/download_ztf_alert_data.sh
+    #     cd $FINK_UTILS
 
-    - name: Set up env [2/2]
-      run: |
-        echo "PYTHONPATH=${FINK_UTILS}:${FINK_ALERT_SIMULATOR}:${FINK_BROKER}:${PYTHONPATH}" >> $GITHUB_ENV
-        echo "${FINK_ALERT_SIMULATOR}/bin:${FINK_BROKER}/bin" >> $GITHUB_PATH
-        echo "KAFKA_TOPIC='ztf-stream-sim'" >> $GITHUB_PATH
+    # - name: Set up env [2/2]
+    #   run: |
+    #     echo "PYTHONPATH=${FINK_UTILS}:${FINK_ALERT_SIMULATOR}:${FINK_BROKER}:${PYTHONPATH}" >> $GITHUB_ENV
+    #     echo "${FINK_ALERT_SIMULATOR}/bin:${FINK_BROKER}/bin" >> $GITHUB_PATH
+    #     echo "KAFKA_TOPIC='ztf-stream-sim'" >> $GITHUB_PATH
 
-    - name: Check env
-      run: |
-        echo "FINK_UTILS: $FINK_UTILS"
-        echo "SPARK_HOME: $SPARK_HOME"
-        echo "SPARKLIB: $SPARKLIB"
-        echo "FINK_ALERT_SIMULATOR: $FINK_ALERT_SIMULATOR"
-        echo "KAFKA_HOME: $KAFKA_HOME"
-        echo "PYTHONPATH: $PYTHONPATH"
-        echo "JAVA_HOME: $JAVA_HOME"
-        echo `python -V`
+    # - name: Check env
+    #   run: |
+    #     echo "FINK_UTILS: $FINK_UTILS"
+    #     echo "SPARK_HOME: $SPARK_HOME"
+    #     echo "SPARKLIB: $SPARKLIB"
+    #     echo "FINK_BROKER: $FINK_BROKER"
+    #     echo "FINK_ALERT_SIMULATOR: $FINK_ALERT_SIMULATOR"
+    #     echo "KAFKA_HOME: $KAFKA_HOME"
+    #     echo "PYTHONPATH: $PYTHONPATH"
+    #     echo "JAVA_HOME: $JAVA_HOME"
+    #     echo `python -V`
 
     - name: Install dependencies
       run: |
@@ -66,11 +67,11 @@ jobs:
 
     - name: Run tests
       run: |
-        cd $USRLIBS
-        source scripts/start_services.sh --kafka-version ${KAFKA_VERSION} --hbase-version ${HBASE_VERSION}
-        cd $FINK_UTILS
-        fink init -c ${FINK_BROKER}/conf/fink.conf.prod
-        fink_simulator -c ${FINK_BROKER}/conf/fink_alert_simulator.conf
-        fink start stream2raw --simulator --exit_after 60 -c ${FINK_BROKER}/conf/fink.conf.prod --topic $KAFKA_TOPIC
-        fink start raw2science --exit_after 90 -c ${FINK_BROKER}/conf/fink.conf.prod --night "20190903"
+        # cd $USRLIBS
+        # source scripts/start_services.sh --kafka-version ${KAFKA_VERSION} --hbase-version ${HBASE_VERSION}
+        # cd $FINK_UTILS
+        # fink init -c ${FINK_BROKER}/conf/fink.conf.prod
+        # fink_simulator -c ${FINK_BROKER}/conf/fink_alert_simulator.conf
+        # fink start stream2raw --simulator --exit_after 60 -c ${FINK_BROKER}/conf/fink.conf.prod --topic $KAFKA_TOPIC
+        # fink start raw2science --exit_after 90 -c ${FINK_BROKER}/conf/fink.conf.prod --night "20190903"
         ./run_test.sh
