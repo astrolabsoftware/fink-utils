@@ -54,4 +54,5 @@ jobs:
         pip install .
     - name: Run tests
       run: |
+        ls
         ./run_test.py
