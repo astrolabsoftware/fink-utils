@@ -427,12 +427,10 @@ if __name__ == "__main__":
     """ Execute the test suite with SparkSession initialised """
 
     globs = globals()
-    root = os.environ['FINK_HOME']
-    globs["ztf_alert_sample"] = os.path.join(
-        root, "schemas/template_schema_ZTF_3p3.avro")
+    root = "fink_utils/test_data"
+    globs["ztf_alert_sample"] = os.path.join(root, "template_schema_ZTF_3p3.avro")
 
-    globs["ztf_alert_sample_scidatabase"] = os.path.join(
-        root, "online/science")
+    globs["ztf_alert_sample_scidatabase"] = os.path.join(root, "online/science/day=04/alert_samples.parquet")
 
     # Run the Spark test suite
     spark_unit_tests(globs, withstreaming=False)

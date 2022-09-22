@@ -96,7 +96,7 @@ def get_kafka_df(
         # Do not work on a DFS like HDFS obviously.
         # Only local mode & for testing purposes
         toto = df.writeStream.foreachBatch(
-            lambda x, y: save_avro_schema_stream(x, y, schema_path)
+            lambda x, y: save_avro_schema_stream(x, y, schema_path, False)
         ).start()
         time.sleep(10)
 
@@ -105,7 +105,7 @@ def get_kafka_df(
 
     return df_kafka
 
-def save_avro_schema_stream(df: DataFrame, epochid: int, schema_path=None):
+def save_avro_schema_stream(df: DataFrame, epochid: int, schema_path=None, save_on_hdfs: bool = False):
     """ Extract schema from an alert of the stream, and save it on disk.
     Mostly for debugging purposes - do not work in cluster mode (local only).
     Typically:
@@ -122,9 +122,9 @@ def save_avro_schema_stream(df: DataFrame, epochid: int, schema_path=None):
     epochid: int
         Offset of the micro-batch
     """
-    save_avro_schema(df, schema_path)
+    save_avro_schema(df, schema_path, save_on_hdfs)
 
-def save_avro_schema(df: DataFrame, schema_path: str):
+def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False):
     """Writes the avro schema to a file at schema_path
     This routine checks if an avro schema file exist at the given path
     and creates one if it doesn't.
@@ -142,13 +142,21 @@ def save_avro_schema(df: DataFrame, schema_path: str):
     # Check if the file exists
     if not os.path.isfile(schema_path):
         # Store the df as an avro file
-        path_for_avro = os.path.join(os.environ["PWD"], "flatten_hbase.avro")
+        if save_on_hdfs:
+            prefix_path = "hdfs:///"
+        else:
+            prefix_path = "file:///"
+        path_for_avro = os.path.join(prefix_path, os.environ["PWD"][1:], "flatten_hbase.avro")
         if os.path.exists(path_for_avro):
             shutil.rmtree(path_for_avro)
         df.write.format("avro").save(path_for_avro)
 
         # Read the avro schema from .avro file
-        avro_file = glob.glob(path_for_avro + "/part*")[0]
+        if save_on_hdfs:
+            avro_file = glob.glob(path_for_avro + "/.part*")[0]
+        else:
+            avro_file = glob.glob(
+                os.path.join(os.environ["PWD"], "flatten_hbase.avro", ".part*"))[0]
         avro_schema = readschemafromavrofile(avro_file)
 
         # Write the schema to a file for decoding Kafka messages
@@ -189,45 +197,45 @@ def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
         the avro(binary) column named "value"
     Examples
     ----------
-    >>> from pyspark.sql.functions import col
-    >>> df = spark.sparkContext.parallelize(zip(
-    ...     ["ZTF18aceatkx", "ZTF18acsbjvw"],
-    ...     [697251923115015002, 697251921215010004],
-    ...     [20.393772, 20.4233877],
-    ...     [-25.4669463, -27.0588511],
-    ...     ["Star", "Unknown"])).toDF([
-    ...       "objectId", "candid", "candidate_ra",
-    ...       "candidate_dec", "cross_match_alerts_per_batch"])
-    >>> df.show()
-    +------------+------------------+------------+-------------+----------------------------+
-    |    objectId|            candid|candidate_ra|candidate_dec|cross_match_alerts_per_batch|
-    +------------+------------------+------------+-------------+----------------------------+
-    |ZTF18aceatkx|697251923115015002|   20.393772|  -25.4669463|                        Star|
-    |ZTF18acsbjvw|697251921215010004|  20.4233877|  -27.0588511|                     Unknown|
-    +------------+------------------+------------+-------------+----------------------------+
-    <BLANKLINE>
-    >>> temp_schema = os.path.join("file:///", os.environ["PWD"][1:], "temp_schema")
-    >>> save_avro_schema(df, temp_schema)
-    >>> df_kafka = get_kafka_df(df, '', "2.2", "2.0.0") # Encode the data into avro
-    >>> df_decoded = decode_kafka_df(df_kafka, temp_schema) # Decode the avro df
-    >>> df_decoded.printSchema()
-    root
-     |-- struct: struct (nullable = true)
-     |    |-- objectId: string (nullable = true)
-     |    |-- candid: long (nullable = true)
-     |    |-- candidate_ra: double (nullable = true)
-     |    |-- candidate_dec: double (nullable = true)
-     |    |-- cross_match_alerts_per_batch: string (nullable = true)
-    <BLANKLINE>
-    >>> df_decoded.select(col("struct.*")).show()
-    +------------+------------------+------------+-------------+----------------------------+
-    |    objectId|            candid|candidate_ra|candidate_dec|cross_match_alerts_per_batch|
-    +------------+------------------+------------+-------------+----------------------------+
-    |ZTF18aceatkx|697251923115015002|   20.393772|  -25.4669463|                        Star|
-    |ZTF18acsbjvw|697251921215010004|  20.4233877|  -27.0588511|                     Unknown|
-    +------------+------------------+------------+-------------+----------------------------+
-    <BLANKLINE>
-    >>> os.remove(temp_schema)
+    # >>> from pyspark.sql.functions import col
+    # >>> df = spark.sparkContext.parallelize(zip(
+    # ...     ["ZTF18aceatkx", "ZTF18acsbjvw"],
+    # ...     [697251923115015002, 697251921215010004],
+    # ...     [20.393772, 20.4233877],
+    # ...     [-25.4669463, -27.0588511],
+    # ...     ["Star", "Unknown"])).toDF([
+    # ...       "objectId", "candid", "candidate_ra",
+    # ...       "candidate_dec", "cross_match_alerts_per_batch"])
+    # >>> df.show()
+    # +------------+------------------+------------+-------------+----------------------------+
+    # |    objectId|            candid|candidate_ra|candidate_dec|cross_match_alerts_per_batch|
+    # +------------+------------------+------------+-------------+----------------------------+
+    # |ZTF18aceatkx|697251923115015002|   20.393772|  -25.4669463|                        Star|
+    # |ZTF18acsbjvw|697251921215010004|  20.4233877|  -27.0588511|                     Unknown|
+    # +------------+------------------+------------+-------------+----------------------------+
+    # <BLANKLINE>
+    # >>> temp_schema = os.path.join("file:///", os.environ["PWD"][1:], "temp_schema")
+    # >>> save_avro_schema(df, temp_schema)
+    # >>> df_kafka = get_kafka_df(df, '', "2.2", "2.0.0") # Encode the data into avro
+    # >>> df_decoded = decode_kafka_df(df_kafka, temp_schema) # Decode the avro df
+    # >>> df_decoded.printSchema()
+    # root
+    #  |-- struct: struct (nullable = true)
+    #  |    |-- objectId: string (nullable = true)
+    #  |    |-- candid: long (nullable = true)
+    #  |    |-- candidate_ra: double (nullable = true)
+    #  |    |-- candidate_dec: double (nullable = true)
+    #  |    |-- cross_match_alerts_per_batch: string (nullable = true)
+    # <BLANKLINE>
+    # >>> df_decoded.select(col("struct.*")).show()
+    # +------------+------------------+------------+-------------+----------------------------+
+    # |    objectId|            candid|candidate_ra|candidate_dec|cross_match_alerts_per_batch|
+    # +------------+------------------+------------+-------------+----------------------------+
+    # |ZTF18aceatkx|697251923115015002|   20.393772|  -25.4669463|                        Star|
+    # |ZTF18acsbjvw|697251921215010004|  20.4233877|  -27.0588511|                     Unknown|
+    # +------------+------------------+------------+-------------+----------------------------+
+    # <BLANKLINE>
+    # >>> os.remove(temp_schema)
     """
     # Read the avro schema
     with open(schema_path) as f:
@@ -257,35 +265,28 @@ def get_distribution_offset(
     ----------
     # set a test timestamp
     >>> test_t = int(round(time.time() * 1000))
-    # write to a file
-    >>> with open('dist.offset.test', 'w') as f:
+    >>> with open('dist.offset.test', 'w') as f: # write to a file
     ...     string = "distributed till, {}".format(test_t)
     ...     f.write(string)
     ...
     31
-    # test 1 (wrong file name)
-    >>> min_timestamp = get_distribution_offset("invalidFile", "latest")
+    >>> min_timestamp = get_distribution_offset("invalidFile", "latest") # test 1 (wrong file name)
     >>> min_timestamp
     100
-    # test 2 (given earliest)
-    >>> min_timestamp = get_distribution_offset("dist.offset.test", "earliest")
+    >>> min_timestamp = get_distribution_offset("dist.offset.test", "earliest") # test 2 (given earliest)
     >>> min_timestamp
     100
-    # test 3 (given latest)
-    >>> min_timestamp = get_distribution_offset("dist.offset.test", "latest")
+    >>> min_timestamp = get_distribution_offset("dist.offset.test", "latest") # test 3 (given latest)
     >>> min_timestamp == test_t
     True
-    # test 4 (no offset given)
-    >>> min_timestamp = get_distribution_offset("dist.offset.test")
+    >>> min_timestamp = get_distribution_offset("dist.offset.test") # test 4 (no offset given)
     >>> min_timestamp == test_t
     True
-    # test 5 (custom timestamp given)
-    >>> custom_t = int(round(time.time() * 1000))
+    >>> custom_t = int(round(time.time() * 1000)) # test 5 (custom timestamp given)
     >>> min_timestamp = get_distribution_offset("dist.offset.test", custom_t)
     >>> min_timestamp == custom_t
     True
-    # Delete offset file
-    >>> os.remove('dist.offset.test')
+    >>> os.remove('dist.offset.test') # Delete offset file
     """
     # if the offset file doesn't exist or is empty or
     # one wants the earliest offset
