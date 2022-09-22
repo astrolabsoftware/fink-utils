@@ -207,7 +207,6 @@ def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
     +------------+------------------+------------+-------------+----------------------------+
     <BLANKLINE>
     >>> temp_schema = os.path.join("file:///", os.environ["PWD"][1:], "temp_schema")
-    >>> print(temp_schema)
     >>> save_avro_schema(df, temp_schema)
     >>> df_kafka = get_kafka_df(df, '', "2.2", "2.0.0") # Encode the data into avro
     >>> df_decoded = decode_kafka_df(df_kafka, temp_schema) # Decode the avro df
