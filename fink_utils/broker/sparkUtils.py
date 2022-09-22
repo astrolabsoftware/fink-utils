@@ -366,7 +366,7 @@ if __name__ == "__main__":
     """Execute the test suite with SparkSession initialised"""
 
     globs = globals()
-    root = os.environ["FINK_HOME"]
+    root = os.environ["FINK_UTILS"]
     globs["ztf_alert_sample"] = os.path.join(root, "online/raw")
 
     globs["ztf_avro_sample"] = os.path.join(

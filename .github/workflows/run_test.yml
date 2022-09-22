@@ -19,24 +19,34 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up env from container variables
+    - name: Set up env (from container variables) [1/3]
       run: |
         echo "FINK_UTILS=$GITHUB_WORKSPACE" >> $GITHUB_ENV
         echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
         echo "${BINPATH}" >> $GITHUB_PATH
+
     - name: Download test data
       run: |
         cd $FINK_UTILS/datasim
         source $FINK_UTILS/datasim/download_ztf_alert_data.sh
         cd $FINK_UTILS
+
     - name: Download simulator
       run: |
         git clone https://github.com/astrolabsoftware/fink-alert-simulator.git
         echo "FINK_ALERT_SIMULATOR=${FINK_UTILS}/fink-alert-simulator" >> $GITHUB_ENV
+
+    - name: Download fink-broker
+      run: |
+        git clone https://github.com/astrolabsoftware/fink-broker.git
+        echo "FINK_BROKER=${FINK_UTILS}/fink-broker" >> $GITHUB_ENV
+
     - name: Set up env [2/2]
       run: |
-        echo "PYTHONPATH=${FINK_UTILS}:${FINK_ALERT_SIMULATOR}:${PYTHONPATH}" >> $GITHUB_ENV
-        echo "${FINK_UTILS}/bin:${FINK_ALERT_SIMULATOR}/bin" >> $GITHUB_PATH
+        echo "PYTHONPATH=${FINK_UTILS}:${FINK_ALERT_SIMULATOR}:${FINK_BROKER}:${PYTHONPATH}" >> $GITHUB_ENV
+        echo "${FINK_ALERT_SIMULATOR}/bin:${FINK_BROKER}/bin" >> $GITHUB_PATH
+        echo "KAFKA_TOPIC='ztf-stream-sim'" >> $GITHUB_PATH
+
     - name: Check env
       run: |
         echo "FINK_UTILS: $FINK_UTILS"
@@ -47,11 +57,20 @@ jobs:
         echo "PYTHONPATH: $PYTHONPATH"
         echo "JAVA_HOME: $JAVA_HOME"
         echo `python -V`
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install .
+
     - name: Run tests
       run: |
+        cd $USRLIBS
+        source scripts/start_services.sh --kafka-version ${KAFKA_VERSION} --hbase-version ${HBASE_VERSION}
+        cd $FINK_UTILS
+        fink init -c ${FINK_BROKER}/conf/fink.conf.prod
+        fink_simulator -c ${FINK_BROKER}/conf/fink_alert_simulator.conf
+        fink start stream2raw --simulator --exit_after 60 -c ${FINK_BROKER}/conf/fink.conf.prod --topic $KAFKA_TOPIC
+        fink start raw2science --exit_after 90 -c ${FINK_BROKER}/conf/fink.conf.prod --night "20190903"
         ./run_test.sh
