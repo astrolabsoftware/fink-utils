@@ -25,7 +25,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql.functions import struct, lit
 from pyspark.sql.avro.functions import to_avro as to_avro_native
 
-from fink_utils.test.tester import spark_unit_tests
+# from fink_utils.test.tester import spark_unit_tests
 
 
 def get_kafka_df(
@@ -418,8 +418,8 @@ def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
     return df_new
 
 
-if __name__ == "__main__":
-    """Execute the test suite with SparkSession initialised"""
+# if __name__ == "__main__":
+#     """Execute the test suite with SparkSession initialised"""
 
-    # Run the Spark test suite
-    spark_unit_tests(globals())
+#     # Run the Spark test suite
+#     spark_unit_tests(globals())

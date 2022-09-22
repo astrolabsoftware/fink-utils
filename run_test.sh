@@ -20,12 +20,12 @@ set -e
 python -m pip install .
 
 export ROOTPATH=`pwd`
-source ${FINK_BROKER}/conf/fink.conf.prod
+# source ${FINK_BROKER}/conf/fink.conf.prod
 
-export FINK_PACKAGES=$FINK_PACKAGES
-export FINK_JARS=$FINK_JARS
-export KAFKA_IPPORT_SIM=$KAFKA_IPPORT_SIM
-export KAFKA_TOPIC="ztf-stream-sim"
+# export FINK_PACKAGES=$FINK_PACKAGES
+# export FINK_JARS=$FINK_JARS
+# export KAFKA_IPPORT_SIM=$KAFKA_IPPORT_SIM
+# export KAFKA_TOPIC="ztf-stream-sim"
 
 # Add coverage_daemon to the pythonpath. See python/fink_broker/tester.py
 export PYTHONPATH="${SPARK_HOME}/python/test_coverage:$PYTHONPATH"

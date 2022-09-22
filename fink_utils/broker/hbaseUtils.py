@@ -20,7 +20,7 @@ import numpy as np
 from pyspark.sql.functions import concat_ws, col
 from pyspark.sql import SparkSession, DataFrame
 
-from fink_utils.test.tester import spark_unit_tests
+# from fink_utils.test.tester import spark_unit_tests
 
 
 def load_hbase_data(catalog: str, rowkey: str) -> DataFrame:
@@ -414,16 +414,16 @@ def construct_schema_row(df, rowkeyname, version):
     return df_schema
 
 
-if __name__ == "__main__":
-    """Execute the test suite with SparkSession initialised"""
+# if __name__ == "__main__":
+#     """Execute the test suite with SparkSession initialised"""
 
-    globs = globals()
-    root = "fink_utils/test_data"
-    globs["ztf_alert_sample"] = os.path.join(root, "template_schema_ZTF_3p3.avro")
+#     globs = globals()
+#     root = "fink_utils/test_data"
+#     globs["ztf_alert_sample"] = os.path.join(root, "template_schema_ZTF_3p3.avro")
 
-    globs["ztf_alert_sample_scidatabase"] = os.path.join(
-        root, "online/science/day=04/alert_samples.parquet"
-    )
+#     globs["ztf_alert_sample_scidatabase"] = os.path.join(
+#         root, "online/science/day=04/alert_samples.parquet"
+#     )
 
-    # Run the Spark test suite
-    spark_unit_tests(globs, withstreaming=False)
+#     # Run the Spark test suite
+#     spark_unit_tests(globs, withstreaming=False)

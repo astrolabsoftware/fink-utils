@@ -19,11 +19,11 @@ from pyspark.sql import DataFrame
 from pyspark.sql.column import Column, _to_java_column
 from pyspark.sql.types import StructType
 
-import os
+# import os
 import json
 
 from fink_utils.broker.avroUtils import readschemafromavrofile
-from fink_utils.test.tester import spark_unit_tests
+# from fink_utils.test.tester import spark_unit_tests
 
 
 def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
@@ -362,16 +362,16 @@ def get_schemas_from_avro(avro_path: str) -> Tuple[StructType, dict, str]:
     return df_schema, alert_schema, alert_schema_json
 
 
-if __name__ == "__main__":
-    """Execute the test suite with SparkSession initialised"""
+# if __name__ == "__main__":
+#     """Execute the test suite with SparkSession initialised"""
 
-    globs = globals()
-    root = os.environ["FINK_UTILS"]
-    globs["ztf_alert_sample"] = os.path.join(root, "online/raw")
+#     globs = globals()
+#     root = os.environ["FINK_UTILS"]
+#     globs["ztf_alert_sample"] = os.path.join(root, "online/raw")
 
-    globs["ztf_avro_sample"] = os.path.join(
-        root, "schemas/template_schema_ZTF_3p3.avro"
-    )
+#     globs["ztf_avro_sample"] = os.path.join(
+#         root, "schemas/template_schema_ZTF_3p3.avro"
+#     )
 
-    # Run the Spark test suite
-    spark_unit_tests(globs, withstreaming=True)
+#     # Run the Spark test suite
+#     spark_unit_tests(globs, withstreaming=True)

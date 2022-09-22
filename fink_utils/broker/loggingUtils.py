@@ -17,7 +17,7 @@ from pyspark.sql import SparkSession
 import logging
 from logging import Logger
 
-from fink_utils.test.tester import spark_unit_tests
+# from fink_utils.test.tester import spark_unit_tests
 
 
 def get_fink_logger(name: str = "test", log_level: str = "INFO") -> Logger:
@@ -81,8 +81,8 @@ def inspect_application(logger):
     logger.debug(conf)
 
 
-if __name__ == "__main__":
-    """Execute the test suite with SparkSession initialised"""
-    globs = globals()
-    # Run the Spark test suite
-    spark_unit_tests(globs, withstreaming=False)
+# if __name__ == "__main__":
+#     """Execute the test suite with SparkSession initialised"""
+#     globs = globals()
+#     # Run the Spark test suite
+#     spark_unit_tests(globs, withstreaming=False)
