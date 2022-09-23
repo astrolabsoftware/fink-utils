@@ -9,5 +9,3 @@ exclude =
     old,
     build,
     dist
-per-file-ignores =
-    ../Fink_GRB/fink_grb/online/ztf_join_gcn.py:W503,E402
