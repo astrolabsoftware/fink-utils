@@ -20,8 +20,9 @@ from urllib.error import URLError
 
 from fink_utils import __file__
 
+
 def return_list_of_eg_host(full_simbad_conversion=False) -> list:
-    """ Return potential SN host names
+    """Return potential SN host names
 
     This includes:
     - List of object names in SIMBAD that would correspond to extra-galactic object
@@ -82,23 +83,29 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
         "Void",
     ]
 
-    cds = \
-        ["Unknown", "Candidate_SN*", "SN", "Transient", "Fail", "Fail 504"] + \
-        list_simbad_galaxies
+    cds = [
+        "Unknown",
+        "Candidate_SN*",
+        "SN",
+        "Transient",
+        "Fail",
+        "Fail 504",
+    ] + list_simbad_galaxies
 
     if full_simbad_conversion:
         conv = get_conversion_dic()
         cds_with_new_taxonomy = [old2new(conv, i) for i in cds]
     else:
         # fields that really changed
-        cds_with_new_taxonomy = ['SN*_Candidate']
+        cds_with_new_taxonomy = ["SN*_Candidate"]
 
     out = np.concatenate((cds, cds_with_new_taxonomy))
 
     return np.unique(out)
 
+
 def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.DataFrame:
-    """ Read the file containing the mapping between old and new otypes
+    """Read the file containing the mapping between old and new otypes
 
     Parameters
     ----------
@@ -125,44 +132,45 @@ def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.Data
     198
     """
     if path is None:
-        path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
+        path = "https://simbad.cds.unistra.fr/guide/otypes.labels.txt"
 
     try:
         pdf = pd.read_csv(
             path,
-            sep='|',
+            sep="|",
             skiprows=[0, 1, 3],
             skipfooter=2,
-            dtype='str',
+            dtype="str",
             header=0,
-            engine='python'
+            engine="python",
         )
     except URLError:
         curdir = os.path.dirname(os.path.abspath(__file__))
-        fn = curdir + '/xmatch/otypes.txt'
+        fn = curdir + "/xmatch/otypes.txt"
         pdf = pd.read_csv(
             fn,
-            sep='|',
+            sep="|",
             skiprows=[0, 1, 3],
             skipfooter=2,
-            dtype='str',
+            dtype="str",
             header=0,
-            engine='python'
+            engine="python",
         )
 
     pdf = pdf.rename(columns={i: i.strip() for i in pdf.columns})
 
-    pdf = pdf[['otype', 'old_label', 'new_label']]
+    pdf = pdf[["otype", "old_label", "new_label"]]
 
     pdf = pdf.applymap(lambda x: x.strip())
 
     if remove_unknown:
-        pdf = pdf[pdf['old_label'] != 'Unknown']
+        pdf = pdf[pdf["old_label"] != "Unknown"]
 
     return pdf
 
-def old2new(conv, old_label=''):
-    """ Return the new label name in SIMBAD from an old label
+
+def old2new(conv, old_label=""):
+    """Return the new label name in SIMBAD from an old label
 
     Parameters
     ----------
@@ -184,17 +192,18 @@ def old2new(conv, old_label=''):
     >>> print(new_label)
     BlueCompactG
     """
-    out = conv[conv['old_label'] == old_label]['new_label'].values
+    out = conv[conv["old_label"] == old_label]["new_label"].values
 
     if len(out) == 1:
         return out[0]
     elif len(out) == 0:
-        return ''
+        return ""
 
-    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(old_label, out))
+    raise ValueError("Label conversion is ambiguous: {} --> {}".format(old_label, out))
 
-def new2old(conv, new_label=''):
-    """ Return the old label name in SIMBAD from a new label
+
+def new2old(conv, new_label=""):
+    """Return the old label name in SIMBAD from a new label
 
     Parameters
     ----------
@@ -216,18 +225,18 @@ def new2old(conv, new_label=''):
     >>> print(old_label)
     GinGroup
     """
-    out = conv[conv['new_label'] == new_label]['old_label'].values
+    out = conv[conv["new_label"] == new_label]["old_label"].values
 
     if len(out) == 1:
         return out[0]
     elif len(out) == 0:
-        return ''
+        return ""
 
-    raise ValueError('Label conversion is ambiguous: {} --> {}'.format(new_label, out))
+    raise ValueError("Label conversion is ambiguous: {} --> {}".format(new_label, out))
 
 
 def get_simbad_labels(which: str, remove_unknown=True):
-    """ Get list of labels in SIMBAD.
+    """Get list of labels in SIMBAD.
 
     Parameters
     ----------
@@ -272,21 +281,21 @@ def get_simbad_labels(which: str, remove_unknown=True):
     >>> assert 'Y*?' in labels
     """
     pdf = get_conversion_dic(remove_unknown=remove_unknown)
-    if which == 'old':
-        return pdf['old_label'].values
-    elif which == 'new':
-        return pdf['new_label'].values
-    elif which == 'old_and_new':
-        old = pdf['old_label'].values
-        new = pdf['new_label'].values
+    if which == "old":
+        return pdf["old_label"].values
+    elif which == "new":
+        return pdf["new_label"].values
+    elif which == "old_and_new":
+        old = pdf["old_label"].values
+        new = pdf["new_label"].values
         out = np.concatenate((old, new))
         return np.unique(out)
-    elif which == 'otype':
-        return pdf['otype'].values
+    elif which == "otype":
+        return pdf["otype"].values
 
 
 if __name__ == "__main__":
-    """ Execute the test suite """
+    """Execute the test suite"""
     import sys
     import doctest
 

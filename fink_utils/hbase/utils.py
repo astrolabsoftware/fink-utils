@@ -17,8 +17,9 @@ import json
 from pyspark.sql import functions as F
 from pyspark.sql import DataFrame
 
+
 def load_hbase_catalog_as_dict(path_to_catalog: str) -> dict:
-    """ Load HBase table catalog from disk as dictionary
+    """Load HBase table catalog from disk as dictionary
 
     Parameters
     ----------
@@ -36,12 +37,13 @@ def load_hbase_catalog_as_dict(path_to_catalog: str) -> dict:
         catalog = json.load(f)
 
     dcat = json.loads(catalog)
-    rowkey = [i['col'] for i in dcat['columns'].values() if i['cf'] == 'rowkey'][0]
+    rowkey = [i["col"] for i in dcat["columns"].values() if i["cf"] == "rowkey"][0]
 
     return dcat, rowkey
 
+
 def select_columns_in_catalog(catalog: dict, cols: list) -> (dict, str):
-    """ Select only `cols` in the catalog
+    """Select only `cols` in the catalog
 
     Parameters
     ----------
@@ -60,7 +62,7 @@ def select_columns_in_catalog(catalog: dict, cols: list) -> (dict, str):
     dcat_small = {}
 
     for k in catalog.keys():
-        if k != 'columns':
+        if k != "columns":
             dcat_small[k] = catalog[k]
         else:
             dcat_small[k] = {k_: v_ for k_, v_ in catalog[k].items() if k_ in cols}
@@ -69,8 +71,9 @@ def select_columns_in_catalog(catalog: dict, cols: list) -> (dict, str):
 
     return dcat_small, catalog_small
 
-def group_by_key(df: DataFrame, key: str, position: int, sep='_') -> DataFrame:
-    """ Group by the input `df` by split(`key`, '_')[`position`]
+
+def group_by_key(df: DataFrame, key: str, position: int, sep="_") -> DataFrame:
+    """Group by the input `df` by split(`key`, '_')[`position`]
 
     Parameters
     ----------
@@ -94,8 +97,10 @@ def group_by_key(df: DataFrame, key: str, position: int, sep='_') -> DataFrame:
         # The position is not zero based internally, but 1 based index.
         position += 1
     # Groupby key
-    df_grouped = df\
-        .select(F.element_at(F.split(df[key], '_'), position).alias('id'))\
-        .groupby('id').count()
+    df_grouped = (
+        df.select(F.element_at(F.split(df[key], "_"), position).alias("id"))
+        .groupby("id")
+        .count()
+    )
 
     return df_grouped
