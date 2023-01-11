@@ -449,6 +449,11 @@ def write_to_kafka(
         path where to store the stream checkpoint files
     processingTime: float
         processing interval time between batch
+
+    Return
+    ------
+    disquery: Spark Streaming DataFrame
+        Streaming DataFrame
     """
     # Create a StructType column in the df for distribution.
     df_struct = sdf.select(struct(sdf.columns).alias("struct"))
