@@ -418,7 +418,16 @@ def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
     return df_new
 
 
-def write_to_kafka(sdf, key, kafka_bootstrap_servers, kafka_sasl_username, kafka_sasl_password, topic_name):
+def write_to_kafka(
+    sdf, 
+    key, 
+    kafka_bootstrap_servers, 
+    kafka_sasl_username, 
+    kafka_sasl_password, 
+    topic_name,
+    checkpoint_stream_path,
+    processingTime
+    ):
     """
     Send data to a Kafka cluster using Apache Spark
 
@@ -436,6 +445,10 @@ def write_to_kafka(sdf, key, kafka_bootstrap_servers, kafka_sasl_username, kafka
         Password for writing into the Kafka cluster
     topic_name: str
         Kafka topic (does not need to exist)
+    checkpoint_stream_path: str
+        path where to store the stream checkpoint files
+    processingTime: float
+        processing interval time between batch
     """
     # Create a StructType column in the df for distribution.
     df_struct = sdf.select(struct(sdf.columns).alias("struct"))
@@ -444,13 +457,15 @@ def write_to_kafka(sdf, key, kafka_bootstrap_servers, kafka_sasl_username, kafka
 
     # Send schema
     disquery = df_kafka\
-        .write\
+        .writeStream\
         .format("kafka")\
         .option("kafka.bootstrap.servers", kafka_bootstrap_servers)\
         .option("kafka.sasl.username", kafka_sasl_username)\
         .option("kafka.sasl.password", kafka_sasl_password)\
         .option("topic", topic_name)\
-        .save()
+        .option("checkpointLocation", checkpoint_stream_path)\
+        .trigger(processingTime='{} seconds'.format(processingTime)) \
+        .start()
 
     return disquery
 
