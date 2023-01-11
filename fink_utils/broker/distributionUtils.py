@@ -418,6 +418,63 @@ def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
     return df_new
 
 
+def write_to_kafka(
+    sdf,
+    key,
+    kafka_bootstrap_servers,
+    kafka_sasl_username,
+    kafka_sasl_password,
+    topic_name,
+    checkpoint_stream_path,
+    processingTime,
+):
+    """
+    Send data to a Kafka cluster using Apache Spark
+
+    Parameters
+    ----------
+    sdf: Spark DataFrame
+        DataFrame
+    key: str
+        key for each Avro message
+    kafka_bootstrap_servers: str
+        Comma-separated list of ip:port of the Kafka machines
+    kafka_sasl_username: str
+        Username for writing into the Kafka cluster
+    kafka_sasl_password: str
+        Password for writing into the Kafka cluster
+    topic_name: str
+        Kafka topic (does not need to exist)
+    checkpoint_stream_path: str
+        path where to store the stream checkpoint files
+    processingTime: float
+        processing interval time between batch
+
+    Return
+    ------
+    disquery: Spark Streaming DataFrame
+        Streaming DataFrame
+    """
+    # Create a StructType column in the df for distribution.
+    df_struct = sdf.select(struct(sdf.columns).alias("struct"))
+    df_kafka = df_struct.select(to_avro("struct").alias("value"))
+    df_kafka = df_kafka.withColumn("key", key)
+
+    # Send schema
+    disquery = (
+        df_kafka.writeStream.format("kafka")
+        .option("kafka.bootstrap.servers", kafka_bootstrap_servers)
+        .option("kafka.sasl.username", kafka_sasl_username)
+        .option("kafka.sasl.password", kafka_sasl_password)
+        .option("topic", topic_name)
+        .option("checkpointLocation", checkpoint_stream_path)
+        .trigger(processingTime="{} seconds".format(processingTime))
+        .start()
+    )
+
+    return disquery
+
+
 # if __name__ == "__main__":
 #     """Execute the test suite with SparkSession initialised"""
 
