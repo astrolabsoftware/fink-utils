@@ -12,19 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import requests
-import pandas as pd
 import numpy as np
-import io
-
-from astropy.coordinates import SkyCoord
-import astropy.units as u
-
-import scipy
 from scipy.optimize import curve_fit
 
 def func_hg(ph, h, g):
     """ Return f(H, G) part of the lightcurve in mag space
+
     Parameters
     ----------
     ph: array-like
@@ -44,6 +37,7 @@ def func_hg(ph, h, g):
 
 def func_hg12(ph, h, g12):
     """ Return f(H, G) part of the lightcurve in mag space
+
     Parameters
     ----------
     ph: array-like
@@ -58,13 +52,14 @@ def func_hg12(ph, h, g12):
     # Standard G1G2 part
     g1 = HG12._G12_to_G1(g12)
     g2 = HG12._G12_to_G2(g12)
-    func1 = g1*HG1G2._phi1(ph)+g2*HG1G2._phi2(ph)+(1-g1-g2)*HG1G2._phi3(ph)
+    func1 = g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
 def func_hg1g2(ph, h, g1, g2):
     """ Return f(H, G1, G2) part of the lightcurve in mag space
+
     Parameters
     ----------
     ph: array-like
@@ -79,13 +74,14 @@ def func_hg1g2(ph, h, g1, g2):
     from sbpy.photometry import HG1G2
 
     # Standard G1G2 part
-    func1 = g1*HG1G2._phi1(ph)+g2*HG1G2._phi2(ph)+(1-g1-g2)*HG1G2._phi3(ph)
+    func1 = g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
 def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
     """ Return f(H, G1, G2, R, lambda0, beta0) part of the lightcurve in mag space
+
     Parameters
     ----------
     pha: array-like [3, N]
@@ -119,17 +115,20 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
 
 def add_ztf_color_correction(pdf, combined=False):
     """ Add a new column with ZTF color correction.
+
     The factor is color-dependent, and assumed to be:
     - V_minus_g = -0.32
     - V_minus_r = 0.13
     g --> g + (V - g)
     r --> r + (V - r) - (V - g)
+
     Parameters
     ----------
     pdf: pd.DataFrame
         Pandas DataFrame with Fink ZTF data
     combined: bool
         If True, normalised using g
+
     Returns
     ----------
     out: pd.DataFrame
@@ -160,8 +159,7 @@ def add_ztf_color_correction(pdf, combined=False):
 def estimate_sso_params(
         pdf,
         func,
-        bounds=([0, 0, 0, 1e-6, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2])
-    ):
+        bounds=([0, 0, 0, 1e-6, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
     """ Fit for phase curve parameters
 
     Parameters
