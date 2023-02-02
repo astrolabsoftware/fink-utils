@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import requests
+import subprocess
+import json
 import os
 
 import pandas as pd
 import numpy as np
 
 from astropy.coordinates import SkyCoord
+from astropy.time import Time
 import astropy.units as u
 
 def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
