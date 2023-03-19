@@ -226,7 +226,7 @@ def estimate_sso_params(
 
         r = ydata.values - func(x, *popt)
         chisq = np.sum((r / pdf['i:sigmapsf'])**2)
-        chisq_red = 1. / len(ydata.values - 1 - nparams) * chisq
+        chisq_red = 1. / (len(ydata.values) - 1 - nparams) * chisq
 
     except RuntimeError as e:
         print(e)
