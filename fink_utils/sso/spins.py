@@ -328,7 +328,6 @@ def estimate_combined_sso_params(
     dec = np.deg2rad(pdf['i:dec'].values)
 
     filters = np.unique(pdf['i:fid'])
-    nbands = len(filters)
 
     params = ['R', 'alpha', 'beta']
     spin_params = ['H', 'G1', 'G2']
@@ -366,7 +365,7 @@ def estimate_combined_sso_params(
 
         # estimate covariance matrix using the jacobian
         cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
-        chi2dof = np.sum(res_lsq.fun**2)/(res_lsq.fun.size - res_lsq.x.size)
+        chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
         cov *= chi2dof
 
         # 1sigma uncertainty on fitted parameters
