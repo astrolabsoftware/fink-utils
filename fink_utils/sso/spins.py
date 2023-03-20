@@ -329,7 +329,7 @@ def estimate_combined_sso_params(
 
     filters = np.unique(pdf['i:fid'])
 
-    params = ['R', 'alpha', 'beta']
+    params = ['R', 'alpha0', 'delta0']
     spin_params = ['H', 'G1', 'G2']
     for filt in filters:
         spin_params_with_filt = [i + '_{}'.format(str(filt)) for i in spin_params]
