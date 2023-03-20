@@ -1,4 +1,4 @@
-# Copyright 2022 AstroLab Software
+# Copyright 2022-2023 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,8 @@
 # limitations under the License.
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.optimize import least_squares
+from scipy import linalg
 
 def func_hg(ph, h, g):
     """ Return f(H, G) part of the lightcurve in mag space
@@ -235,3 +237,153 @@ def estimate_sso_params(
         chisq_red = None
 
     return popt, perr, chisq_red
+
+def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
+    """ Build the system of equations to solve using the HG1G2 + spin model
+
+    Parameters
+    ----------
+    x: list
+        List of parameters to fit for
+    filters: np.array
+        Array of size N containing the filtername for each measurement
+    ph: np.array
+        Array of size N containing phase angles
+    ra: np.array
+        Array of size N containing the RA (radian)
+    dec: np.array
+        Array of size N containing the Dec (radian)
+    rhs: np.array
+        Array of size N containing the actual measurements (magnitude)
+
+    Returns
+    ----------
+    out: np.array
+        Array of size N containing (model - y)
+
+    Notes
+    ----------
+    the input `x` should start with filter independent variables,
+    that is (R, alpha, beta), followed by filter dependent variables,
+    that is (H, G1, G2). For example with two bands g & r:
+
+    ```
+    x = [
+        R, alpha, beta,
+        h_g, g_1_g, g_2_g,
+        h_r, g_1_r, g_2_r
+    ]
+    ```
+
+    """
+    R, alpha, beta = x[0:3]
+    filternames = np.unique(filters)
+
+    params = x[3:]
+    nparams = len(params) / len(filternames)
+    assert int(nparams) == nparams, "You need to input all parameters for all bands"
+
+    params_per_band = np.reshape(params, (len(filternames), int(nparams)))
+    eqs = []
+    for index, filtername in enumerate(filternames):
+        mask = filters == filtername
+
+        myfunc = func_hg1g2_with_spin(
+            np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
+            params_per_band[index][0], params_per_band[index][1], params_per_band[index][2],
+            R, alpha, beta
+        ) - rhs[mask]
+
+        eqs = np.concatenate((eqs, myfunc))
+
+    return np.ravel(eqs)
+
+def estimate_combined_sso_params(
+        pdf,
+        p0=[15.0, 0.0, 0.0, 0.5, np.pi, 0.0],
+        bounds=([0, 0, 0, 1e-6, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
+    """ Fit for phase curve parameters
+
+    Parameters
+    ----------
+    pdf: pd.DataFrame
+        Contain Fink data + ephemerides
+    p0: list
+        Initial guess for [H, G1, G2, R, alpha, beta]. Note that even if
+        there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
+    bounds: tuple of lists
+        Parameters boundaries for `func_hg1g2_with_spin` ([all_mins], [all_maxs]).
+        Lists should be ordered as: (H, G1, G2, R, alpha, beta). Note that even if
+        there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
+
+    Returns
+    ----------
+    outdic: dict
+        Dictionary containing reduced chi2, and estimated parameters and
+        error on each parameters.
+    """
+    ydata = pdf['i:magpsf_red']
+    alpha = np.deg2rad(pdf['Phase'].values)
+    ra = np.deg2rad(pdf['i:ra'].values)
+    dec = np.deg2rad(pdf['i:dec'].values)
+
+    filters = np.unique(pdf['i:fid'])
+    nbands = len(filters)
+
+    params = ['R', 'alpha', 'beta']
+    spin_params = ['H', 'G1', 'G2']
+    for filt in filters:
+        spin_params_with_filt = [i + '_{}'.format(str(filt)) for i in spin_params]
+        params = np.concatenate((params, spin_params_with_filt))
+
+    initial_guess = p0[3:]
+    for filt in filters:
+        initial_guess = np.concatenate((initial_guess, p0[:3]))
+
+    lower_bounds = bounds[0][3:]
+    upper_bounds = bounds[1][3:]
+    for filt in filters:
+        lower_bounds = np.concatenate((lower_bounds, bounds[0][:3]))
+        upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
+
+    if not np.alltrue([i == i for i in ydata.values]):
+        outdic = {'chi2red': None}
+        for i in range(len(params)):
+            outdic[params[i]] = {'value': None, 'err': None}
+        return outdic
+
+    try:
+        res_lsq = least_squares(
+            build_eqs_for_spins,
+            x0=initial_guess,
+            bounds=(lower_bounds, upper_bounds),
+            jac='2-point',
+            loss='linear',
+            args=(pdf['i:fid'].values, alpha, ra, dec, ydata.values)
+        )
+
+        popt = res_lsq.x
+
+        # estimate covariance matrix using the jacobian
+        cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
+        chi2dof = np.sum(res_lsq.fun**2)/(res_lsq.fun.size - res_lsq.x.size)
+        cov *= chi2dof
+
+        # 1sigma uncertainty on fitted parameters
+        perr = np.sqrt(np.diag(cov))
+
+        # For the chi2, we use the error estimate from the data directly
+        chisq = np.sum((res_lsq.fun / pdf['i:sigmapsf'])**2)
+        chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
+
+        outdic = {'chi2red': chisq_red}
+        for i in range(len(params)):
+            outdic[params[i]] = {'value': popt[i], 'err': perr[i]}
+
+    except RuntimeError as e:
+        print(e)
+        outdic = {'chi2red': None}
+        for i in range(len(params)):
+            outdic[params[i]] = {'value': None, 'err': None}
+
+    return outdic
