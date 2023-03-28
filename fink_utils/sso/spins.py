@@ -17,6 +17,9 @@ from scipy.optimize import curve_fit
 from scipy.optimize import least_squares
 from scipy import linalg
 
+from fink_utils.sso.utils import get_num_opposition
+from fink_utils.test.tester import regular_unit_tests
+
 def func_hg(ph, h, g):
     """ Return f(H, G) part of the lightcurve in mag space
 
@@ -186,6 +189,43 @@ def estimate_sso_params(
         Error estimates on popt elements
     chi2_red: float
         Reduced chi2
+
+    Example
+    ---------
+    >>> import io
+    >>> import requests
+    >>> import pandas as pd
+
+    >>> r = requests.post(
+    ...     'https://fink-portal.org/api/v1/sso',
+    ...     json={
+    ...         'n_or_d': '1465',
+    ...         'withEphem': True,
+    ...         'output-format': 'json'
+    ...     }
+    ... )
+
+    # Extract relevant information
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
+
+    # Add color correction in the DataFrame
+    >>> pdf = add_ztf_color_correction(pdf, combined=True)
+
+    >>> bounds = ([0, 0, 0, 1e-1, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2])
+    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg1g2_with_spin, bounds=bounds)
+    >>> assert popt is not None, "Fit failed!"
+
+    >>> bounds = ([0, 0, 0], [30, 1, 1])
+    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg1g2, bounds=bounds)
+    >>> assert popt is not None, "Fit failed!"
+
+    >>> bounds = ([0, 0], [30, 1])
+    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg12, bounds=bounds)
+    >>> assert popt is not None, "Fit failed!"
+
+    >>> bounds = ([0, 0], [30, 1])
+    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg, bounds=bounds)
+    >>> assert popt is not None, "Fit failed!"
     """
     ydata = pdf['i:magpsf_red'] + pdf['color_corr']
 
@@ -197,15 +237,19 @@ def estimate_sso_params(
 
     if func.__name__ == 'func_hg1g2_with_spin':
         nparams = 6
+        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G1, G2, R, alpha, beta) parameters"
         x = pha
     elif func.__name__ == 'func_hg1g2':
         nparams = 3
+        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G1, G2) parameters"
         x = alpha
     elif func.__name__ == 'func_hg12':
         nparams = 2
+        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G12) parameters"
         x = alpha
     elif func.__name__ == 'func_hg':
         nparams = 2
+        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G) parameters"
         x = alpha
 
     if not np.alltrue([i == i for i in ydata.values]):
@@ -215,6 +259,7 @@ def estimate_sso_params(
         return popt, perr, chisq_red
 
     try:
+        # TODO: incorporate jacobian and error estimates
         popt, pcov = curve_fit(
             func,
             x,
@@ -298,16 +343,33 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
 
     return np.ravel(eqs)
 
-def estimate_combined_sso_params(
-        pdf,
+def estimate_hybrid_sso_params(
+        magpsf_red, sigmapsf, phase, ra, dec, filters,
         p0=[15.0, 0.0, 0.0, 0.5, np.pi, 0.0],
         bounds=([0, 0, 0, 1e-6, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
-    """ Fit for phase curve parameters
+    """ Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
+
+    Code for quality result `fit`:
+    - 0: success
+    - 1: bad_vals
+    - 2: MiriadeFail
+    - 3: RunTimError
+    - 4: LinalgError
 
     Parameters
     ----------
-    pdf: pd.DataFrame
-        Contain Fink data + ephemerides
+    magpsf_red: array
+        Reduced magnitude, that is m_obs - 5 * np.log10('Dobs' * 'Dhelio')
+    sigmapsf: array
+        Error estimates on magpsf_red
+    phase: array
+        Phase angle [rad]
+    ra: array
+        Right ascension [rad]
+    dec: array
+        Declination [rad]
+    filters: array
+        Filter name for each measurement
     p0: list
         Initial guess for [H, G1, G2, R, alpha, beta]. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
@@ -321,34 +383,54 @@ def estimate_combined_sso_params(
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
-    """
-    ydata = pdf['i:magpsf_red']
-    alpha = np.deg2rad(pdf['Phase'].values)
-    ra = np.deg2rad(pdf['i:ra'].values)
-    dec = np.deg2rad(pdf['i:dec'].values)
 
-    filters = np.unique(pdf['i:fid'])
+    Example
+    ---------
+    >>> import io
+    >>> import requests
+    >>> import pandas as pd
+
+    >>> r = requests.post(
+    ...     'https://fink-portal.org/api/v1/sso',
+    ...     json={
+    ...         'n_or_d': '1465',
+    ...         'withEphem': True,
+    ...         'output-format': 'json'
+    ...     }
+    ... )
+
+    # Extract relevant information
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
+    >>> magpsf_red = pdf['i:magpsf_red'].values
+    >>> sigmapsf = pdf['i:sigmapsf'].values
+    >>> phase = np.deg2rad(pdf['Phase'].values)
+    >>> ra = np.deg2rad(pdf['i:ra'].values)
+    >>> dec = np.deg2rad(pdf['i:dec'].values)
+    >>> filters = pdf['i:fid'].values
+
+    >>> outdic = estimate_hybrid_sso_params(magpsf_red, sigmapsf, phase, ra, dec, filters)
+    >>> assert outdic['fit'] == 0, "Fit failed with code {}!".format(outdic['fit'])
+    """
+    ufilters = np.unique(filters)
 
     params = ['R', 'alpha0', 'delta0']
     spin_params = ['H', 'G1', 'G2']
-    for filt in filters:
+    for filt in ufilters:
         spin_params_with_filt = [i + '_{}'.format(str(filt)) for i in spin_params]
         params = np.concatenate((params, spin_params_with_filt))
 
     initial_guess = p0[3:]
-    for filt in filters:
+    for filt in ufilters:
         initial_guess = np.concatenate((initial_guess, p0[:3]))
 
     lower_bounds = bounds[0][3:]
     upper_bounds = bounds[1][3:]
-    for filt in filters:
+    for filt in ufilters:
         lower_bounds = np.concatenate((lower_bounds, bounds[0][:3]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
 
-    if not np.alltrue([i == i for i in ydata.values]):
-        outdic = {'chi2red': None}
-        for i in range(len(params)):
-            outdic[params[i]] = {'value': None, 'err': None}
+    if not np.alltrue([i == i for i in magpsf_red]):
+        outdic = {'fit': 1}
         return outdic
 
     try:
@@ -358,31 +440,52 @@ def estimate_combined_sso_params(
             bounds=(lower_bounds, upper_bounds),
             jac='2-point',
             loss='linear',
-            args=(pdf['i:fid'].values, alpha, ra, dec, ydata.values)
+            args=(filters, phase, ra, dec, magpsf_red)
         )
 
-        popt = res_lsq.x
+    except RuntimeError as e:
+        # print(e)
+        outdic = {'fit': 3}
+        return outdic
 
-        # estimate covariance matrix using the jacobian
+    popt = res_lsq.x
+
+    # estimate covariance matrix using the jacobian
+    try:
         cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
         chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
         cov *= chi2dof
 
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
+    except np.linalg.LinAlgError as e:
+        # raised if jacobian is degenerated
+        # print(e)
+        outdic = {'fit': 4}
+        return outdic
 
-        # For the chi2, we use the error estimate from the data directly
-        chisq = np.sum((res_lsq.fun / pdf['i:sigmapsf'])**2)
-        chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
+    rms = np.sqrt(np.mean(res_lsq.fun**2))
 
-        outdic = {'chi2red': chisq_red}
-        for i in range(len(params)):
-            outdic[params[i]] = {'value': popt[i], 'err': perr[i]}
+    # For the chi2, we use the error estimate from the data directly
+    chisq = np.sum((res_lsq.fun / sigmapsf)**2)
+    chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    except RuntimeError as e:
-        print(e)
-        outdic = {'chi2red': None}
-        for i in range(len(params)):
-            outdic[params[i]] = {'value': None, 'err': None}
+    outdic = {
+        'chi2red': chisq_red,
+        'rms': rms,
+        'minphase': np.min(phase),
+        'maxphase': np.max(phase),
+    }
+    for i in range(len(params)):
+        outdic[params[i]] = popt[i]
+        outdic['err' + params[i]] = perr[i]
 
+    outdic['fit'] = 0
     return outdic
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+
+    # Run the Spark test suite
+    regular_unit_tests(globals())

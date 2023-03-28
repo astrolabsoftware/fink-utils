@@ -24,6 +24,9 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 import astropy.units as u
 
+from gatspy import periodic
+from scipy import signal
+
 def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
     """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -287,3 +290,99 @@ def get_miriade_data(pdf, observer='I41', rplane='1', tcoor=5, withecl=True, met
         info_out = infos[0]
 
     return info_out
+
+def is_peak(x, y, xpeak, band=50):
+    """ Estimate if `xpeak` corresponds to a true extremum for a periodic signal `y`
+
+    Assuming `y` a sparse signal along `x`, we would first estimate
+    the period of the signal assuming a sine wave. We would then generate
+    predictions, and locate the extrema of the sine.
+
+    But this first step would generate false positives:
+    1. As `y` is sparse, some extrema will not coincide with measurements
+    2. As the signal is not a perfect sine, the fitted signal might shift
+        from the real signal after several periods.
+
+    This function is an extremely quick and dirty attempt to reduce false
+    positives by looking at the data around a fitted peak, and
+    estimating if the peak is real:
+    1. take a band around the peak, and look if data is present
+    2. if data is present, check the data is above the mean
+
+    Parameters
+    ----------
+    xpeak: int
+        Candidate peak position
+    x: array
+        Array of times
+    y: array
+        Array of elongation
+    band: optional, int
+        Bandwidth in units of x
+
+    Returns
+    ----------
+    out: bool
+        True if `xpeak` corresponds to the location of a peak.
+        False otherwise.
+    """
+    xband = np.where((x > xpeak - band) & (x < xpeak + band))[0]
+    if (len(xband) >= 10) and (np.mean(y[xband]) > np.mean(y)):
+        return True
+    return False
+
+def get_num_opposition(jd, elong, band=100):
+    """ Estimate the number of opposition according to the solar elongation
+
+    Under the hood, it assumes `elong` is peroidic, and uses a periodogram.
+
+    Parameters
+    ----------
+    jd: array
+        sorted array of jd
+    elong: array
+        array of solar elongation corresponding to jd
+    band: optional, int
+        Band around a maximum of elongation to
+        estimate if data if present. In days.
+
+    Returns
+    ----------
+    nopposition: int
+        Number of oppositions estimate
+    """
+    # simplest model ever
+    model = periodic.LombScargleMultiband(
+        Nterms_base=1,
+        Nterms_band=1,
+        fit_period=True
+    )
+
+    # Not sure about that...
+    model.optimizer.period_range = (0.1, 1.2)
+    model.optimizer.quiet = True
+
+    model.fit(
+        jd,
+        elong,
+        np.ones_like(elong)
+    )
+
+    period = model.best_period
+
+    tfit_ext = np.arange(
+        np.min(jd) - band,
+        np.max(jd) + band,
+        1
+    )
+    yfit = model.predict(tfit_ext, period=period, filts=0)
+
+    # rough estimation of peaks using the fitted data
+    peaks, _ = signal.find_peaks(yfit)
+
+    # remove false positives
+    noppositions = 0
+    for peak in peaks:
+        if is_peak(model.t, elong, tfit_ext[peak], band=band):
+            noppositions += 1
+    return noppositions
