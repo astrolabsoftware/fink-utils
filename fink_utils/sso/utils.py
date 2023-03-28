@@ -27,6 +27,8 @@ import astropy.units as u
 from gatspy import periodic
 from scipy import signal
 
+from fink_utils.test.tester import regular_unit_tests
+
 def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
     """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -350,6 +352,30 @@ def get_num_opposition(jd, elong, band=100):
     ----------
     nopposition: int
         Number of oppositions estimate
+
+    Examples
+    ----------
+    >>> import io
+    >>> import requests
+    >>> import pandas as pd
+
+    >>> r = requests.post(
+    ...     'https://fink-portal.org/api/v1/sso',
+    ...     json={
+    ...         'n_or_d': '8467',
+    ...         'withEphem': True,
+    ...         'output-format': 'json'
+    ...     }
+    ... )
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
+
+    # estimate number of oppositions
+    >>> noppositions = get_num_opposition(
+    ...     pdf['i:jd'].values,
+    ...     pdf['Elong.'].values,
+    ...     band=50
+    ... )
+    >>> assert noppositions == 2, "Found {} oppositions for 8467 instead of 2!".format(noppositions)
     """
     # simplest model ever
     model = periodic.LombScargleMultiband(
@@ -386,3 +412,10 @@ def get_num_opposition(jd, elong, band=100):
         if is_peak(model.t, elong, tfit_ext[peak], band=band):
             noppositions += 1
     return noppositions
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+
+    # Run the Spark test suite
+    regular_unit_tests(globals())

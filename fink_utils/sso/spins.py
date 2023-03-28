@@ -17,7 +17,6 @@ from scipy.optimize import curve_fit
 from scipy.optimize import least_squares
 from scipy import linalg
 
-from fink_utils.sso.utils import get_num_opposition
 from fink_utils.test.tester import regular_unit_tests
 
 def func_hg(ph, h, g):
@@ -443,8 +442,7 @@ def estimate_hybrid_sso_params(
             args=(filters, phase, ra, dec, magpsf_red)
         )
 
-    except RuntimeError as e:
-        # print(e)
+    except RuntimeError:
         outdic = {'fit': 3}
         return outdic
 
@@ -458,9 +456,8 @@ def estimate_hybrid_sso_params(
 
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
-    except np.linalg.LinAlgError as e:
+    except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
-        # print(e)
         outdic = {'fit': 4}
         return outdic
 
