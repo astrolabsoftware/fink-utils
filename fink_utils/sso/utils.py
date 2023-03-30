@@ -333,20 +333,17 @@ def is_peak(x, y, xpeak, band=50):
         return True
     return False
 
-def get_num_opposition(jd, elong, band=100):
+def get_num_opposition(elong, width=4):
     """ Estimate the number of opposition according to the solar elongation
 
     Under the hood, it assumes `elong` is peroidic, and uses a periodogram.
 
     Parameters
     ----------
-    jd: array
-        sorted array of jd
     elong: array
         array of solar elongation corresponding to jd
-    band: optional, int
-        Band around a maximum of elongation to
-        estimate if data if present. In days.
+    width: optional, int
+        width of peaks in samples.
 
     Returns
     ----------
@@ -371,47 +368,13 @@ def get_num_opposition(jd, elong, band=100):
 
     # estimate number of oppositions
     >>> noppositions = get_num_opposition(
-    ...     pdf['i:jd'].values,
     ...     pdf['Elong.'].values,
-    ...     band=50
+    ...     width=4
     ... )
     >>> assert noppositions == 2, "Found {} oppositions for 8467 instead of 2!".format(noppositions)
     """
-    # simplest model ever
-    model = periodic.LombScargleMultiband(
-        Nterms_base=1,
-        Nterms_band=1,
-        fit_period=True
-    )
-
-    # Not sure about that...
-    model.optimizer.period_range = (0.1, 1.2)
-    model.optimizer.quiet = True
-
-    model.fit(
-        jd,
-        elong,
-        np.ones_like(elong)
-    )
-
-    period = model.best_period
-
-    tfit_ext = np.arange(
-        np.min(jd) - band,
-        np.max(jd) + band,
-        1
-    )
-    yfit = model.predict(tfit_ext, period=period, filts=0)
-
-    # rough estimation of peaks using the fitted data
-    peaks, _ = signal.find_peaks(yfit)
-
-    # remove false positives
-    noppositions = 0
-    for peak in peaks:
-        if is_peak(model.t, elong, tfit_ext[peak], band=band):
-            noppositions += 1
-    return noppositions
+    peaks, _ = signal.find_peaks(elong, width=4)
+    return len(peaks)
 
 
 if __name__ == "__main__":

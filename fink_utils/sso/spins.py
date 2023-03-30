@@ -348,12 +348,24 @@ def estimate_hybrid_sso_params(
         bounds=([0, 0, 0, 1e-6, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
     """ Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
 
-    Code for quality result `fit`:
+    Code for quality `fit`:
     - 0: success
     - 1: bad_vals
     - 2: MiriadeFail
     - 3: RunTimError
     - 4: LinalgError
+
+    Code for quality `status` (least square convergence):
+    -2: failure
+    -1 : improper input parameters status returned from MINPACK.
+    0 : the maximum number of function evaluations is exceeded.
+    1 : gtol termination condition is satisfied.
+    2 : ftol termination condition is satisfied.
+    3 : xtol termination condition is satisfied.
+    4 : Both ftol and xtol termination conditions are satisfied.
+
+    Typically, one would only trust status = 2 and 4.
+
 
     Parameters
     ----------
@@ -409,6 +421,8 @@ def estimate_hybrid_sso_params(
 
     >>> outdic = estimate_hybrid_sso_params(magpsf_red, sigmapsf, phase, ra, dec, filters)
     >>> assert outdic['fit'] == 0, "Fit failed with code {}!".format(outdic['fit'])
+
+    >>> assert outdic['status'] == 2, "Convergence failed with code {}!".format(outdic['status'])
     """
     ufilters = np.unique(filters)
 
@@ -429,7 +443,7 @@ def estimate_hybrid_sso_params(
         upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
 
     if not np.alltrue([i == i for i in magpsf_red]):
-        outdic = {'fit': 1}
+        outdic = {'fit': 1, 'status': -2}
         return outdic
 
     try:
@@ -443,7 +457,7 @@ def estimate_hybrid_sso_params(
         )
 
     except RuntimeError:
-        outdic = {'fit': 3}
+        outdic = {'fit': 3, 'status': -2}
         return outdic
 
     popt = res_lsq.x
@@ -458,7 +472,7 @@ def estimate_hybrid_sso_params(
         perr = np.sqrt(np.diag(cov))
     except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
-        outdic = {'fit': 4}
+        outdic = {'fit': 4, 'status': res_lsq.status}
         return outdic
 
     rms = np.sqrt(np.mean(res_lsq.fun**2))
@@ -472,12 +486,13 @@ def estimate_hybrid_sso_params(
         'rms': rms,
         'minphase': np.min(phase),
         'maxphase': np.max(phase),
+        'status': res_lsq.status,
+        'fit': 0
     }
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
         outdic['err' + params[i]] = perr[i]
 
-    outdic['fit'] = 0
     return outdic
 
 
