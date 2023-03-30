@@ -349,11 +349,11 @@ def estimate_hybrid_sso_params(
     """ Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
 
     Code for quality `fit`:
-    - 0: success
-    - 1: bad_vals
-    - 2: MiriadeFail
-    - 3: RunTimError
-    - 4: LinalgError
+    0: success
+    1: bad_vals
+    2: MiriadeFail
+    3: RunTimError
+    4: LinalgError
 
     Code for quality `status` (least square convergence):
     -2: failure
