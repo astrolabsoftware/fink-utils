@@ -24,7 +24,6 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 import astropy.units as u
 
-from gatspy import periodic
 from scipy import signal
 
 from fink_utils.test.tester import regular_unit_tests
