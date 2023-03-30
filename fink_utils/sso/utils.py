@@ -24,6 +24,10 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 import astropy.units as u
 
+from scipy import signal
+
+from fink_utils.test.tester import regular_unit_tests
+
 def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
     """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -287,3 +291,93 @@ def get_miriade_data(pdf, observer='I41', rplane='1', tcoor=5, withecl=True, met
         info_out = infos[0]
 
     return info_out
+
+def is_peak(x, y, xpeak, band=50):
+    """ Estimate if `xpeak` corresponds to a true extremum for a periodic signal `y`
+
+    Assuming `y` a sparse signal along `x`, we would first estimate
+    the period of the signal assuming a sine wave. We would then generate
+    predictions, and locate the extrema of the sine.
+
+    But this first step would generate false positives:
+    1. As `y` is sparse, some extrema will not coincide with measurements
+    2. As the signal is not a perfect sine, the fitted signal might shift
+        from the real signal after several periods.
+
+    This function is an extremely quick and dirty attempt to reduce false
+    positives by looking at the data around a fitted peak, and
+    estimating if the peak is real:
+    1. take a band around the peak, and look if data is present
+    2. if data is present, check the data is above the mean
+
+    Parameters
+    ----------
+    xpeak: int
+        Candidate peak position
+    x: array
+        Array of times
+    y: array
+        Array of elongation
+    band: optional, int
+        Bandwidth in units of x
+
+    Returns
+    ----------
+    out: bool
+        True if `xpeak` corresponds to the location of a peak.
+        False otherwise.
+    """
+    xband = np.where((x > xpeak - band) & (x < xpeak + band))[0]
+    if (len(xband) >= 10) and (np.mean(y[xband]) > np.mean(y)):
+        return True
+    return False
+
+def get_num_opposition(elong, width=4):
+    """ Estimate the number of opposition according to the solar elongation
+
+    Under the hood, it assumes `elong` is peroidic, and uses a periodogram.
+
+    Parameters
+    ----------
+    elong: array
+        array of solar elongation corresponding to jd
+    width: optional, int
+        width of peaks in samples.
+
+    Returns
+    ----------
+    nopposition: int
+        Number of oppositions estimate
+
+    Examples
+    ----------
+    >>> import io
+    >>> import requests
+    >>> import pandas as pd
+
+    >>> r = requests.post(
+    ...     'https://fink-portal.org/api/v1/sso',
+    ...     json={
+    ...         'n_or_d': '8467',
+    ...         'withEphem': True,
+    ...         'output-format': 'json'
+    ...     }
+    ... )
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
+
+    # estimate number of oppositions
+    >>> noppositions = get_num_opposition(
+    ...     pdf['Elong.'].values,
+    ...     width=4
+    ... )
+    >>> assert noppositions == 2, "Found {} oppositions for 8467 instead of 2!".format(noppositions)
+    """
+    peaks, _ = signal.find_peaks(elong, width=4)
+    return len(peaks)
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+
+    # Run the Spark test suite
+    regular_unit_tests(globals())
