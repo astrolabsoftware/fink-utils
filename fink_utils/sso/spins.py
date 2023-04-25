@@ -350,8 +350,8 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
 
 def estimate_hybrid_sso_params(
         magpsf_red, sigmapsf, phase, ra, dec, filters,
-        p0=[15.0, 0.0, 0.0, 0.5, np.pi, 0.0],
-        bounds=([0, 0, 0, 1e-6, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
+        p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
+        bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
     """ Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
 
     Code for quality `fit`:
