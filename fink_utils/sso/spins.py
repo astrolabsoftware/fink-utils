@@ -117,21 +117,33 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
 
     return func1 + func2
 
-def add_ztf_color_correction(pdf, combined=False):
-    """ Add a new column with ZTF color correction.
+def color_correction_to_V():
+    """ color correction from band to V
 
-    The factor is color-dependent, and assumed to be:
-    - V_minus_g = -0.32
-    - V_minus_r = 0.13
-    g --> g + (V - g)
-    r --> r + (V - r) - (V - g)
+    Available:
+        - 1: ZTF-g
+        - 2: ZTF-r
+        - 3: ATLAS-o
+        - 4: ATLAS-c
+    """
+    dic = {
+        1: -0.2833,
+        2: 0.1777,
+        3: 0.4388,
+        4: -0.0986
+    }
+
+    return dic
+
+def add_color_correction(pdf):
+    """ Add a new column with color correction `V - band`.
+
+    band --> band + (V - band)
 
     Parameters
     ----------
     pdf: pd.DataFrame
         Pandas DataFrame with Fink ZTF data
-    combined: bool
-        If True, normalised using g
 
     Returns
     ----------
@@ -140,21 +152,10 @@ def add_ztf_color_correction(pdf, combined=False):
     """
     filts = np.unique(pdf['i:fid'].values)
     color_sso = np.ones_like(pdf['i:magpsf'])
+    conversion = color_correction_to_V()
     for i, filt in enumerate(filts):
-        # SSO Color index
-        V_minus_g = -0.32
-        V_minus_r = 0.13
-
         cond = pdf['i:fid'] == filt
-
-        # Color conversion
-        if filt == 1:
-            color_sso[cond] = V_minus_g
-        else:
-            if combined:
-                color_sso[cond] = V_minus_r - V_minus_g
-            else:
-                color_sso[cond] = V_minus_r
+        color_sso[cond] = conversion[filt]
 
     pdf['color_corr'] = color_sso
 
@@ -163,6 +164,7 @@ def add_ztf_color_correction(pdf, combined=False):
 def estimate_sso_params(
         pdf,
         func,
+        normalise_to_V=False,
         bounds=([0, 0, 0, 1e-6, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
     """ Fit for phase curve parameters
 
@@ -208,7 +210,7 @@ def estimate_sso_params(
     >>> pdf = pd.read_json(io.BytesIO(r.content))
 
     # Add color correction in the DataFrame
-    >>> pdf = add_ztf_color_correction(pdf, combined=True)
+    >>> pdf = add_color_correction(pdf)
 
     >>> bounds = ([0, 0, 0, 1e-1, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2])
     >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg1g2_with_spin, bounds=bounds)
@@ -226,7 +228,11 @@ def estimate_sso_params(
     >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg, bounds=bounds)
     >>> assert popt is not None, "Fit failed!"
     """
-    ydata = pdf['i:magpsf_red'] + pdf['color_corr']
+    if normalise_to_V:
+        ydata = pdf['i:magpsf_red'] + pdf['color_corr']
+        pdf['i:fid'] = 'V'
+    else:
+        ydata = pdf['i:magpsf_red']
 
     # Fink returns degrees -- convert in radians
     alpha = np.deg2rad(pdf['Phase'].values)
