@@ -127,10 +127,10 @@ def color_correction_to_V():
         - 4: ATLAS-c
     """
     dic = {
-        1: -0.2833, # ZTF-g
-        2: 0.1777, # ZTF-r
-        3: 0.4388, # ATLAS-o
-        4: -0.0986 # ATLAS-c
+        1: -0.2833,
+        2: 0.1777,
+        3: 0.4388,
+        4: -0.0986
     }
 
     return dic
