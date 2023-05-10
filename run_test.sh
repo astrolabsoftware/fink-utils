@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2022 Le Montagner Roman
+# Copyright 2022 Astrolab Software
 # Author: Le Montagner Roman
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,30 +17,12 @@
 
 set -e
 
-python -m pip install .
-
 export ROOTPATH=`pwd`
-# source ${FINK_BROKER}/conf/fink.conf.prod
 
-# export FINK_PACKAGES=$FINK_PACKAGES
-# export FINK_JARS=$FINK_JARS
-# export KAFKA_IPPORT_SIM=$KAFKA_IPPORT_SIM
-# export KAFKA_TOPIC="ztf-stream-sim"
-
-# Add coverage_daemon to the pythonpath. See python/fink_broker/tester.py
 export PYTHONPATH="${SPARK_HOME}/python/test_coverage:$PYTHONPATH"
 export COVERAGE_PROCESS_START=".coveragerc"
 
-# echo "pytest -q fink_utils/photometry/test.py"
-# pytest -q fink_utils/photometry/test.py
-
-# echo "fink_utils/xmatch/simbad.py"
-# coverage run \
-#     --source=${ROOTPATH} \
-#     --rcfile .coveragerc \
-#     fink_utils/xmatch/simbad.py
-
-for filename in fink_utils/broker/*.py
+for filename in fink_utils/test/*.py
 do
     echo $filename
     coverage run \
@@ -49,7 +31,7 @@ do
     $filename
 done
 
-for filename in fink_utils/test/*.py
+for filename in fink_utils/sso/*.py
 do
     echo $filename
     coverage run \

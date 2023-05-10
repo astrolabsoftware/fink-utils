@@ -9,3 +9,5 @@ Collection of useful functionalities used across the Fink ecosystem:
 - [data](fink_utils/data): data manipulation with Python
 - [spark](fink_utils/spark): data manipulation with Spark
 - [xmatch](fink_utils/xmatch): utilities for manipulating external databases and catalogs
+- [sso](fink_utils/sso): utilities for manipulating Solar System objects (HG, HG12, HG1G2, SHG1G2)
+- [HBase](fink_utils/hbase): utilities for manipulating data stored in HBase
