@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-from scipy.optimize import curve_fit
 from scipy.optimize import least_squares
 from scipy import linalg
 
