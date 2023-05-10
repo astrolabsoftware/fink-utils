@@ -289,19 +289,19 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
     Notes
     ----------
     the input `x` should start with filter independent variables,
-    that is (R, alpha, beta), followed by filter dependent variables,
+    that is (R, alpha, delta), followed by filter dependent variables,
     that is (H, G1, G2). For example with two bands g & r:
 
     ```
     x = [
-        R, alpha, beta,
+        R, alpha, delta,
         h_g, g_1_g, g_2_g,
         h_r, g_1_r, g_2_r
     ]
     ```
 
     """
-    R, alpha, beta = x[0:3]
+    R, alpha, delta = x[0:3]
     filternames = np.unique(filters)
 
     params = x[3:]
@@ -316,7 +316,7 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
         myfunc = func_hg1g2_with_spin(
             np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
             params_per_band[index][0], params_per_band[index][1], params_per_band[index][2],
-            R, alpha, beta
+            R, alpha, delta
         ) - rhs[mask]
 
         eqs = np.concatenate((eqs, myfunc))
@@ -382,7 +382,7 @@ def estimate_sso_params(
     bounds: tuple of lists
         Parameters boundaries ([all_mins], [all_maxs]).
         Lists should be ordered as:
-            - SHG1G2: (H, G1, G2, R, alpha, beta)
+            - SHG1G2: (H, G1, G2, R, alpha, delta)
             - HG1G2: (H, G1, G2)
             - HG12: (H, G12)
             - HG: (H, G)
@@ -677,11 +677,11 @@ def fit_spin(
     filters: array
         Filter name for each measurement
     p0: list
-        Initial guess for [H, G1, G2, R, alpha, beta]. Note that even if
+        Initial guess for [H, G1, G2, R, alpha, delta]. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
     bounds: tuple of lists
         Parameters boundaries for `func_hg1g2_with_spin` ([all_mins], [all_maxs]).
-        Lists should be ordered as: (H, G1, G2, R, alpha, beta). Note that even if
+        Lists should be ordered as: (H, G1, G2, R, alpha, delta). Note that even if
         there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
 
     Returns
