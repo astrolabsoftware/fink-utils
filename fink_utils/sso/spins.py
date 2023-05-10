@@ -29,6 +29,11 @@ def func_hg(ph, h, g):
         Absolute magnitude in mag
     G: float
         G parameter (no unit)
+
+    Returns
+    ----------
+    out: array of floats
+        H - 2.5 log(f(G))
     """
     from sbpy.photometry import HG
 
@@ -49,6 +54,11 @@ def func_hg12(ph, h, g12):
         Absolute magnitude in mag
     G: float
         G parameter (no unit)
+
+    Returns
+    ----------
+    out: array of floats
+        H - 2.5 log(f(G12))
     """
     from sbpy.photometry import HG1G2, HG12
 
@@ -73,6 +83,11 @@ def func_hg1g2(ph, h, g1, g2):
         G1 parameter (no unit)
     G2: float
         G2 parameter (no unit)
+
+    Returns
+    ----------
+    out: array of floats
+        H - 2.5 log(f(G1G2))
     """
     from sbpy.photometry import HG1G2
 
@@ -101,6 +116,11 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
         RA of the spin (radian)
     beta0: float
         Dec of the spin (radian)
+
+    Returns
+    ----------
+    out: array of floats
+        H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
     ph = pha[0]
     ra = pha[1]
@@ -124,6 +144,11 @@ def color_correction_to_V():
         - 2: ZTF-r
         - 3: ATLAS-o
         - 4: ATLAS-c
+
+    Returns
+    ----------
+    out: dict
+        Dictionary with color correction to V
     """
     dic = {
         1: -0.2833,
@@ -169,7 +194,6 @@ def compute_color_correction(filters: np.array) -> np.array:
     # Compute color correction
     >>> color_to_V = compute_color_correction(pdf['i:fid'].values)
     >>> assert len(np.unique(color_to_V)) == len(np.unique(pdf['i:fid'].values)), "Filters and colors have different shape!"
-    True
 
     >>> assert 0.0 not in color_to_V, "Some filters have no color correction!"
     """
@@ -367,6 +391,93 @@ def estimate_sso_params(
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
+
+    Examples
+    ----------
+    >>> import io
+    >>> import requests
+    >>> import pandas as pd
+
+    >>> r = requests.post(
+    ...     'https://fink-portal.org/api/v1/sso',
+    ...     json={
+    ...         'n_or_d': '223',
+    ...         'withEphem': True,
+    ...         'output-format': 'json'
+    ...     }
+    ... )
+
+    # Extract relevant information
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
+
+    >>> hg = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    p0=[15.0, 0.15],
+    ...    bounds=([0, 0], [30, 1]),
+    ...    model='HG',
+    ...    normalise_to_V=False)
+    >>> assert len(hg) == 14
+
+    >>> hg12 = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    p0=[15.0, 0.15],
+    ...    bounds=([0, 0], [30, 1]),
+    ...    model='HG12',
+    ...    normalise_to_V=False)
+    >>> assert len(hg12) == 14
+
+    >>> hg1g2 = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    p0=[15.0, 0.15, 0.15],
+    ...    bounds=([0, 0, 0], [30, 1, 1]),
+    ...    model='HG1G2',
+    ...    normalise_to_V=False)
+    >>> assert len(hg1g2) == 18
+
+    >>> shg1g2 = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    np.deg2rad(pdf['i:ra'].values),
+    ...    np.deg2rad(pdf['i:dec'].values),
+    ...    model='SHG1G2',
+    ...    normalise_to_V=False)
+    >>> assert len(shg1g2) == 24
+
+    # You can also combine data into single V band
+    >>> shg1g2 = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    np.deg2rad(pdf['i:ra'].values),
+    ...    np.deg2rad(pdf['i:dec'].values),
+    ...    model='SHG1G2',
+    ...    normalise_to_V=True)
+    >>> assert len(shg1g2) == 18
+
+    # If you enter a wrong model name, raise an error
+    >>> wrong = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    np.deg2rad(pdf['i:ra'].values),
+    ...    np.deg2rad(pdf['i:dec'].values),
+    ...    model='toto',
+    ...    normalise_to_V=True) # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    AssertionError: model toto is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG
     """
     if normalise_to_V:
         color = compute_color_correction(filters)
@@ -436,43 +547,6 @@ def fit_legacy_models(
         Error estimates on popt elements
     chi2_red: float
         Reduced chi2
-
-    Example
-    ---------
-    >>> import io
-    >>> import requests
-    >>> import pandas as pd
-
-    >>> r = requests.post(
-    ...     'https://fink-portal.org/api/v1/sso',
-    ...     json={
-    ...         'n_or_d': '1465',
-    ...         'withEphem': True,
-    ...         'output-format': 'json'
-    ...     }
-    ... )
-
-    # Extract relevant information
-    >>> pdf = pd.read_json(io.BytesIO(r.content))
-
-    # Add color correction in the DataFrame
-    >>> pdf = add_color_correction(pdf)
-
-    >>> bounds = ([0, 0, 0, 1e-1, 0, -np.pi/2], [30, 1, 1, 1, 2*np.pi, np.pi/2])
-    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg1g2_with_spin, bounds=bounds)
-    >>> assert popt is not None, "Fit failed!"
-
-    >>> bounds = ([0, 0, 0], [30, 1, 1])
-    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg1g2, bounds=bounds)
-    >>> assert popt is not None, "Fit failed!"
-
-    >>> bounds = ([0, 0], [30, 1])
-    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg12, bounds=bounds)
-    >>> assert popt is not None, "Fit failed!"
-
-    >>> bounds = ([0, 0], [30, 1])
-    >>> popt, perr, chisq_red = estimate_sso_params(pdf, func=func_hg, bounds=bounds)
-    >>> assert popt is not None, "Fit failed!"
     """
     if model == 'HG1G2':
         func = func_hg1g2
@@ -612,35 +686,6 @@ def fit_spin(
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
-
-    Example
-    ---------
-    >>> import io
-    >>> import requests
-    >>> import pandas as pd
-
-    >>> r = requests.post(
-    ...     'https://fink-portal.org/api/v1/sso',
-    ...     json={
-    ...         'n_or_d': '1465',
-    ...         'withEphem': True,
-    ...         'output-format': 'json'
-    ...     }
-    ... )
-
-    # Extract relevant information
-    >>> pdf = pd.read_json(io.BytesIO(r.content))
-    >>> magpsf_red = pdf['i:magpsf_red'].values
-    >>> sigmapsf = pdf['i:sigmapsf'].values
-    >>> phase = np.deg2rad(pdf['Phase'].values)
-    >>> ra = np.deg2rad(pdf['i:ra'].values)
-    >>> dec = np.deg2rad(pdf['i:dec'].values)
-    >>> filters = pdf['i:fid'].values
-
-    >>> outdic = estimate_hybrid_sso_params(magpsf_red, sigmapsf, phase, ra, dec, filters)
-    >>> assert outdic['fit'] == 0, "Fit failed with code {}!".format(outdic['fit'])
-
-    >>> assert outdic['status'] == 2, "Convergence failed with code {}!".format(outdic['status'])
     """
     ufilters = np.unique(filters)
 
