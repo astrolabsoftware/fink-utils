@@ -97,8 +97,11 @@ def func_hg1g2(ph, h, g1, g2):
 
     return h + func1
 
-def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
-    """ Return f(H, G1, G2, R, lambda0, beta0) part of the lightcurve in mag space
+def spin_angle(ra, dec, alpha0, delta0):
+    return np.sin(dec) * np.sin(delta0) + np.cos(dec) * np.cos(delta0) * np.cos(ra - alpha0)
+
+def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
+    """ Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
     Parameters
     ----------
@@ -112,9 +115,9 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
         G2 parameter (no unit)
     R: float
         Oblateness (no units)
-    lambda0: float
+    alpha0: float
         RA of the spin (radian)
-    beta0: float
+    delta0: float
         Dec of the spin (radian)
 
     Returns
@@ -130,7 +133,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, lambda0, beta0):
     func1 = func_hg1g2(ph, h, g1, g2)
 
     # Spin part
-    geo = np.sin(dec) * np.sin(beta0) + np.cos(dec) * np.cos(beta0) * np.cos(ra - lambda0)
+    geo = spin_angle(ra, dec, alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = -2.5 * np.log10(func2)
 
@@ -537,7 +540,7 @@ def fit_legacy_models(
             - func_hg
     bounds: tuple of lists
         Parameters boundaries for `func` ([all_mins], [all_maxs]).
-        Defaults are given for `func_hg1g2_with_spin`: (H, G1, G2, R, lambda0, beta0).
+        Defaults are given for `func_hg1g2_with_spin`: (H, G1, G2, R, alpha0, delta0).
 
     Returns
     ----------
