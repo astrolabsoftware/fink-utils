@@ -56,21 +56,21 @@ def vect_apparent_flux(
     isdiffpos: "np.array[str]",
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent flux from difference magnitude supplied by ZTF
-    This was heavily influenced by the computation provided by Lasair:
-    https://github.com/lsst-uk/lasair/blob/master/src/alert_stream_ztf/common/mag.py
+    Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
+    https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
     vectorized version
 
     Parameters
     ---------
     fid
-        filter, 1 for green and 2 for red
+        filter, 1 for green and 2 for red (unused)
     magpsf,sigmapsf; floats
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr: floats
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
     magzpsci: float
-        Magnitude zero point for photometry estimates
+        Magnitude zero point for photometry estimates (unused)
     isdiffpos: str
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -86,21 +86,11 @@ def vect_apparent_flux(
     magpsf = np.where(np.equal(magpsf, None), np.nan, magpsf)
     magnr = np.where(magnr < 0.0, np.nan, magnr)
 
-    # zero points. Looks like they are fixed.
-    magzpref = np.select([fid == 1, fid == 2, fid == 3], [26.325, 26.275, 25.660])
-
-    # reference flux and its error
-    magdiff = magzpref - magnr
-
-    ref_flux = 10 ** (0.4 * magdiff)
-    ref_sigflux = (sigmagnr / 1.0857) * ref_flux
-
-    # difference flux and its error
-    magzpsci = np.where(magzpsci == 0.0, magzpref, magzpsci)
-
-    magdiff = magzpsci - magpsf
-    difference_flux = 10 ** (0.4 * magdiff)
+    difference_flux = 10 ** (-0.4 * magpsf)
     difference_sigflux = (sigmapsf / 1.0857) * difference_flux
+
+    ref_flux = 10 ** (-0.4 * magnr)
+    ref_sigflux = (sigmagnr / 1.0857) * ref_flux
 
     # add or subract difference flux based on isdiffpos
     dc_flux = np.where(
@@ -123,21 +113,21 @@ def vect_dc_mag(
     isdiffpos: "np.array[str]",
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent magnitude from difference magnitude supplied by ZTF
-    Parameters
-    Stolen from Lasair.
+    Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
+    https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
     vectorized version
 
     Parameters
     ----------
     fid
-        filter, 1 for green and 2 for red
+        filter, 1 for green and 2 for red (unused)
     magpsf,sigmapsf
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
     magzpsci
-        Magnitude zero point for photometry estimates
+        Magnitude zero point for photometry estimates (unused)
     isdiffpos
         t or 1 => candidate is from positive (sci minus ref) subtraction
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -149,21 +139,13 @@ def vect_dc_mag(
     dc_sigmag: float
         Error on apparent magnitude
     """
-    # zero points. Looks like they are fixed.
-    magzpref = np.select([fid == 1, fid == 2, fid == 3], [26.325, 26.275, 25.660])
-
-    # difference flux and its error
-    magzpsci = np.where(np.equal(magzpsci, None), magzpref, magzpsci)
-
     dc_flux, dc_sigflux = vect_apparent_flux(
         fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos
     )
 
     # apparent mag and its error from fluxes
-    test_mag = np.logical_and(np.equal(dc_flux, dc_flux), dc_flux > 0.0)
+    dc_mag = -2.5 * np.log10(dc_flux)
 
-    dc_mag = np.where(test_mag, magzpsci - 2.5 * np.log10(dc_flux), magzpsci)
-
-    dc_sigmag = np.where(test_mag, dc_sigflux / dc_flux * 1.0857, sigmapsf)
+    dc_sigmag = dc_sigflux / dc_flux * 1.0857
 
     return dc_mag, dc_sigmag
