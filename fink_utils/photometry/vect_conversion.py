@@ -47,12 +47,10 @@ def vect_mag2fluxcal_snana(
 
 
 def vect_apparent_flux(
-    fid: "np.array[np.int]",
     magpsf: "np.array[np.float]",
     sigmapsf: "np.array[np.float]",
     magnr: "np.array[np.float]",
     sigmagnr: "np.array[np.float]",
-    magzpsci: "np.array[np.float]",
     isdiffpos: "np.array[str]",
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent flux from difference magnitude supplied by ZTF
@@ -62,15 +60,11 @@ def vect_apparent_flux(
 
     Parameters
     ---------
-    fid
-        filter, 1 for green and 2 for red (unused)
     magpsf,sigmapsf; floats
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr: floats
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci: float
-        Magnitude zero point for photometry estimates (unused)
     isdiffpos: str
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -104,12 +98,10 @@ def vect_apparent_flux(
 
 
 def vect_dc_mag(
-    fid: "np.array[np.int]",
     magpsf: "np.array[np.float]",
     sigmapsf: "np.array[np.float]",
     magnr: "np.array[np.float]",
     sigmagnr: "np.array[np.float]",
-    magzpsci: "np.array[np.float]",
     isdiffpos: "np.array[str]",
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent magnitude from difference magnitude supplied by ZTF
@@ -119,15 +111,11 @@ def vect_dc_mag(
 
     Parameters
     ----------
-    fid
-        filter, 1 for green and 2 for red (unused)
     magpsf,sigmapsf
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci
-        Magnitude zero point for photometry estimates (unused)
     isdiffpos
         t or 1 => candidate is from positive (sci minus ref) subtraction
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -140,7 +128,7 @@ def vect_dc_mag(
         Error on apparent magnitude
     """
     dc_flux, dc_sigflux = vect_apparent_flux(
-        fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos
+        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos
     )
 
     # apparent mag and its error from fluxes

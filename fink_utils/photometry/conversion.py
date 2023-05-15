@@ -42,12 +42,10 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float) -> Tuple[float, float]:
 
 
 def apparent_flux(
-    fid: int,
     magpsf: float,
     sigmapsf: float,
     magnr: float,
     sigmagnr: float,
-    magzpsci: float,
     isdiffpos: int,
 ) -> Tuple[float, float]:
     """Compute apparent flux from difference magnitude supplied by ZTF
@@ -56,15 +54,11 @@ def apparent_flux(
 
     Parameters
     ---------
-    fid
-        filter, 1 for green and 2 for red (unused)
     magpsf,sigmapsf; floats
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr: floats
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci: float
-        Magnitude zero point for photometry estimates (unused)
     isdiffpos: str
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -97,12 +91,10 @@ def apparent_flux(
     return dc_flux, dc_sigflux
 
 def dc_mag(
-    fid: int,
     magpsf: float,
     sigmapsf: float,
     magnr: float,
     sigmagnr: float,
-    magzpsci: float,
     isdiffpos: int,
 ) -> Tuple[float, float]:
     """Compute apparent magnitude from difference magnitude supplied by ZTF
@@ -111,15 +103,11 @@ def dc_mag(
 
     Parameters
     ----------
-    fid
-        filter, 1 for green and 2 for red
     magpsf,sigmapsf
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci
-        Magnitude zero point for photometry estimates
     isdiffpos
         t or 1 => candidate is from positive (sci minus ref) subtraction
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -132,7 +120,7 @@ def dc_mag(
         Error on apparent magnitude
     """
     dc_flux, dc_sigflux = apparent_flux(
-        fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos
+        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos
     )
 
     # apparent mag and its error from fluxes
