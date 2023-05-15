@@ -42,29 +42,23 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float) -> Tuple[float, float]:
 
 
 def apparent_flux(
-    fid: int,
     magpsf: float,
     sigmapsf: float,
     magnr: float,
     sigmagnr: float,
-    magzpsci: float,
     isdiffpos: int,
 ) -> Tuple[float, float]:
     """Compute apparent flux from difference magnitude supplied by ZTF
-    This was heavily influenced by the computation provided by Lasair:
-    https://github.com/lsst-uk/lasair/blob/master/src/alert_stream_ztf/common/mag.py
+    Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
+    https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
 
     Parameters
     ---------
-    fid
-        filter, 1 for green and 2 for red
     magpsf,sigmapsf; floats
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr: floats
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci: float
-        Magnitude zero point for photometry estimates
     isdiffpos: str
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -76,28 +70,17 @@ def apparent_flux(
     dc_sigflux: float
         Error on apparent flux
     """
-
     if magpsf is None or magnr < 0:
         return float("Nan"), float("Nan")
 
-    # zero points. Looks like they are fixed.
-    ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
-    magzpref = ref_zps[fid]
-
-    # reference flux and its error
-    magdiff = magzpref - magnr
-    ref_flux = 10 ** (0.4 * magdiff)
-    ref_sigflux = (sigmagnr / 1.0857) * ref_flux
-
-    # difference flux and its error
-    if magzpsci == 0.0:
-        magzpsci = magzpref
-    magdiff = magzpsci - magpsf
-    difference_flux = 10 ** (0.4 * magdiff)
+    difference_flux = 10 ** (-0.4 * magpsf)
     difference_sigflux = (sigmapsf / 1.0857) * difference_flux
 
+    ref_flux = 10 ** (-0.4 * magnr)
+    ref_sigflux = (sigmagnr / 1.0857) * ref_flux
+
     # add or subract difference flux based on isdiffpos
-    if isdiffpos == "t":
+    if isdiffpos == 't':
         dc_flux = ref_flux + difference_flux
     else:
         dc_flux = ref_flux - difference_flux
@@ -107,31 +90,24 @@ def apparent_flux(
 
     return dc_flux, dc_sigflux
 
-
 def dc_mag(
-    fid: int,
     magpsf: float,
     sigmapsf: float,
     magnr: float,
     sigmagnr: float,
-    magzpsci: float,
     isdiffpos: int,
 ) -> Tuple[float, float]:
     """Compute apparent magnitude from difference magnitude supplied by ZTF
-    Parameters
-    Stolen from Lasair.
+    Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
+    https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
 
     Parameters
     ----------
-    fid
-        filter, 1 for green and 2 for red
     magpsf,sigmapsf
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr
         magnitude of nearest source in reference image PSF-catalog
         within 30 arcsec and 1-sigma error
-    magzpsci
-        Magnitude zero point for photometry estimates
     isdiffpos
         t or 1 => candidate is from positive (sci minus ref) subtraction
         f or 0 => candidate is from negative (ref minus sci) subtraction
@@ -143,24 +119,12 @@ def dc_mag(
     dc_sigmag: float
         Error on apparent magnitude
     """
-    # zero points. Looks like they are fixed.
-    ref_zps = {1: 26.325, 2: 26.275, 3: 25.660}
-    magzpref = ref_zps[fid]
-
-    # difference flux and its error
-    if magzpsci is None:
-        magzpsci = magzpref
-
     dc_flux, dc_sigflux = apparent_flux(
-        fid, magpsf, sigmapsf, magnr, sigmagnr, magzpsci, isdiffpos
+        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos
     )
 
     # apparent mag and its error from fluxes
-    if (dc_flux == dc_flux) and dc_flux > 0.0:
-        dc_mag = magzpsci - 2.5 * np.log10(dc_flux)
-        dc_sigmag = dc_sigflux / dc_flux * 1.0857
-    else:
-        dc_mag = magzpsci
-        dc_sigmag = sigmapsf
+    dc_mag = -2.5 * np.log10(dc_flux)
+    dc_sigmag = dc_sigflux / dc_flux * 1.0857
 
     return dc_mag, dc_sigmag

@@ -37,7 +37,7 @@ def requests_alerts():
 
     request_object = ",".join(list(pdf["i:objectId"]))
     request_object += ",ZTF21abeyuqh,ZTF21abeyutr,ZTF21abeyuua"
-    request_columns = "i:objectId,i:fid,i:candid,i:magpsf,i:sigmapsf,i:magnr,i:sigmagnr,i:magzpsci,i:isdiffpos"
+    request_columns = "i:objectId,i:candid,i:magpsf,i:sigmapsf,i:magnr,i:sigmagnr,i:isdiffpos"
 
     r = requests.post(
         "https://fink-portal.org/api/v1/objects",
@@ -57,12 +57,10 @@ def requests_alerts():
 def test_dc_mag(requests_alerts):
     t_before = t.time()
     res_dc_mag, res_sig_mag = vect_dc_mag(
-        requests_alerts["i:fid"].values,
         requests_alerts["i:magpsf"].values,
         requests_alerts["i:sigmapsf"].values,
         requests_alerts["i:magnr"].values,
         requests_alerts["i:sigmagnr"].values,
-        requests_alerts["i:magzpsci"].values,
         requests_alerts["i:isdiffpos"].values,
     )
     t_vect = t.time() - t_before
@@ -70,12 +68,10 @@ def test_dc_mag(requests_alerts):
     t_before = t.time()
     _dc_mag = requests_alerts.apply(
         lambda x: dc_mag(
-            x["i:fid"],
             x["i:magpsf"],
             x["i:sigmapsf"],
             x["i:magnr"],
             x["i:sigmagnr"],
-            x["i:magzpsci"],
             x["i:isdiffpos"],
         ),
         axis=1,
