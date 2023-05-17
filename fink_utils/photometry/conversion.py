@@ -47,6 +47,7 @@ def apparent_flux(
     magnr: float,
     sigmagnr: float,
     isdiffpos: int,
+    jansky: bool = False
 ) -> Tuple[float, float]:
     """Compute apparent flux from difference magnitude supplied by ZTF
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
@@ -62,6 +63,8 @@ def apparent_flux(
     isdiffpos: str
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
+    jansky: bool
+        If True, normalise units to Jansky. Default is False.
 
     Returns
     --------
@@ -87,6 +90,10 @@ def apparent_flux(
 
     # assumes errors are independent. Maybe too conservative.
     dc_sigflux = np.sqrt(difference_sigflux**2 + ref_sigflux**2)
+
+    if jansky:
+        dc_flux *= 3631
+        dc_sigflux *= 3631
 
     return dc_flux, dc_sigflux
 
