@@ -47,7 +47,7 @@ def apparent_flux(
     magnr: float,
     sigmagnr: float,
     isdiffpos: int,
-    jansky: bool = False
+    jansky: bool = True
 ) -> Tuple[float, float]:
     """Compute apparent flux from difference magnitude supplied by ZTF
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
@@ -64,7 +64,7 @@ def apparent_flux(
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
     jansky: bool
-        If True, normalise units to Jansky. Default is False.
+        If True, normalise units to Jansky. Default is True.
 
     Returns
     --------
@@ -127,7 +127,7 @@ def dc_mag(
         Error on apparent magnitude
     """
     dc_flux, dc_sigflux = apparent_flux(
-        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos
+        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, jansky=False
     )
 
     # apparent mag and its error from fluxes
