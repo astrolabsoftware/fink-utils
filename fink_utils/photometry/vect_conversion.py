@@ -52,6 +52,7 @@ def vect_apparent_flux(
     magnr: "np.array[np.float]",
     sigmagnr: "np.array[np.float]",
     isdiffpos: "np.array[str]",
+    jansky: bool = True
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent flux from difference magnitude supplied by ZTF
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
@@ -68,6 +69,8 @@ def vect_apparent_flux(
     isdiffpos: str
         t or 1 => candidate is from positive (sci minus ref) subtraction;
         f or 0 => candidate is from negative (ref minus sci) subtraction
+    jansky: bool
+        If True, normalise units to Jansky. Default is True.
 
     Returns
     -------
@@ -93,6 +96,10 @@ def vect_apparent_flux(
 
     # assumes errors are independent. Maybe too conservative.
     dc_sigflux = np.sqrt(difference_sigflux**2 + ref_sigflux**2)
+
+    if jansky:
+        dc_flux *= 3631
+        dc_sigflux *= 3631
 
     return dc_flux, dc_sigflux
 
@@ -128,7 +135,7 @@ def vect_dc_mag(
         Error on apparent magnitude
     """
     dc_flux, dc_sigflux = vect_apparent_flux(
-        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos
+        magpsf, sigmapsf, magnr, sigmagnr, isdiffpos, jansky=False
     )
 
     # apparent mag and its error from fluxes
