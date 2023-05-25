@@ -209,7 +209,7 @@ def compute_color_correction(filters: np.array) -> np.array:
 
     return color_sso
 
-def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
+def build_eqs(x, filters=[], ph=[], rhs=[], sigma=[], func=None):
     """ Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
     Parameters
@@ -258,6 +258,8 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
             ph[mask],
             *params_per_band[index],
         ) - rhs[mask]
+
+        myfunc /= sigma[mask]
 
         eqs = np.concatenate((eqs, myfunc))
 
@@ -595,7 +597,7 @@ def fit_legacy_models(
             bounds=(lower_bounds, upper_bounds),
             jac='2-point',
             loss='linear',
-            args=(filters, phase, magpsf_red, func)
+            args=(filters, phase, magpsf_red, sigmapsf, func)
         )
 
     except RuntimeError:
@@ -608,7 +610,7 @@ def fit_legacy_models(
     try:
         cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
         chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
-        cov *= chi2dof
+        #cov *= chi2dof
 
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
@@ -622,7 +624,6 @@ def fit_legacy_models(
     # For the chi2, we use the error estimate from the data directly
     chisq = np.sum((res_lsq.fun / sigmapsf)**2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
-
     outdic = {
         'chi2red': chisq_red,
         'rms': rms,
