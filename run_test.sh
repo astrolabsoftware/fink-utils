@@ -40,6 +40,15 @@ do
     $filename
 done
 
+for filename in fink_utils/photometry/*.py
+do
+    echo $filename
+    coverage run \
+    --source=${ROOTPATH} \
+    --rcfile .coveragerc \
+    $filename
+done
+
 coverage combine
 
 unset FINK_PACKAGES
