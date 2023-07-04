@@ -1,4 +1,4 @@
-# Copyright 2019-2022 AstroLab Software
+# Copyright 2019-2023 AstroLab Software
 # Author: Roman Le Montagner
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,7 +91,7 @@ def vect_apparent_flux(
 
     # add or subract difference flux based on isdiffpos
     dc_flux = np.where(
-        isdiffpos == "t", ref_flux + difference_flux, ref_flux - difference_flux
+        (isdiffpos == "t") | (isdiffpos == "1"), ref_flux + difference_flux, ref_flux - difference_flux
     )
 
     # assumes errors are independent. Maybe too conservative.
