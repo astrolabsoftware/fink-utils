@@ -623,8 +623,6 @@ def fit_legacy_models(
 
     outdic = {
         'chi2red': chisq_red,
-        'minphase': np.min(phase),
-        'maxphase': np.max(phase),
         'status': res_lsq.status,
         'fit': 0
     }
@@ -635,6 +633,21 @@ def fit_legacy_models(
     for filt in ufilters:
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
+
+    outdic['nobs'] = len(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['nobs_{}'.format(filt)] = len(phase[mask])
+
+    outdic['minphase'] = np.min(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['minphase_{}'.format(filt)] = np.min(phase[mask])
+
+    outdic['maxphase'] = np.max(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['maxphase_{}'.format(filt)] = np.max(phase[mask])
 
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
@@ -753,8 +766,6 @@ def fit_spin(
     geo = spin_angle(ra, dec, popt[params.tolist().index('alpha0')], popt[params.tolist().index('delta0')])
     outdic = {
         'chi2red': chisq_red,
-        'minphase': np.min(phase),
-        'maxphase': np.max(phase),
         'minCosLambda': np.min(np.abs(geo)),
         'meanCosLambda': np.mean(np.abs(geo)),
         'maxCosLambda': np.max(np.abs(geo)),
@@ -768,6 +779,21 @@ def fit_spin(
     for filt in ufilters:
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
+
+    outdic['nobs'] = len(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['nobs_{}'.format(filt)] = len(phase[mask])
+
+    outdic['minphase'] = np.min(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['minphase_{}'.format(filt)] = np.min(phase[mask])
+
+    outdic['maxphase'] = np.max(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['maxphase_{}'.format(filt)] = np.max(phase[mask])
 
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
