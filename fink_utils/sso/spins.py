@@ -422,7 +422,7 @@ def estimate_sso_params(
     ...    bounds=([0, 0], [30, 1]),
     ...    model='HG',
     ...    normalise_to_V=False)
-    >>> assert len(hg) == 16, "Found {} parameters: {}".format(len(hg), hg)
+    >>> assert len(hg) == 23, "Found {} parameters: {}".format(len(hg), hg)
 
     >>> hg12 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -433,7 +433,7 @@ def estimate_sso_params(
     ...    bounds=([0, 0], [30, 1]),
     ...    model='HG12',
     ...    normalise_to_V=False)
-    >>> assert len(hg12) == 16, "Found {} parameters: {}".format(len(hg12), hg12)
+    >>> assert len(hg12) == 23, "Found {} parameters: {}".format(len(hg12), hg12)
 
     >>> hg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -444,7 +444,7 @@ def estimate_sso_params(
     ...    bounds=([0, 0, 0], [30, 1, 1]),
     ...    model='HG1G2',
     ...    normalise_to_V=False)
-    >>> assert len(hg1g2) == 20, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
+    >>> assert len(hg1g2) == 27, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
 
     >>> shg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -455,7 +455,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
     ...    normalise_to_V=False)
-    >>> assert len(shg1g2) == 29, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert len(shg1g2) == 36, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
@@ -467,7 +467,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
     ...    normalise_to_V=True)
-    >>> assert len(shg1g2) == 22, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert len(shg1g2) == 26, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
     # If you enter a wrong model name, raise an error
     >>> wrong = estimate_sso_params(
@@ -623,8 +623,6 @@ def fit_legacy_models(
 
     outdic = {
         'chi2red': chisq_red,
-        'minphase': np.min(phase),
-        'maxphase': np.max(phase),
         'status': res_lsq.status,
         'fit': 0
     }
@@ -635,6 +633,21 @@ def fit_legacy_models(
     for filt in ufilters:
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
+
+    outdic['nobs'] = len(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['nobs_{}'.format(filt)] = len(phase[mask])
+
+    outdic['minphase'] = np.min(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['minphase_{}'.format(filt)] = np.min(phase[mask])
+
+    outdic['maxphase'] = np.max(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['maxphase_{}'.format(filt)] = np.max(phase[mask])
 
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
@@ -753,8 +766,6 @@ def fit_spin(
     geo = spin_angle(ra, dec, popt[params.tolist().index('alpha0')], popt[params.tolist().index('delta0')])
     outdic = {
         'chi2red': chisq_red,
-        'minphase': np.min(phase),
-        'maxphase': np.max(phase),
         'minCosLambda': np.min(np.abs(geo)),
         'meanCosLambda': np.mean(np.abs(geo)),
         'maxCosLambda': np.max(np.abs(geo)),
@@ -768,6 +779,21 @@ def fit_spin(
     for filt in ufilters:
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
+
+    outdic['nobs'] = len(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['nobs_{}'.format(filt)] = len(phase[mask])
+
+    outdic['minphase'] = np.min(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['minphase_{}'.format(filt)] = np.min(phase[mask])
+
+    outdic['maxphase'] = np.max(phase)
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['maxphase_{}'.format(filt)] = np.max(phase[mask])
 
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
