@@ -135,7 +135,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     # Spin part
     geo = spin_angle(ra, dec, alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
-    func2 = -2.5 * np.log10(func2)
+    func2 = 2.5 * np.log10(func2)
 
     return func1 + func2
 
@@ -634,24 +634,25 @@ def fit_legacy_models(
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
 
-    outdic['nobs'] = len(phase)
+    outdic['n_obs'] = len(phase)
     for filt in ufilters:
         mask = filters == filt
-        outdic['nobs_{}'.format(filt)] = len(phase[mask])
+        outdic['n_obs_{}'.format(filt)] = len(phase[mask])
 
-    outdic['minphase'] = np.min(phase)
+    # in degree
+    outdic['min_phase'] = np.degrees(np.min(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['minphase_{}'.format(filt)] = np.min(phase[mask])
+        outdic['min_phase_{}'.format(filt)] = np.degrees(np.min(phase[mask]))
 
-    outdic['maxphase'] = np.max(phase)
+    outdic['max_phase'] = np.degrees(np.max(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['maxphase_{}'.format(filt)] = np.max(phase[mask])
+        outdic['max_phase_{}'.format(filt)] = np.degrees(np.max(phase[mask]))
 
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
-        outdic['err' + params[i]] = perr[i]
+        outdic['err_' + params[i]] = perr[i]
 
     return outdic
 
@@ -766,9 +767,9 @@ def fit_spin(
     geo = spin_angle(ra, dec, popt[params.tolist().index('alpha0')], popt[params.tolist().index('delta0')])
     outdic = {
         'chi2red': chisq_red,
-        'minCosLambda': np.min(np.abs(geo)),
-        'meanCosLambda': np.mean(np.abs(geo)),
-        'maxCosLambda': np.max(np.abs(geo)),
+        'min_cos_lambda': np.min(np.abs(geo)),
+        'mean_cos_lambda': np.mean(np.abs(geo)),
+        'max_cos_lambda': np.max(np.abs(geo)),
         'status': res_lsq.status,
         'fit': 0
     }
@@ -780,24 +781,30 @@ def fit_spin(
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
 
-    outdic['nobs'] = len(phase)
+    outdic['n_obs'] = len(phase)
     for filt in ufilters:
         mask = filters == filt
-        outdic['nobs_{}'.format(filt)] = len(phase[mask])
+        outdic['n_obs_{}'.format(filt)] = len(phase[mask])
 
-    outdic['minphase'] = np.min(phase)
+    # in degrees
+    outdic['min_phase'] = np.degrees(np.min(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['minphase_{}'.format(filt)] = np.min(phase[mask])
+        outdic['min_phase_{}'.format(filt)] = np.degrees(np.min(phase[mask]))
 
-    outdic['maxphase'] = np.max(phase)
+    outdic['max_phase'] = np.max(phase)
     for filt in ufilters:
         mask = filters == filt
-        outdic['maxphase_{}'.format(filt)] = np.max(phase[mask])
+        outdic['max_phase_{}'.format(filt)] = np.degrees(np.max(phase[mask]))
 
-    for i in range(len(params)):
-        outdic[params[i]] = popt[i]
-        outdic['err' + params[i]] = perr[i]
+    for i, name in enumerate(params):
+        if name in ['alpha0', 'delta0']:
+            # convert in degrees
+            outdic[params[i]] = np.degrees(popt[i])
+            outdic['err_' + params[i]] = np.degrees(perr[i])
+        else:
+            outdic[params[i]] = popt[i]
+            outdic['err_' + params[i]] = perr[i]
 
     return outdic
 
