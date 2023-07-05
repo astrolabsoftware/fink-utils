@@ -135,7 +135,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     # Spin part
     geo = spin_angle(ra, dec, alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
-    func2 = -2.5 * np.log10(func2)
+    func2 = 2.5 * np.log10(func2)
 
     return func1 + func2
 
