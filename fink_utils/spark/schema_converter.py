@@ -179,4 +179,3 @@ def to_avro(spark_schema: StructType) -> str:
     """
     json_avro = _parse_struct(spark_schema.jsonValue())
     return json.dumps(json_avro, indent=2)
-
