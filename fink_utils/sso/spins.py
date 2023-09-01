@@ -781,6 +781,12 @@ def fit_spin(
         mask = filters == filt
         outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
 
+    median_error_phot = np.median(sigmapsf)
+    outdic['median_error_phot'] = median_error_phot
+    for filt in ufilters:
+        mask = filters == filt
+        outdic['median_error_phot_{}'.format(filt)] = np.median(sigmapsf[mask])
+
     outdic['n_obs'] = len(phase)
     for filt in ufilters:
         mask = filters == filt
