@@ -329,7 +329,7 @@ def construct_hbase_catalog_from_flatten_schema(
         #     sep = ""
 
         # Deal with array
-        if type(column["type"]) == dict:
+        if isinstance(column["type"], dict):
             # column["type"]["type"]
             column["type"] = "string"
 
