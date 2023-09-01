@@ -594,7 +594,7 @@ def fit_legacy_models(
             x0=initial_guess,
             bounds=(lower_bounds, upper_bounds),
             jac='2-point',
-            loss='linear',
+            loss='soft_l1',
             args=(filters, phase, magpsf_red, func)
         )
 
@@ -743,7 +743,7 @@ def fit_spin(
             x0=initial_guess,
             bounds=(lower_bounds, upper_bounds),
             jac='2-point',
-            loss='linear',
+            loss='soft_l1',
             args=(filters, phase, ra, dec, magpsf_red)
         )
 
