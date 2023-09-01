@@ -792,7 +792,7 @@ def fit_spin(
         mask = filters == filt
         outdic['min_phase_{}'.format(filt)] = np.degrees(np.min(phase[mask]))
 
-    outdic['max_phase'] = np.max(phase)
+    outdic['max_phase'] = np.degrees(np.max(phase))
     for filt in ufilters:
         mask = filters == filt
         outdic['max_phase_{}'.format(filt)] = np.degrees(np.max(phase[mask]))
