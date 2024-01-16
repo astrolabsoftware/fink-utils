@@ -248,7 +248,7 @@ def apply_quality_flags_on_history(rb, nbad):
 
     Examples
     -------
-    >>> df = spark.read.format("parquet").load("datatest")
+    >>> df = spark.read.format("parquet").load("fink_utils/test_data/online")
     >>> df = df.withColumn(
     ...     'history_flag',
     ...     apply_quality_flags_on_history(
@@ -286,7 +286,7 @@ def check_if_previous_is_uppervalid(prv_quality, magpsf):
 
     Examples
     -------
-    >>> df = spark.read.format("parquet").load("datatest")
+    >>> df = spark.read.format("parquet").load("fink_utils/test_data/online")
     >>> df = df.withColumn(
     ...     'history_flag',
     ...     apply_quality_flags_on_history(
@@ -300,10 +300,10 @@ def check_if_previous_is_uppervalid(prv_quality, magpsf):
     ...         F.col("prv_candidates.magpsf")))
 
     >>> print(df.count())
-    1
+    11
 
     >>> print(df.filter(F.col("need_update")).count())
-    1
+    0
     """
     magpsff = magpsf.apply(lambda x: x == x)
 
