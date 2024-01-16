@@ -1,4 +1,4 @@
-# Copyright 2020-2022 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pyspark.sql import functions as F
-from pyspark.sql.functions import col
+import numpy as np
+import pandas as pd
+
+import pyspark.sql.functions as F
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import ArrayType, BooleanType, StructType
 from pyspark.sql import DataFrame
-from pyspark.sql.types import StructType
 
 import importlib
 
@@ -201,7 +204,7 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
     argnames = filter_func.func.__code__.co_varnames[:ninput]
     colnames = []
     for argname in argnames:
-        colname = [col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
+        colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
         if len(colname) == 0:
             raise AssertionError(
                 """
@@ -222,3 +225,92 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
         .filter("toKeep == true")
         .drop("toKeep")
     )
+
+
+@pandas_udf(ArrayType(BooleanType()), PandasUDFType.SCALAR)
+def apply_quality_flags_on_history(rb, nbad):
+    """ Apply quality flags for the history vector
+
+    Parameters
+    ----------
+    rb: Series
+        Pandas Series of list of float containing
+        `rb` values from `prv_candidates`
+    nbad: Series
+        Pandas Series of list of int containing
+        `nbad` values from `prv_candidates`
+
+    Returns
+    ----------
+    out: Series
+        Pandas Series of list of boolean. True if good candidate
+        False otherwise.
+
+    Examples
+    -------
+    >>> df = spark.read.format("parquet").load("datatest")
+    >>> df = df.withColumn(
+    ...     'history_flag',
+    ...     apply_quality_flags_on_history(
+    ...         F.col("prv_candidates.rb"),
+    ...         F.col("prv_candidates.nbad")))
+    """
+    rbf = rb.apply(lambda x: [i >= 0.55 for i in x])
+    nbadf = nbad.apply(lambda x: [i == 0 for i in x])
+
+    f = [np.array(i) * np.array(j) for i, j in zip(rbf.to_list(), nbadf.to_list())]
+    return pd.Series(f)
+
+@pandas_udf(BooleanType(), PandasUDFType.SCALAR)
+def check_if_previous_is_uppervalid(prv_quality, magpsf):
+    """ Check if the most recent element in the history vector was discarded
+
+    An alert from the history could have been discarded
+    from the real-time analysis iif the quality was low
+    according to quality cuts (`rb`, `nbad`).
+
+    Parameters
+    ----------
+    prv_quality: Series
+        Pandas Series of list of boolean from `apply_quality_flags_on_history`
+    magpsf: Series
+        Pandas Series of list of int containing
+        `magpsf` values from `prv_candidates`
+
+    Returns
+    ----------
+    out: Series
+        Pandas Series of boolean. True if the previous element
+        is an `uppervalid` (that is with low quality, and was not
+        processed by Fink in real-time). False otherwise
+
+    Examples
+    -------
+    >>> df = spark.read.format("parquet").load("datatest")
+    >>> df = df.withColumn(
+    ...     'history_flag',
+    ...     apply_quality_flags_on_history(
+    ...         F.col("prv_candidates.rb"),
+    ...         F.col("prv_candidates.nbad")))
+
+    >>> df = df.withColumn(
+    ...     "need_update",
+    ...     check_if_previous_is_uppervalid(
+    ...         F.col("history_flag"),
+    ...         F.col("prv_candidates.magpsf")))
+
+    >>> print(df.count())
+    1
+
+    >>> print(df.filter(F.col("need_update")).count())
+    1
+    """
+    magpsff = magpsf.apply(lambda x: x == x)
+
+    f1 = [np.array(i) * ~np.array(j) for i, j in zip(magpsff.to_list(), prv_quality.to_list())]
+
+    # measurements are ordered from the most ancient to the newest
+    # we want to check if the last one only is an uppervalid
+    f2 = [i[-1] for i in f1]
+
+    return pd.Series(f2)
