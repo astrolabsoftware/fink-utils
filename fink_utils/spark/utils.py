@@ -264,17 +264,13 @@ def apply_quality_flags_on_history(rb, nbad):
     f = [np.array(i) * np.array(j) for i, j in zip(rbf.to_list(), nbadf.to_list())]
     return pd.Series(f)
 
-@pandas_udf(BooleanType(), PandasUDFType.SCALAR)
-def check_status_last_prv_candidates(prv_quality, magpsf, status='valid'):
+def check_status_last_prv_candidates(df, status='valid'):
     """ Check the `status` of the last alert in the history
 
     Parameters
     ----------
-    prv_quality: Series
-        Pandas Series of list of boolean from `apply_quality_flags_on_history`
-    magpsf: Series
-        Pandas Series of list of int containing
-        `magpsf` values from `prv_candidates`
+    df: Spark DataFrame
+        Alert DataFrame (full schema)
     status: str
         Status can be:
             - valid: alert was processed by Fink
@@ -283,10 +279,8 @@ def check_status_last_prv_candidates(prv_quality, magpsf, status='valid'):
 
     Returns
     ----------
-    out: Series
-        Pandas Series of boolean. True if the previous element
-        is an `uppervalid` (that is with low quality, and was not
-        processed by Fink in real-time). False otherwise
+    out: Spark DataFrame
+        Input DataFrame with an extra column (boolean) named `status`.
 
     Examples
     -------
@@ -294,54 +288,30 @@ def check_status_last_prv_candidates(prv_quality, magpsf, status='valid'):
     >>> print(df.count())
     11
 
-    >>> df = df.withColumn(
-    ...     'history_flag',
-    ...     apply_quality_flags_on_history(
-    ...         F.col("prv_candidates.rb"),
-    ...         F.col("prv_candidates.nbad")))
-
-    >>> df = df.withColumn(
-    ...     "valid",
-    ...     check_status_last_prv_candidates(
-    ...         F.col("history_flag"),
-    ...         F.col("prv_candidates.magpsf"),
-    ...         F.lit('valid')))
+    >>> df = check_status_last_prv_candidates(df, 'valid')
     >>> print(df.filter(F.col("valid")).count())
     11
 
-    >>> df = df.withColumn(
-    ...     "uppervalid",
-    ...     check_status_last_prv_candidates(
-    ...         F.col("history_flag"),
-    ...         F.col("prv_candidates.magpsf"),
-    ...         F.lit('uppervalid')))
+    >>> df = check_status_last_prv_candidates(df, 'uppervalid')
     >>> print(df.filter(F.col("uppervalid")).count())
     0
 
-    >>> df = df.withColumn(
-    ...     "upper",
-    ...     check_status_last_prv_candidates(
-    ...         F.col("history_flag"),
-    ...         F.col("prv_candidates.magpsf"),
-    ...         F.lit('upper')))
+    >>> df = check_status_last_prv_candidates(df, 'upper')
     >>> print(df.filter(F.col("upper")).count())
     0
     """
-    if status.values[0] == 'valid':
-        magpsff = magpsf.apply(lambda x: [i == i for i in x])
-        f1 = [np.array(i) * np.array(j) for i, j in zip(magpsff.to_list(), prv_quality.to_list())]
-    elif status.values[0] == 'uppervalid':
-        magpsff = magpsf.apply(lambda x: [i == i for i in x])
-        f1 = [np.array(i) * ~np.array(j) for i, j in zip(magpsff.to_list(), prv_quality.to_list())]
-    elif status.values[0] == 'upper':
-        # magpsf are NaN for upper values
-        f1 = magpsf.apply(lambda x: [i != i for i in x]).values
-    else:
-        _LOG.warning("Status `{}` not understood. Choose among: valid, uppervalid, upper.".format(status.values[0]))
-        return pd.Series(np.zeros(len(magpsf.values), dtype=bool))
-
     # measurements are ordered from the most ancient to the newest
-    # we want to check if the last one only is an uppervalid
-    flags = [i[-1] for i in f1]
+    # we want to check the last one
+    rb = F.element_at('prv_candidates.rb', -1)
+    nbad = F.element_at('prv_candidates.nbad', -1)
+    magpsf = F.element_at('prv_candidates.magpsf', -1)
+    if status == 'valid':
+        f1 = (rb >= 0.55) & (nbad == 0)
+        cond = f1 & magpsf.isNotNull()
+    elif status == 'uppervalid':
+        f1 = (rb >= 0.55) & (nbad == 0)
+        cond = ~f1 & magpsf.isNotNull()
+    elif status == 'upper':
+        cond = ~magpsf.isNotNull()
 
-    return pd.Series(flags)
+    return df.withColumn(status, cond)
