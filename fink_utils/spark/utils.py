@@ -21,6 +21,9 @@ from pyspark.sql.types import ArrayType, BooleanType, StructType
 from pyspark.sql import DataFrame
 
 import importlib
+import logging
+
+_LOG = logging.getLogger(__name__)
 
 
 def concat_col(
@@ -262,12 +265,8 @@ def apply_quality_flags_on_history(rb, nbad):
     return pd.Series(f)
 
 @pandas_udf(BooleanType(), PandasUDFType.SCALAR)
-def check_if_previous_is_uppervalid(prv_quality, magpsf):
-    """ Check if the most recent element in the history vector was discarded
-
-    An alert from the history could have been discarded
-    from the real-time analysis iif the quality was low
-    according to quality cuts (`rb`, `nbad`).
+def check_status_last_prv_candidates(prv_quality, magpsf, status='valid'):
+    """ Check the `status` of the last alert in the history
 
     Parameters
     ----------
@@ -276,6 +275,11 @@ def check_if_previous_is_uppervalid(prv_quality, magpsf):
     magpsf: Series
         Pandas Series of list of int containing
         `magpsf` values from `prv_candidates`
+    status: str
+        Status can be:
+            - valid: alert was processed by Fink
+            - uppervalid: alert was not processed by Fink of quality cuts*
+            - upper: upper limit from ZTF
 
     Returns
     ----------
@@ -287,6 +291,9 @@ def check_if_previous_is_uppervalid(prv_quality, magpsf):
     Examples
     -------
     >>> df = spark.read.format("parquet").load("fink_utils/test_data/online")
+    >>> print(df.count())
+    11
+
     >>> df = df.withColumn(
     ...     'history_flag',
     ...     apply_quality_flags_on_history(
@@ -294,23 +301,47 @@ def check_if_previous_is_uppervalid(prv_quality, magpsf):
     ...         F.col("prv_candidates.nbad")))
 
     >>> df = df.withColumn(
-    ...     "need_update",
-    ...     check_if_previous_is_uppervalid(
+    ...     "valid",
+    ...     check_status_last_prv_candidates(
     ...         F.col("history_flag"),
-    ...         F.col("prv_candidates.magpsf")))
-
-    >>> print(df.count())
+    ...         F.col("prv_candidates.magpsf"),
+    ...         F.lit('valid')))
+    >>> print(df.filter(F.col("valid")).count())
     11
 
-    >>> print(df.filter(F.col("need_update")).count())
+    >>> df = df.withColumn(
+    ...     "uppervalid",
+    ...     check_status_last_prv_candidates(
+    ...         F.col("history_flag"),
+    ...         F.col("prv_candidates.magpsf"),
+    ...         F.lit('uppervalid')))
+    >>> print(df.filter(F.col("uppervalid")).count())
+    0
+
+    >>> df = df.withColumn(
+    ...     "upper",
+    ...     check_status_last_prv_candidates(
+    ...         F.col("history_flag"),
+    ...         F.col("prv_candidates.magpsf"),
+    ...         F.lit('upper')))
+    >>> print(df.filter(F.col("upper")).count())
     0
     """
-    magpsff = magpsf.apply(lambda x: x == x)
-
-    f1 = [np.array(i) * ~np.array(j) for i, j in zip(magpsff.to_list(), prv_quality.to_list())]
+    if status.values[0] == 'valid':
+        magpsff = magpsf.apply(lambda x: [i == i for i in x])
+        f1 = [np.array(i) * np.array(j) for i, j in zip(magpsff.to_list(), prv_quality.to_list())]
+    elif status.values[0] == 'uppervalid':
+        magpsff = magpsf.apply(lambda x: [i == i for i in x])
+        f1 = [np.array(i) * ~np.array(j) for i, j in zip(magpsff.to_list(), prv_quality.to_list())]
+    elif status.values[0] == 'upper':
+        # magpsf are NaN for upper values
+        f1 = magpsf.apply(lambda x: [i != i for i in x]).values
+    else:
+        _LOG.warning("Status `{}` not understood. Choose among: valid, uppervalid, upper.".format(status.values[0]))
+        return pd.Series(np.zeros(len(magpsf.values), dtype=bool))
 
     # measurements are ordered from the most ancient to the newest
     # we want to check if the last one only is an uppervalid
-    f2 = [i[-1] for i in f1]
+    flags = [i[-1] for i in f1]
 
-    return pd.Series(f2)
+    return pd.Series(flags)
