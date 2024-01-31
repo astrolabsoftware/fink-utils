@@ -49,6 +49,15 @@ do
     $filename
 done
 
+for filename in fink_utils/logging/*.py
+do
+    echo $filename
+    coverage run \
+    --source=${ROOTPATH} \
+    --rcfile .coveragerc \
+    $filename
+done
+
 echo fink_utils/slack_bot/bot_test.py
 coverage run --source=${ROOTPATH} --rcfile .coveragerc fink_utils/slack_bot/bot_test.py
 
