@@ -49,6 +49,9 @@ do
     $filename
 done
 
+echo fink_utils/slack_bot/bot_test.py
+coverage run --source=${ROOTPATH} --rcfile .coveragerc fink_utils/slack_bot/bot_test.py
+
 coverage combine
 
 unset FINK_PACKAGES
