@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+env:
+  FINK_SLACK_TOKEN: ${{ secrets.FINK_SLACK_TOKEN }}
+
 jobs:
   build:
 

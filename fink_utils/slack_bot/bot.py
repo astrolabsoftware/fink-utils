@@ -17,13 +17,12 @@ def init_slackbot(logger=None) -> WebClient:
         the web client used by the bot
     """
     try:
-        token_slack = os.environ["ANOMALY_SLACK_TOKEN"]
-    except KeyError:
+        token_slack = os.environ["FINK_SLACK_TOKEN"]
+    except KeyError as e:
         if logger is None:
             logger = init_logging()
-        logger.error(
-            "ANOMALY_SLACK_TOKEN environement variable not found !!", exc_info=1
-        )
+        logger.error("FINK_SLACK_TOKEN environement variable not found !!", exc_info=1)
+        raise e
     client = WebClient(token=token_slack)
     return client
 
@@ -92,6 +91,10 @@ def post_msg_on_slack(
         logger used to print logs, by default None
     verbose : bool, optional
         if true, print logs between the message, by default False
+
+    Examples
+    --------
+    see bot_test.py
     """
     if verbose and logger is None:
         logger = init_logging()
