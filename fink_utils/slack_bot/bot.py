@@ -7,6 +7,7 @@ from slack_sdk.errors import SlackApiError
 
 from fink_utils.logging.logs import init_logging
 
+
 def init_slackbot(logger=None) -> WebClient:
     """
     Initialize a slack bot
@@ -93,7 +94,7 @@ def post_msg_on_slack(
         if true, print logs between the message, by default False
 
     * Notes:
-    
+
     Before sending message on slack, check that the Fink bot have been added to the targeted channel.
 
     Examples
