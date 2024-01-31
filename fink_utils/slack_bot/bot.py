@@ -4,11 +4,12 @@ import io
 
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from typing import List
 
-from fink_utils.logging.logs import init_logging
+from fink_utils.logging.logs import init_logging, LoggerNewLine
 
 
-def init_slackbot(logger=None) -> WebClient:
+def init_slackbot(logger: LoggerNewLine = None) -> WebClient:
     """
     Initialize a slack bot
 
@@ -30,10 +31,10 @@ def init_slackbot(logger=None) -> WebClient:
 
 def post_files_on_slack(
     slack_client: WebClient,
-    file_list: list[io.BytesIO],
-    title_list: list[str],
+    file_list: List[io.BytesIO],
+    title_list: List[str],
     sleep_delay: int = 1,
-) -> list[str]:
+) -> List[str]:
     """
     Post the files in bytes format on slack with the associated title.
 
@@ -70,9 +71,9 @@ def post_files_on_slack(
 def post_msg_on_slack(
     webclient: WebClient,
     channel: str,
-    msg: list[str],
+    msg: List[str],
     sleep_delay: int = 1,
-    logger=None,
+    logger: LoggerNewLine = None,
     verbose: bool = False,
 ):
     """
