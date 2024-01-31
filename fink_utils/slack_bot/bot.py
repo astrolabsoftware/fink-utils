@@ -92,6 +92,10 @@ def post_msg_on_slack(
     verbose : bool, optional
         if true, print logs between the message, by default False
 
+    * Notes:
+    
+    Before sending message on slack, check that the Fink bot have been added to the targeted channel.
+
     Examples
     --------
     see bot_test.py
