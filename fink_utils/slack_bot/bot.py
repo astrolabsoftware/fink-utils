@@ -5,8 +5,7 @@ import io
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-from fink_fat.others.utils import init_logging
-
+from fink_utils.logging.logs import init_logging
 
 def init_slackbot(logger=None) -> WebClient:
     """
