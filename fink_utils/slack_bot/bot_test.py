@@ -44,7 +44,6 @@ def unzip_img(stamp: bytes, title_name: str) -> io.BytesIO:
 
 def get_imgs():
     def request(kind):
-        # get data for ZTF21aaxtctv
         r = requests.post(
             "https://fink-portal.org/api/v1/cutouts",
             json={
