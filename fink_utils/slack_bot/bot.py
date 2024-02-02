@@ -68,7 +68,7 @@ def post_files_on_slack(
     )
     time.sleep(sleep_delay)
     return [
-        f"https://files.slack.com/files-tmb/{el['user_team']}-{el['id']}/uploaded_file_720.png"
+        f"https://files.slack.com/files-tmb/{el['user_team']}-{el['id']}/"
         for el in results["files"]
     ]
 
