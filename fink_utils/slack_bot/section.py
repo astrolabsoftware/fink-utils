@@ -1,14 +1,15 @@
 from enum import Enum
+from typing_extensions import Self
 
 
-class Type_text(Enum):
+class TypeText(Enum):
     PLAIN_TXT = "plain_text"
     MARKDOWN = "mrkdwn"
 
 
 class Section:
     def __init__(
-        self, type_text: Type_text, section_text: str, allow_emoji: bool = False
+        self, type_text: TypeText, section_text: str, allow_emoji: bool = False
     ) -> None:
         """
         Instanciate a section.
@@ -16,7 +17,7 @@ class Section:
 
         Parameters
         ----------
-        type_text : Type_text
+        type_text : TypeText
             type of the text, either markdown or plain_text
         section_text : str
             text of this section
@@ -27,13 +28,13 @@ class Section:
         self.section = {"type": "section"}
         self.add_text(type_text, section_text, allow_emoji)
 
-    def add_text(self, type_txt: Type_text, txt: str, allow_emoji: bool = False):
+    def add_text(self, type_txt: TypeText, txt: str, allow_emoji: bool = False):
         """
         Override the text set by the constructor
 
         Parameters
         ----------
-        type_txt : Type_text
+        type_txt : TypeText
             Type of the text
         txt : str
             text to put in the section
@@ -41,10 +42,12 @@ class Section:
             if True allow the emoji in the text, by default False
         """
         self.section["text"] = {"type": type_txt.value, "text": txt}
-        if type_txt == Type_text.PLAIN_TXT:
+        if type_txt == TypeText.PLAIN_TXT:
             self.section["text"]["emoji"] = allow_emoji
 
-    def add_textfield(self, type_txt: Type_text, txt: str, allow_emoji: bool = False):
+    def add_textfield(
+        self, type_txt: TypeText, txt: str, allow_emoji: bool = False
+    ) -> Self:
         """
         Add a text field in the section.
         The first call create the field.
@@ -52,21 +55,27 @@ class Section:
 
         Parameters
         ----------
-        type_txt : Type_text
+        type_txt : TypeText
             type of the text in the field
         txt : str
             text of the field
         allow_emoji : bool, optional
             if True allow the emoji in the text, by default False
+
+        Returns
+        -------
+        Self
+            return instance of the current object to chain add operation
         """
         field_txt = {"type": type_txt.value, "text": txt}
-        if type_txt == Type_text.PLAIN_TXT:
+        if type_txt == TypeText.PLAIN_TXT:
             field_txt = {"emoji": allow_emoji}
 
         if "fields" in self.section:
             self.section["fields"].append(field_txt)
         else:
             self.section["fields"] = [field_txt]
+        return self
 
     def add_slack_image(self, image_slack_url: str, image_txt: str):
         """
@@ -107,7 +116,7 @@ class Section:
 
     def add_urlbutton(
         self,
-        type_txt: Type_text,
+        type_txt: TypeText,
         button_value: str,
         button_txt: str,
         url: str,
@@ -118,7 +127,7 @@ class Section:
 
         Parameters
         ----------
-        type_txt : Type_text
+        type_txt : TypeText
             type of the text
         button_value : str
             value of the button

@@ -1,4 +1,4 @@
-from fink_utils.slack_bot.section import Type_text
+from fink_utils.slack_bot.section import TypeText
 
 
 class Image:
@@ -15,13 +15,13 @@ class Image:
         """
         self.image = {"type": "image", "image_url": image_url, "alt_text": alt_text}
 
-    def add_title(self, type_text: Type_text, title: str, allow_emoji: bool = False):
+    def add_title(self, type_text: TypeText, title: str, allow_emoji: bool = False):
         """
         Add a title to the image
 
         Parameters
         ----------
-        type_text : Type_text
+        type_text : TypeText
             type of the title
         title : str
             text of the title
