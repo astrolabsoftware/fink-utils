@@ -5,7 +5,7 @@ from fink_utils.slack_bot.rich_text.rich_text_element import RichTextElement
 
 
 class RichQuote(RichElement):
-    def __init__(self, border:int=None) -> None:
+    def __init__(self, border: int = None) -> None:
         """
         A class representing a quote
 

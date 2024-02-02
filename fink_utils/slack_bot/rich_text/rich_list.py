@@ -14,9 +14,9 @@ class RichList(RichElement):
     def __init__(
         self,
         style: RichListStyle = RichListStyle.BULLET,
-        indent:int=None,
-        offset:int=None,
-        border:int=None,
+        indent: int = None,
+        offset: int = None,
+        border: int = None,
     ) -> None:
         """
         A class representing a list
