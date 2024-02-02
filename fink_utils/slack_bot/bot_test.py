@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     slack_bot.post_msg_on_slack(
         slack_client,
-        "#test_bot",
+        "#bot_fink_utils_test",
         [msg],
         logger=logger,
         verbose=True,
@@ -172,7 +172,7 @@ if __name__ == "__main__":
 
     slack_bot.post_msg_on_slack(
         slack_client,
-        "#bot_fink_grb_bronze_test",
+        "#bot_fink_utils_test",
         [msg],
         logger=logger,
         verbose=True,
