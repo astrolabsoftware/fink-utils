@@ -19,7 +19,7 @@ class Message:
             elements to add in the message.
             Can be a single elements or a list of elements
         """
-        if type(elements) == list:
+        if type(elements) is list:
             self.blocks["blocks"] += [el.get_element() for el in elements]
         else:
             self.blocks["blocks"].append(elements.get_element())
