@@ -7,6 +7,9 @@ from slack_sdk.errors import SlackApiError
 from typing import List
 
 from fink_utils.logging.logs import init_logging, LoggerNewLine
+from fink_utils.slack_bot.msg_builder import Message
+
+import json
 
 
 def init_slackbot(logger: LoggerNewLine = None) -> WebClient:
@@ -64,14 +67,16 @@ def post_files_on_slack(
         ]
     )
     time.sleep(sleep_delay)
-
-    return [f"<{el['permalink']}|{' '}>" for el in results["files"]]
+    return [
+        f"https://files.slack.com/files-tmb/{el['user_team']}-{el['id']}/"
+        for el in results["files"]
+    ]
 
 
 def post_msg_on_slack(
     webclient: WebClient,
     channel: str,
-    msg: List[str],
+    msg: List[Message],
     sleep_delay: int = 1,
     logger: LoggerNewLine = None,
     verbose: bool = False,
@@ -106,12 +111,9 @@ def post_msg_on_slack(
         logger = init_logging()
     try:
         for tmp_msg in msg:
+            json_p = json.dumps(tmp_msg.blocks["blocks"])
             webclient.chat_postMessage(
-                channel=channel,
-                text=tmp_msg,
-                blocks=[
-                    {"type": "section", "text": {"type": "mrkdwn", "text": tmp_msg}}
-                ],
+                channel=channel, text="error with msg blocks", blocks=json_p
             )
             if verbose:
                 logger.debug("Post msg on slack successfull")

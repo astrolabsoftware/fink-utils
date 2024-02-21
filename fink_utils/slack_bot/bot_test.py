@@ -10,6 +10,16 @@ import fink_utils.slack_bot.bot as slack_bot
 
 from fink_science.image_classification.utils import img_normalizer
 from fink_utils.logging.logs import init_logging
+from fink_utils.slack_bot.msg_builder import Message, Divider, Header
+from fink_utils.slack_bot.section import Section, TypeText
+import fink_utils.slack_bot.image as img
+
+from fink_utils.slack_bot.rich_text.rich_text import RichText
+from fink_utils.slack_bot.rich_text.rich_section import SectionElement
+from fink_utils.slack_bot.rich_text.rich_preformatted import RichPreformatted
+from fink_utils.slack_bot.rich_text.rich_quote import RichQuote
+from fink_utils.slack_bot.rich_text.rich_list import RichList
+import fink_utils.slack_bot.rich_text.rich_text_element as rel
 
 
 def unzip_img(stamp: bytes, title_name: str) -> io.BytesIO:
@@ -66,7 +76,6 @@ def get_imgs():
 
 
 if __name__ == "__main__":
-    alert_id = 10
     raw_science, raw_template, raw_difference = get_imgs()
 
     prep_science = unzip_img(raw_science, "Science")
@@ -80,22 +89,91 @@ if __name__ == "__main__":
         slack_client,
         [prep_science, prep_template, prep_difference],
         ["scienceImage", "templateImage", "differenceImage"],
-        sleep_delay=3,
+        sleep_delay=1,
+    )
+
+    msg = Message()
+    msg.add_header("Fink Slack Test")
+    msg.add_divider()
+
+    first_section = Section(
+        TypeText.MARKDOWN, "this is a test message from the fink-utils CI"
+    )
+
+    first_section.add_textfield(TypeText.MARKDOWN, "first field :stars:", True)
+    first_section.add_textfield(TypeText.MARKDOWN, "second field :ringed_planet:", True)
+
+    science_section = Section(TypeText.MARKDOWN, "Science")
+    science_section.add_slack_image(results_post[0], "Science")
+
+    template_section = Section(TypeText.MARKDOWN, "Template")
+    template_section.add_slack_image(results_post[1], "Template")
+
+    difference_section = Section(TypeText.MARKDOWN, "Difference")
+    difference_section.add_slack_image(results_post[2], "Difference")
+
+    msg.add_elements(first_section)
+    msg.add_elements(science_section)
+    msg.add_elements(template_section)
+    msg.add_elements(difference_section)
+
+    fink_section = Section(TypeText.MARKDOWN, "fink-science-portal")
+    fink_section.add_urlbutton(
+        TypeText.PLAIN_TXT,
+        "fink-science-portal",
+        "View on Fink :fink:",
+        "https://fink-portal.org/ZTF23abjzkmx",
+        True,
+    )
+    msg.add_elements(fink_section)
+
+    img_sci = img.Image(results_post[0], "scienceImage")
+    img_temp = img.Image(results_post[1], "scienceTemplate")
+    img_diff = img.Image(results_post[2], "scienceDifference")
+    header_img = Header("Image Test")
+    msg.add_elements([header_img, img_sci, Divider(), img_temp, Divider(), img_diff])
+
+    slack_bot.post_msg_on_slack(
+        slack_client,
+        "#bot_fink_utils_test",
+        [msg],
+        logger=logger,
+        verbose=True,
+    )
+
+    msg = (
+        Message()
+        .add_header("Type_text Test")
+        .add_divider()
+        .add_elements(
+            RichText()
+            .add_elements(
+                SectionElement()
+                .add_elements(rel.Text("- text element\n"))
+                .add_elements(rel.Text("- next text\n"))
+            )
+            .add_elements(
+                SectionElement().add_elements(rel.Link("https://fink-broker.org/"))
+            )
+            .add_elements(
+                RichList()
+                .add_elements(SectionElement().add_elements(rel.Text("first element")))
+                .add_elements(SectionElement().add_elements(rel.Text("second element")))
+                .add_elements(SectionElement().add_elements(rel.Text("third element")))
+            )
+            .add_elements(
+                RichPreformatted()
+                .add_elements(rel.Text("A preformatted block\n"))
+                .add_elements(rel.Link("https://fink-broker.org/"))
+            )
+            .add_elements(RichQuote().add_elements(rel.Text("and finally a quote")))
+        )
     )
 
     slack_bot.post_msg_on_slack(
         slack_client,
         "#bot_fink_utils_test",
-        [
-            f"""
-        Test slack_bot fink_utils
-        {results_post[0]}
-
-        {results_post[1]}
-
-        {results_post[2]}
-        """
-        ],
+        [msg],
         logger=logger,
         verbose=True,
     )
