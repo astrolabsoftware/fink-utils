@@ -315,7 +315,7 @@ def get_curve(
                 continue
 
             # y data
-            maskNotNone = np.array([i is not None for i in magpsf[mask].values])
+            maskNotNone = np.array([i is not None for i in magpsf[mask]])
             plt.errorbar(
                 dates[mask][maskNotNone],
                 magpsf[mask][maskNotNone],
