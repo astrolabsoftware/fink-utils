@@ -304,7 +304,7 @@ def get_curve(
         dates = np.array([i - 2400000.5 for i in jd])
 
         # loop over filters
-        fig = plt.figure(num=1, figsize=(12, 4))
+        plt.figure(num=1, figsize=(12, 4))
 
         # Loop over each filter
         for filt in COLORS_ZTF.keys():
@@ -315,7 +315,7 @@ def get_curve(
                 continue
 
             # y data
-            maskNotNone = magpsf[mask] != None
+            maskNotNone = np.array([i is not None for i in magpsf[mask].values])
             plt.errorbar(
                 dates[mask][maskNotNone],
                 magpsf[mask][maskNotNone],
