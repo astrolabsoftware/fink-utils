@@ -300,8 +300,8 @@ def get_curve(
             jd = extract_field(alert, "jd")
             objectId = alert["objectId"]
 
-        # Rescale dates to MJD
-        dates = np.array([i - 2400000.5 for i in jd])
+        # Rescale dates
+        dates = np.array([i - jd[0] for i in jd])
 
         # loop over filters
         plt.figure(num=1, figsize=(12, 4))
@@ -339,7 +339,7 @@ def get_curve(
             plt.title(objectId)
         plt.legend()
         plt.gca().invert_yaxis()
-        plt.xlabel("Days to candidate")
+        plt.xlabel("Days to candidates")
         plt.ylabel("Difference magnitude")
 
         buf = io.BytesIO()
