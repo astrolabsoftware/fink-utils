@@ -301,7 +301,7 @@ def get_curve(
             objectId = alert["objectId"]
 
         # Rescale dates
-        dates = np.array([i - jd[0] for i in jd])
+        dates = np.array([i - jd[-1] for i in jd])
 
         # loop over filters
         plt.figure(num=1, figsize=(12, 4))
