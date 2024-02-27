@@ -110,38 +110,57 @@ def format_data_as_snana(
     return pdf
 
 
-def extract_field(current: list, history: list) -> np.array:
-    """Concatenate current and historical data.
-
-    If t1 is the first time the object has been seen, and the object has N
-    historical measurements, the routine returns values ordered as:
-    [t1, t2, ...., tN, current] (past to current).
+def extract_history(history_list: list, field: str) -> list:
+    """Extract the historical measurements contained in the alerts
+    for the parameter `field`.
 
     Parameters
     ----------
-    current: list [nalert, 1]
-        List of field values. each entry corresponds to the measurement for
-        one alert.
-    history: list of list [nalerts, Ndays]
-        List of historical field values. Each entry is a list of historical
-        measurements for one alert.
+    history_list: list of dict
+        List of dictionary from alert[history].
+    field: str
+        The field name for which you want to extract the data. It must be
+        a key of elements of history_list
 
     Returns
     ----------
-    conc: 2D np.array [nalert, Ndays + 1]
-        Array of array. Each entry is an array of historical+current
-        measurements for one alert.
-
-    Examples
-    ----------
-    >>> current = [1, 1]
-    >>> historical = [[4, 3, 2], [4, 3, 2]]
-    >>> c = extract_field(current, historical)
-    >>> print(c) # doctest: +NORMALIZE_WHITESPACE
-    [[4 3 2 1] [4 3 2 1]]
+    measurement: list
+        List of all the `field` measurements contained in the alerts.
     """
-    conc = [np.concatenate((j, [i])) for i, j in zip(current, history)]
-    return np.array(conc)
+    if history_list is None:
+        return []
+    try:
+        measurement = [obs[field] for obs in history_list]
+    except KeyError:
+        print('{} not in history data'.format(field))
+        measurement = []
+
+    return measurement
+
+def extract_field(alert: dict, field: str) -> np.array:
+    """ Concatenate current and historical observation data for a given field.
+
+    Parameters
+    ----------
+    alert: dict
+        Dictionnary containing alert data
+    field: str
+        Name of the field to extract.
+
+    Returns
+    ----------
+    data: np.array
+        List containing previous measurements and current measurement at the
+        end. If `field` is not in the category, data will be
+        [alert['diaSource'][field]].
+    """
+    data = np.concatenate(
+        [
+            [alert["candidate"][field]],
+            extract_history(alert["prv_candidates"], field)
+        ]
+    )
+    return data
 
 
 def load_scikit_model(fn: str = ""):
