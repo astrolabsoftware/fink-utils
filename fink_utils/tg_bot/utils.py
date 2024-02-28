@@ -176,6 +176,7 @@ def get_cutout(cutout=None, ztf_id=None, origin="alert"):
         data = io.BytesIO()
         plt.savefig(data, format="png")
         data.seek(0)
+        plt.close()
     else:
         data = io.BytesIO()
 
