@@ -314,8 +314,8 @@ def get_curve(
             if len(mask) == 0:
                 continue
 
-            # y data
-            maskNotNone = np.array([i is not None for i in magpsf[mask]])
+            # y data -- assume NaN (Spark style) and None (Pandas style) for missing values
+            maskNotNone = np.array([~np.isnan(i) and (i is not None) for i in magpsf[mask]])
             plt.errorbar(
                 dates[mask][maskNotNone],
                 magpsf[mask][maskNotNone],
