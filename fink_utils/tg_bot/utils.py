@@ -65,7 +65,8 @@ def status_check(res, header, sleep=8, timeout=25):
 
 
 def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
-    """
+    """Send `tg_data` to a telegram channel
+
     Notes
     ----------
     The function sends notifications to the "channel_id" channel of Telegram.
@@ -124,7 +125,75 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
         time.sleep(10)
 
 
-def get_cutout(cutout=None, ztf_id=None, origin="alert"):
+def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seconds=10):
+    """Multi-cutout version of `msg_handler_tg`
+
+    Notes
+    ----------
+    The function sends notifications to the "channel_id" channel of Telegram.
+
+    Parameters
+    ----------
+    tg_data: list
+        List of tuples. Each item is a separate notification.
+        Content of the tuple:
+            text_data : str
+                Notification text
+            curve : BytesIO stream
+                light curve picture
+            cutouts : list of BytesIO stream
+                List of cutout images in png format (1, 2, or 3 cutouts)
+    channel_id: string
+        Channel id in Telegram
+    init_msg: str
+        Initial message
+    timeout: int
+        Timeout when sending message. Default is 25 seconds.
+    sleep_seconds: int
+        How many seconds to sleep between two messages to avoid
+        code 429 from the Telegram API. Default is 10 seconds.
+
+    Returns
+    -------
+        None
+    """
+    url = "https://api.telegram.org/bot"
+    url += os.environ["FINK_TG_TOKEN"]
+    method = url + "/sendMediaGroup"
+
+    if init_msg != "":
+        res = requests.post(
+            url + "/sendMessage",
+            data={"chat_id": channel_id, "text": init_msg, "parse_mode": "markdown"},
+            timeout=timeout,
+        )
+        status_check(res, header=channel_id)
+    for text_data, curve, cutouts in tg_data:
+        files = {"first": curve}
+        media = [
+            {
+                "type": "photo",
+                "media": "attach://first",
+                "caption": text_data,
+                "parse_mode": "markdown",
+            }
+        ]
+        if isinstance(cutouts, list):
+            names = ["second", "thrid", "fourth"]
+            for cutout, name in zip(cutouts, names):
+                files.update({name: cutout})
+                media.append({"type": "photo", "media": "attach://{}".format(name)})
+        res = requests.post(
+            method,
+            params={"chat_id": channel_id, "media": str(media).replace("'", '"')},
+            files=files,
+            timeout=timeout,
+        )
+        status_check(res, header=channel_id)
+        time.sleep(sleep_seconds)
+
+
+def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
     """Loads cutout image from alert packet or via Fink API
 
     Parameters
@@ -149,7 +218,7 @@ def get_cutout(cutout=None, ztf_id=None, origin="alert"):
             "https://fink-portal.org/api/v1/cutouts",
             json={
                 "objectId": ztf_id,
-                "kind": "Difference",
+                "kind": kind,
             },
             timeout=25,
         )
@@ -238,7 +307,7 @@ def get_curve(
                 "withupperlim": "True",
             },
         )
-        if not status_check(r):
+        if not status_check(r, header=objectId):
             return None
 
         # Format output in a DataFrame
