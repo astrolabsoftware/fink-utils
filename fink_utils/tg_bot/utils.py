@@ -330,15 +330,17 @@ def get_curve(
                 label=filter_dict[filt],
             )
 
-            maskUpper = pdf["d:tag"] == "upperlim"
-            plt.plot(
-                pdf[maskUpper & maskFilt]["i:jd"].apply(lambda x: x - 2400000.5),
-                pdf[maskUpper & maskFilt]["i:diffmaglim"],
-                ls="",
-                marker="^",
-                color=COLORS_ZTF[filt],
-                markerfacecolor="none",
-            )
+            # see fink-utils#78 & fink-broker#872
+            if "i:diffmaglim" in pdf.columns:
+                maskUpper = pdf["d:tag"] == "upperlim"
+                plt.plot(
+                    pdf[maskUpper & maskFilt]["i:jd"].apply(lambda x: x - 2400000.5),
+                    pdf[maskUpper & maskFilt]["i:diffmaglim"],
+                    ls="",
+                    marker="^",
+                    color=COLORS_ZTF[filt],
+                    markerfacecolor="none",
+                )
 
             maskBadquality = pdf["d:tag"] == "badquality"
             plt.errorbar(
