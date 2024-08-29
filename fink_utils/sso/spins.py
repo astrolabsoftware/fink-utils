@@ -32,7 +32,7 @@ def func_hg(ph, h, g):
         G parameter (no unit)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G))
     """
@@ -58,7 +58,7 @@ def func_hg12(ph, h, g12):
         G parameter (no unit)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G12))
     """
@@ -90,7 +90,7 @@ def func_hg1g2(ph, h, g1, g2):
         G2 parameter (no unit)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G1G2))
     """
@@ -132,7 +132,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
         Dec of the spin (radian)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
@@ -152,7 +152,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
 
 
 def color_correction_to_V():
-    """color correction from band to V
+    """Color correction from band to V
 
     Available:
         - 1: ZTF-g
@@ -161,7 +161,7 @@ def color_correction_to_V():
         - 4: ATLAS-c
 
     Returns
-    ----------
+    -------
     out: dict
         Dictionary with color correction to V
     """
@@ -181,7 +181,7 @@ def compute_color_correction(filters: np.array) -> np.array:
         Array with the filter code for each measurement
 
     Returns
-    ----------
+    -------
     out: pd.DataFrame
         Array containing the color correction for each measurement
 
@@ -235,12 +235,12 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
         Model function to use (e.g. `func_hg1g2`)
 
     Returns
-    ----------
+    -------
     out: np.array
         Array of size N containing (model - y)
 
     Notes
-    ----------
+    -----
     the input `x` contains filter dependent variables,
     that is (Hs and Gs). For example with two bands g & r with the HG1G2 model:
 
@@ -267,8 +267,7 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
             func(
                 ph[mask],
                 *params_per_band[index],
-            )
-            - rhs[mask]
+            ) - rhs[mask]
         )
 
         eqs = np.concatenate((eqs, myfunc))
@@ -295,12 +294,12 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
         Array of size N containing the actual measurements (magnitude)
 
     Returns
-    ----------
+    -------
     out: np.array
         Array of size N containing (model - y)
 
     Notes
-    ----------
+    -----
     the input `x` should start with filter independent variables,
     that is (R, alpha, delta), followed by filter dependent variables,
     that is (H, G1, G2). For example with two bands g & r:
@@ -335,8 +334,7 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
                 R,
                 alpha,
                 delta,
-            )
-            - rhs[mask]
+            ) - rhs[mask]
         )
 
         eqs = np.concatenate((eqs, myfunc))
@@ -417,13 +415,13 @@ def estimate_sso_params(
         bounds for all H's and G's.
 
     Returns
-    ----------
+    -------
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
 
     Examples
-    ----------
+    --------
     >>> import io
     >>> import requests
     >>> import pandas as pd
@@ -565,7 +563,7 @@ def fit_legacy_models(
         Defaults are given for `func_hg1g2_with_spin`: (H, G1, G2, R, alpha0, delta0).
 
     Returns
-    ----------
+    -------
     popt: list
         Estimated parameters for `func`
     perr: list
@@ -741,7 +739,7 @@ def fit_spin(
         there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
 
     Returns
-    ----------
+    -------
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
