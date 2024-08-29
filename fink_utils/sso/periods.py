@@ -196,7 +196,7 @@ def extract_period_from_number(
     --------
     >>> ssnamenr = 2363
     >>> P, chi2 = extract_period_from_number(ssnamenr, flavor="SHG1G2", Nterms_base=2)
-    >>> assert int(P) = 20, P
+    >>> assert int(P) == 20, P
 
     >>> P_HG, chi2_HG = extract_period_from_number(ssnamenr, flavor="HG", Nterms_base=2)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
