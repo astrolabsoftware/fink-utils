@@ -57,7 +57,7 @@ def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0):
         Default is 15 seconds which is half of the exposure time for ZTF.
 
     Returns
-    ----------
+    -------
     pd.DataFrame
         Input dataframe with ephemerides columns
         appended False if query failed somehow
@@ -141,7 +141,7 @@ def query_miriade_epehemcc(
         runner_path, userconf, iofile, outdir
 
     Returns
-    ----------
+    -------
     pd.DataFrame
         Input dataframe with ephemerides columns
         appended False if query failed somehow
@@ -221,7 +221,7 @@ def get_miriade_data(
         If method == `ephemcc`, specify the mapping of extra parameters here.
 
     Returns
-    ----------
+    -------
     out: pd.DataFrame
         DataFrame of the same length, but with new columns from the ephemerides service.
     """
@@ -340,7 +340,7 @@ def is_peak(x, y, xpeak, band=50):
         Bandwidth in units of x
 
     Returns
-    ----------
+    -------
     out: bool
         True if `xpeak` corresponds to the location of a peak.
         False otherwise.
@@ -364,12 +364,12 @@ def get_num_opposition(elong, width=4):
         width of peaks in samples.
 
     Returns
-    ----------
+    -------
     nopposition: int
         Number of oppositions estimate
 
     Examples
-    ----------
+    --------
     >>> import io
     >>> import requests
     >>> import pandas as pd
