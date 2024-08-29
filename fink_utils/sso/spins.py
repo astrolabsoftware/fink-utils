@@ -18,8 +18,9 @@ from scipy import linalg
 
 from fink_utils.test.tester import regular_unit_tests
 
+
 def func_hg(ph, h, g):
-    """ Return f(H, G) part of the lightcurve in mag space
+    """Return f(H, G) part of the lightcurve in mag space
 
     Parameters
     ----------
@@ -31,7 +32,7 @@ def func_hg(ph, h, g):
         G parameter (no unit)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G))
     """
@@ -43,8 +44,9 @@ def func_hg(ph, h, g):
 
     return h + func1
 
+
 def func_hg12(ph, h, g12):
-    """ Return f(H, G) part of the lightcurve in mag space
+    """Return f(H, G) part of the lightcurve in mag space
 
     Parameters
     ----------
@@ -56,7 +58,7 @@ def func_hg12(ph, h, g12):
         G parameter (no unit)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G12))
     """
@@ -65,13 +67,16 @@ def func_hg12(ph, h, g12):
     # Standard G1G2 part
     g1 = HG12._G12_to_G1(g12)
     g2 = HG12._G12_to_G2(g12)
-    func1 = g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
+    func1 = (
+        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
+    )
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
+
 def func_hg1g2(ph, h, g1, g2):
-    """ Return f(H, G1, G2) part of the lightcurve in mag space
+    """Return f(H, G1, G2) part of the lightcurve in mag space
 
     Parameters
     ----------
@@ -85,23 +90,29 @@ def func_hg1g2(ph, h, g1, g2):
         G2 parameter (no unit)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G1G2))
     """
     from sbpy.photometry import HG1G2
 
     # Standard G1G2 part
-    func1 = g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
+    func1 = (
+        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
+    )
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
+
 def spin_angle(ra, dec, alpha0, delta0):
-    return np.sin(dec) * np.sin(delta0) + np.cos(dec) * np.cos(delta0) * np.cos(ra - alpha0)
+    return np.sin(dec) * np.sin(delta0) + np.cos(dec) * np.cos(delta0) * np.cos(
+        ra - alpha0
+    )
+
 
 def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
-    """ Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
+    """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
     Parameters
     ----------
@@ -121,7 +132,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
         Dec of the spin (radian)
 
     Returns
-    ----------
+    -------
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
@@ -139,8 +150,9 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
 
     return func1 + func2
 
+
 def color_correction_to_V():
-    """ color correction from band to V
+    """Color correction from band to V
 
     Available:
         - 1: ZTF-g
@@ -149,21 +161,17 @@ def color_correction_to_V():
         - 4: ATLAS-c
 
     Returns
-    ----------
+    -------
     out: dict
         Dictionary with color correction to V
     """
-    dic = {
-        1: -0.2833,
-        2: 0.1777,
-        3: 0.4388,
-        4: -0.0986
-    }
+    dic = {1: -0.2833, 2: 0.1777, 3: 0.4388, 4: -0.0986}
 
     return dic
 
+
 def compute_color_correction(filters: np.array) -> np.array:
-    """ Return the color correction `V - band` for each measurement.
+    """Return the color correction `V - band` for each measurement.
 
     band --> band + (V - band)
 
@@ -173,7 +181,7 @@ def compute_color_correction(filters: np.array) -> np.array:
         Array with the filter code for each measurement
 
     Returns
-    ----------
+    -------
     out: pd.DataFrame
         Array containing the color correction for each measurement
 
@@ -209,8 +217,9 @@ def compute_color_correction(filters: np.array) -> np.array:
 
     return color_sso
 
+
 def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
-    """ Build the system of equations to solve using the HG, HG12, or HG1G2 model
+    """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
     Parameters
     ----------
@@ -226,12 +235,12 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
         Model function to use (e.g. `func_hg1g2`)
 
     Returns
-    ----------
+    -------
     out: np.array
         Array of size N containing (model - y)
 
     Notes
-    ----------
+    -----
     the input `x` contains filter dependent variables,
     that is (Hs and Gs). For example with two bands g & r with the HG1G2 model:
 
@@ -254,17 +263,20 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
 
-        myfunc = func(
-            ph[mask],
-            *params_per_band[index],
-        ) - rhs[mask]
+        myfunc = (
+            func(
+                ph[mask],
+                *params_per_band[index],
+            ) - rhs[mask]
+        )
 
         eqs = np.concatenate((eqs, myfunc))
 
     return np.ravel(eqs)
 
+
 def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
-    """ Build the system of equations to solve using the HG1G2 + spin model
+    """Build the system of equations to solve using the HG1G2 + spin model
 
     Parameters
     ----------
@@ -282,12 +294,12 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
         Array of size N containing the actual measurements (magnitude)
 
     Returns
-    ----------
+    -------
     out: np.array
         Array of size N containing (model - y)
 
     Notes
-    ----------
+    -----
     the input `x` should start with filter independent variables,
     that is (R, alpha, delta), followed by filter dependent variables,
     that is (H, G1, G2). For example with two bands g & r:
@@ -313,23 +325,36 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
 
-        myfunc = func_hg1g2_with_spin(
-            np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
-            params_per_band[index][0], params_per_band[index][1], params_per_band[index][2],
-            R, alpha, delta
-        ) - rhs[mask]
+        myfunc = (
+            func_hg1g2_with_spin(
+                np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
+                params_per_band[index][0],
+                params_per_band[index][1],
+                params_per_band[index][2],
+                R,
+                alpha,
+                delta,
+            ) - rhs[mask]
+        )
 
         eqs = np.concatenate((eqs, myfunc))
 
     return np.ravel(eqs)
 
+
 def estimate_sso_params(
-        magpsf_red, sigmapsf, phase, filters, ra=None, dec=None,
-        model='SHG1G2',
-        normalise_to_V=False,
-        p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-        bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
-    """ Fit for phase curve parameters
+    magpsf_red,
+    sigmapsf,
+    phase,
+    filters,
+    ra=None,
+    dec=None,
+    model="SHG1G2",
+    normalise_to_V=False,
+    p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
+    bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2]),
+):
+    """Fit for phase curve parameters
 
     Under the hood, it uses a `least_square`. Along with the fitted parameters,
     we also provide flag to assess the quality of the fit:
@@ -390,13 +415,13 @@ def estimate_sso_params(
         bounds for all H's and G's.
 
     Returns
-    ----------
+    -------
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
 
     Examples
-    ----------
+    --------
     >>> import io
     >>> import requests
     >>> import pandas as pd
@@ -485,43 +510,38 @@ def estimate_sso_params(
     if normalise_to_V:
         color = compute_color_correction(filters)
         ydata = magpsf_red + color
-        filters = np.array(['V'] * len(filters))
+        filters = np.array(["V"] * len(filters))
     else:
         ydata = magpsf_red
 
-    if model == 'SHG1G2':
+    if model == "SHG1G2":
         outdic = fit_spin(
-            ydata,
-            sigmapsf,
-            phase,
-            ra,
-            dec,
-            filters,
-            p0=p0,
-            bounds=bounds
+            ydata, sigmapsf, phase, ra, dec, filters, p0=p0, bounds=bounds
         )
-    elif model in ['HG', 'HG12', 'HG1G2']:
+    elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
-            ydata,
-            sigmapsf,
-            phase,
-            filters,
-            model,
-            p0=p0,
-            bounds=bounds
+            ydata, sigmapsf, phase, filters, model, p0=p0, bounds=bounds
         )
     else:
-        raise AssertionError('model {} is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG'.format(model))
+        raise AssertionError(
+            "model {} is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG".format(
+                model
+            )
+        )
 
     return outdic
 
 
 def fit_legacy_models(
-        magpsf_red, sigmapsf, phase, filters,
-        model,
-        p0=[15, 0.15, 0.15],
-        bounds=([0, 0, 0], [30, 1, 1])):
-    """ Fit for phase curve parameters
+    magpsf_red,
+    sigmapsf,
+    phase,
+    filters,
+    model,
+    p0=[15, 0.15, 0.15],
+    bounds=([0, 0, 0], [30, 1, 1]),
+):
+    """Fit for phase curve parameters
 
     Parameters
     ----------
@@ -543,7 +563,7 @@ def fit_legacy_models(
         Defaults are given for `func_hg1g2_with_spin`: (H, G1, G2, R, alpha0, delta0).
 
     Returns
-    ----------
+    -------
     popt: list
         Estimated parameters for `func`
     perr: list
@@ -551,27 +571,33 @@ def fit_legacy_models(
     chi2_red: float
         Reduced chi2
     """
-    if model == 'HG1G2':
+    if model == "HG1G2":
         func = func_hg1g2
         nparams = 3
-        params_ = ['H', 'G1', 'G2']
-        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G1, G2) parameters"
-    elif model == 'HG12':
+        params_ = ["H", "G1", "G2"]
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G1, G2) parameters"
+    elif model == "HG12":
         func = func_hg12
         nparams = 2
-        params_ = ['H', 'G12']
-        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G12) parameters"
-    elif model == 'HG':
+        params_ = ["H", "G12"]
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G12) parameters"
+    elif model == "HG":
         func = func_hg
         nparams = 2
-        params_ = ['H', 'G']
-        assert len(bounds[0]) == nparams, "You need to specify bounds on all (H, G) parameters"
+        params_ = ["H", "G"]
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G) parameters"
 
     ufilters = np.unique(filters)
 
     params = []
     for filt in ufilters:
-        tmp = [i + '_{}'.format(str(filt)) for i in params_]
+        tmp = [i + "_{}".format(str(filt)) for i in params_]
         params = np.concatenate((params, tmp))
 
     initial_guess = []
@@ -585,7 +611,7 @@ def fit_legacy_models(
         upper_bounds = np.concatenate((upper_bounds, bounds[1]))
 
     if not np.alltrue([i == i for i in magpsf_red]):
-        outdic = {'fit': 1, 'status': -2}
+        outdic = {"fit": 1, "status": -2}
         return outdic
 
     try:
@@ -593,13 +619,13 @@ def fit_legacy_models(
             build_eqs,
             x0=initial_guess,
             bounds=(lower_bounds, upper_bounds),
-            jac='2-point',
-            loss='soft_l1',
-            args=(filters, phase, magpsf_red, func)
+            jac="2-point",
+            loss="soft_l1",
+            args=(filters, phase, magpsf_red, func),
         )
 
     except RuntimeError:
-        outdic = {'fit': 3, 'status': -2}
+        outdic = {"fit": 3, "status": -2}
         return outdic
 
     popt = res_lsq.x
@@ -614,59 +640,62 @@ def fit_legacy_models(
         perr = np.sqrt(np.diag(cov))
     except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
-        outdic = {'fit': 4, 'status': res_lsq.status}
+        outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
 
     # For the chi2, we use the error estimate from the data directly
-    chisq = np.sum((res_lsq.fun / sigmapsf)**2)
+    chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    outdic = {
-        'chi2red': chisq_red,
-        'status': res_lsq.status,
-        'fit': 0
-    }
+    outdic = {"chi2red": chisq_red, "status": res_lsq.status, "fit": 0}
 
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
-    outdic['rms'] = rms
+    outdic["rms"] = rms
     for filt in ufilters:
         mask = filters == filt
-        outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask] ** 2))
 
     median_error_phot = np.median(sigmapsf)
-    outdic['median_error_phot'] = median_error_phot
+    outdic["median_error_phot"] = median_error_phot
     for filt in ufilters:
         mask = filters == filt
-        outdic['median_error_phot_{}'.format(filt)] = np.median(sigmapsf[mask])
+        outdic["median_error_phot_{}".format(filt)] = np.median(sigmapsf[mask])
 
-    outdic['n_obs'] = len(phase)
+    outdic["n_obs"] = len(phase)
     for filt in ufilters:
         mask = filters == filt
-        outdic['n_obs_{}'.format(filt)] = len(phase[mask])
+        outdic["n_obs_{}".format(filt)] = len(phase[mask])
 
     # in degree
-    outdic['min_phase'] = np.degrees(np.min(phase))
+    outdic["min_phase"] = np.degrees(np.min(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['min_phase_{}'.format(filt)] = np.degrees(np.min(phase[mask]))
+        outdic["min_phase_{}".format(filt)] = np.degrees(np.min(phase[mask]))
 
-    outdic['max_phase'] = np.degrees(np.max(phase))
+    outdic["max_phase"] = np.degrees(np.max(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['max_phase_{}'.format(filt)] = np.degrees(np.max(phase[mask]))
+        outdic["max_phase_{}".format(filt)] = np.degrees(np.max(phase[mask]))
 
     for i in range(len(params)):
         outdic[params[i]] = popt[i]
-        outdic['err_' + params[i]] = perr[i]
+        outdic["err_" + params[i]] = perr[i]
 
     return outdic
 
+
 def fit_spin(
-        magpsf_red, sigmapsf, phase, ra, dec, filters,
-        p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-        bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])):
-    """ Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
+    magpsf_red,
+    sigmapsf,
+    phase,
+    ra,
+    dec,
+    filters,
+    p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
+    bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2]),
+):
+    """Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
 
     Code for quality `fit`:
     0: success
@@ -710,17 +739,17 @@ def fit_spin(
         there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
 
     Returns
-    ----------
+    -------
     outdic: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
     """
     ufilters = np.unique(filters)
 
-    params = ['R', 'alpha0', 'delta0']
-    spin_params = ['H', 'G1', 'G2']
+    params = ["R", "alpha0", "delta0"]
+    spin_params = ["H", "G1", "G2"]
     for filt in ufilters:
-        spin_params_with_filt = [i + '_{}'.format(str(filt)) for i in spin_params]
+        spin_params_with_filt = [i + "_{}".format(str(filt)) for i in spin_params]
         params = np.concatenate((params, spin_params_with_filt))
 
     initial_guess = p0[3:]
@@ -734,7 +763,7 @@ def fit_spin(
         upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
 
     if not np.alltrue([i == i for i in magpsf_red]):
-        outdic = {'fit': 1, 'status': -2}
+        outdic = {"fit": 1, "status": -2}
         return outdic
 
     try:
@@ -742,13 +771,13 @@ def fit_spin(
             build_eqs_for_spins,
             x0=initial_guess,
             bounds=(lower_bounds, upper_bounds),
-            jac='2-point',
-            loss='soft_l1',
-            args=(filters, phase, ra, dec, magpsf_red)
+            jac="2-point",
+            loss="soft_l1",
+            args=(filters, phase, ra, dec, magpsf_red),
         )
 
     except RuntimeError:
-        outdic = {'fit': 3, 'status': -2}
+        outdic = {"fit": 3, "status": -2}
         return outdic
 
     popt = res_lsq.x
@@ -763,60 +792,65 @@ def fit_spin(
         perr = np.sqrt(np.diag(cov))
     except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
-        outdic = {'fit': 4, 'status': res_lsq.status}
+        outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
 
     # For the chi2, we use the error estimate from the data directly
-    chisq = np.sum((res_lsq.fun / sigmapsf)**2)
+    chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    geo = spin_angle(ra, dec, popt[params.tolist().index('alpha0')], popt[params.tolist().index('delta0')])
+    geo = spin_angle(
+        ra,
+        dec,
+        popt[params.tolist().index("alpha0")],
+        popt[params.tolist().index("delta0")],
+    )
     outdic = {
-        'chi2red': chisq_red,
-        'min_cos_lambda': np.min(np.abs(geo)),
-        'mean_cos_lambda': np.mean(np.abs(geo)),
-        'max_cos_lambda': np.max(np.abs(geo)),
-        'status': res_lsq.status,
-        'fit': 0
+        "chi2red": chisq_red,
+        "min_cos_lambda": np.min(np.abs(geo)),
+        "mean_cos_lambda": np.mean(np.abs(geo)),
+        "max_cos_lambda": np.max(np.abs(geo)),
+        "status": res_lsq.status,
+        "fit": 0,
     }
 
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
-    outdic['rms'] = rms
+    outdic["rms"] = rms
     for filt in ufilters:
         mask = filters == filt
-        outdic['rms_{}'.format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask]**2))
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask] ** 2))
 
     median_error_phot = np.median(sigmapsf)
-    outdic['median_error_phot'] = median_error_phot
+    outdic["median_error_phot"] = median_error_phot
     for filt in ufilters:
         mask = filters == filt
-        outdic['median_error_phot_{}'.format(filt)] = np.median(sigmapsf[mask])
+        outdic["median_error_phot_{}".format(filt)] = np.median(sigmapsf[mask])
 
-    outdic['n_obs'] = len(phase)
+    outdic["n_obs"] = len(phase)
     for filt in ufilters:
         mask = filters == filt
-        outdic['n_obs_{}'.format(filt)] = len(phase[mask])
+        outdic["n_obs_{}".format(filt)] = len(phase[mask])
 
     # in degrees
-    outdic['min_phase'] = np.degrees(np.min(phase))
+    outdic["min_phase"] = np.degrees(np.min(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['min_phase_{}'.format(filt)] = np.degrees(np.min(phase[mask]))
+        outdic["min_phase_{}".format(filt)] = np.degrees(np.min(phase[mask]))
 
-    outdic['max_phase'] = np.degrees(np.max(phase))
+    outdic["max_phase"] = np.degrees(np.max(phase))
     for filt in ufilters:
         mask = filters == filt
-        outdic['max_phase_{}'.format(filt)] = np.degrees(np.max(phase[mask]))
+        outdic["max_phase_{}".format(filt)] = np.degrees(np.max(phase[mask]))
 
     for i, name in enumerate(params):
-        if name in ['alpha0', 'delta0']:
+        if name in ["alpha0", "delta0"]:
             # convert in degrees
             outdic[params[i]] = np.degrees(popt[i])
-            outdic['err_' + params[i]] = np.degrees(perr[i])
+            outdic["err_" + params[i]] = np.degrees(perr[i])
         else:
             outdic[params[i]] = popt[i]
-            outdic['err_' + params[i]] = perr[i]
+            outdic["err_" + params[i]] = perr[i]
 
     return outdic
 
