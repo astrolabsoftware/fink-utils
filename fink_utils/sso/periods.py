@@ -26,6 +26,7 @@ import requests
 import numpy as np
 import io
 import pandas as pd
+from line_profiler import profile
 
 from fink_utils.test.tester import regular_unit_tests
 
@@ -148,6 +149,7 @@ def compute_residuals(pdf, flavor, phyparam):
     return pdf["i:magpsf_red"] - pdf["preds"]
 
 
+@profile
 def extract_period_from_number(
     ssnamenr: str,
     flavor="SHG1G2",
