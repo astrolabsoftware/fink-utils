@@ -28,8 +28,9 @@ from scipy import signal
 
 from fink_utils.test.tester import regular_unit_tests
 
-def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
-    """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
+
+def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0):
+    """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
     Original function by M. Mahlke, adapted for Fink usage.
 
@@ -62,30 +63,33 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
         appended False if query failed somehow
     """
     # Miriade URL
-    url = 'https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php'
+    url = "https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php"
 
-    if rplane == '2':
-        tcoor = '1'
+    if rplane == "2":
+        tcoor = "1"
 
     # Query parameters
-    if ident.endswith('P') or ident.startswith('C/'):
-        otype = 'c'
+    if ident.endswith("P") or ident.startswith("C/"):
+        otype = "c"
     else:
-        otype = 'a'
+        otype = "a"
     params = {
-        '-name': f'{otype}:{ident}',
-        '-mime': 'json',
-        '-rplane': rplane,
-        '-tcoor': tcoor,
-        '-output': '--jd,--colors(SDSS:r,SDSS:g)',
-        '-observer': observer,
-        '-tscale': 'UTC'
+        "-name": f"{otype}:{ident}",
+        "-mime": "json",
+        "-rplane": rplane,
+        "-tcoor": tcoor,
+        "-output": "--jd,--colors(SDSS:r,SDSS:g)",
+        "-observer": observer,
+        "-tscale": "UTC",
     }
 
     # Pass sorted list of epochs to speed up query
     shift_hour = shift / 24.0 / 3600.0
     files = {
-        'epochs': ('epochs', '\n'.join(['{:.6f}'.format(epoch + shift_hour) for epoch in jd]))
+        "epochs": (
+            "epochs",
+            "\n".join(["{:.6f}".format(epoch + shift_hour) for epoch in jd]),
+        )
     }
 
     # Execute query
@@ -98,14 +102,17 @@ def query_miriade(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15.):
 
     # Read JSON response
     try:
-        ephem = pd.DataFrame.from_dict(j['data'])
+        ephem = pd.DataFrame.from_dict(j["data"])
     except KeyError:
         return pd.DataFrame()
 
     return ephem
 
-def query_miriade_epehemcc(ident, jd, observer='I41', rplane='1', tcoor=5, shift=15., parameters={}):
-    """ Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
+
+def query_miriade_epehemcc(
+    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, parameters={}
+):
+    """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
     This uses local installation of ephemcc instead of the REST API.
 
@@ -141,27 +148,27 @@ def query_miriade_epehemcc(ident, jd, observer='I41', rplane='1', tcoor=5, shift
 
     """
     # write tmp files on disk
-    date_path = '{}/dates_{}.txt'.format(parameters['outdir'], ident)
-    ephem_path = '{}/ephem_{}.json'.format(parameters['outdir'], ident)
+    date_path = "{}/dates_{}.txt".format(parameters["outdir"], ident)
+    ephem_path = "{}/ephem_{}.json".format(parameters["outdir"], ident)
 
     pdf = pd.DataFrame(jd)
 
     shift_hour = shift / 24.0 / 3600.0
-    pdf\
-        .apply(lambda epoch: Time(epoch + shift_hour, format='jd').iso)\
-        .to_csv(date_path, index=False, header=False)
+    pdf.apply(lambda epoch: Time(epoch + shift_hour, format="jd").iso).to_csv(
+        date_path, index=False, header=False
+    )
 
     # launch the processing
     cmd = [
-        parameters['runner_path'],
+        parameters["runner_path"],
         str(ident),
         str(rplane),
         str(tcoor),
         observer,
         "UTC",
-        parameters['userconf'],
-        parameters['iofile'],
-        parameters['outdir']
+        parameters["userconf"],
+        parameters["iofile"],
+        parameters["outdir"],
     ]
 
     # subprocess.run(cmd, capture_output=True)
@@ -176,9 +183,9 @@ def query_miriade_epehemcc(ident, jd, observer='I41', rplane='1', tcoor=5, shift
         return pd.DataFrame()
 
     # read the data from disk and return
-    with open(ephem_path, 'r') as f:
+    with open(ephem_path, "r") as f:
         data = json.load(f)
-    ephem = pd.DataFrame(data['data'], columns=data['datacol'].keys())
+    ephem = pd.DataFrame(data["data"], columns=data["datacol"].keys())
 
     # clean tmp files
     os.remove(ephem_path)
@@ -186,8 +193,11 @@ def query_miriade_epehemcc(ident, jd, observer='I41', rplane='1', tcoor=5, shift
 
     return ephem
 
-def get_miriade_data(pdf, observer='I41', rplane='1', tcoor=5, withecl=True, method='rest', parameters={}):
-    """ Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
+
+def get_miriade_data(
+    pdf, observer="I41", rplane="1", tcoor=5, withecl=True, method="rest", parameters={}
+):
+    """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
 
     Parameters
     ----------
@@ -215,63 +225,68 @@ def get_miriade_data(pdf, observer='I41', rplane='1', tcoor=5, withecl=True, met
     out: pd.DataFrame
         DataFrame of the same length, but with new columns from the ephemerides service.
     """
-    ssnamenrs = np.unique(pdf['i:ssnamenr'].values)
+    ssnamenrs = np.unique(pdf["i:ssnamenr"].values)
 
     infos = []
     for ssnamenr in ssnamenrs:
-        mask = pdf['i:ssnamenr'] == ssnamenr
+        mask = pdf["i:ssnamenr"] == ssnamenr
         pdf_sub = pdf[mask]
 
-        if method == 'rest':
+        if method == "rest":
             eph = query_miriade(
                 str(ssnamenr),
-                pdf_sub['i:jd'],
-                observer=observer,
-                rplane=rplane,
-                tcoor=tcoor
-            )
-        elif method == 'ephemcc':
-            eph = query_miriade_epehemcc(
-                str(ssnamenr),
-                pdf_sub['i:jd'],
+                pdf_sub["i:jd"],
                 observer=observer,
                 rplane=rplane,
                 tcoor=tcoor,
-                parameters=parameters
+            )
+        elif method == "ephemcc":
+            eph = query_miriade_epehemcc(
+                str(ssnamenr),
+                pdf_sub["i:jd"],
+                observer=observer,
+                rplane=rplane,
+                tcoor=tcoor,
+                parameters=parameters,
             )
         else:
-            raise AssertionError('Method must be `rest` or `ephemcc`. {} not supported'.format(method))
+            raise AssertionError(
+                "Method must be `rest` or `ephemcc`. {} not supported".format(method)
+            )
 
         if not eph.empty:
-            sc = SkyCoord(eph['RA'], eph['DEC'], unit=(u.deg, u.deg))
+            sc = SkyCoord(eph["RA"], eph["DEC"], unit=(u.deg, u.deg))
 
-            eph = eph.drop(columns=['RA', 'DEC'])
-            eph['RA'] = sc.ra.value * 15
-            eph['Dec'] = sc.dec.value
+            eph = eph.drop(columns=["RA", "DEC"])
+            eph["RA"] = sc.ra.value * 15
+            eph["Dec"] = sc.dec.value
 
             if withecl:
                 # Add Ecliptic coordinates
-                if method == 'rest':
+                if method == "rest":
                     eph_ec = query_miriade(
-                        str(ssnamenr),
-                        pdf_sub['i:jd'],
-                        observer=observer,
-                        rplane='2'
+                        str(ssnamenr), pdf_sub["i:jd"], observer=observer, rplane="2"
                     )
-                elif method == 'ephemcc':
+                elif method == "ephemcc":
                     eph_ec = query_miriade_epehemcc(
                         str(ssnamenr),
-                        pdf_sub['i:jd'],
+                        pdf_sub["i:jd"],
                         observer=observer,
-                        rplane='2',
-                        parameters=parameters
+                        rplane="2",
+                        parameters=parameters,
                     )
                 else:
-                    raise AssertionError('Method must be `rest` or `ephemcc`. {} not supported'.format(method))
+                    raise AssertionError(
+                        "Method must be `rest` or `ephemcc`. {} not supported".format(
+                            method
+                        )
+                    )
 
-                sc = SkyCoord(eph_ec['Longitude'], eph_ec['Latitude'], unit=(u.deg, u.deg))
-                eph['Longitude'] = sc.ra.value
-                eph['Latitude'] = sc.dec.value
+                sc = SkyCoord(
+                    eph_ec["Longitude"], eph_ec["Latitude"], unit=(u.deg, u.deg)
+                )
+                eph["Longitude"] = sc.ra.value
+                eph["Latitude"] = sc.dec.value
 
             # Merge fink & Eph
             info = pd.concat([eph.reset_index(), pdf_sub.reset_index()], axis=1)
@@ -280,7 +295,9 @@ def get_miriade_data(pdf, observer='I41', rplane='1', tcoor=5, withecl=True, met
             info = info.loc[:, ~info.columns.duplicated()]
 
             # Compute magnitude reduced to unit distance
-            info['i:magpsf_red'] = info['i:magpsf'] - 5 * np.log10(info['Dobs'] * info['Dhelio'])
+            info["i:magpsf_red"] = info["i:magpsf"] - 5 * np.log10(
+                info["Dobs"] * info["Dhelio"]
+            )
             infos.append(info)
         else:
             infos.append(pdf_sub)
@@ -292,8 +309,9 @@ def get_miriade_data(pdf, observer='I41', rplane='1', tcoor=5, withecl=True, met
 
     return info_out
 
+
 def is_peak(x, y, xpeak, band=50):
-    """ Estimate if `xpeak` corresponds to a true extremum for a periodic signal `y`
+    """Estimate if `xpeak` corresponds to a true extremum for a periodic signal `y`
 
     Assuming `y` a sparse signal along `x`, we would first estimate
     the period of the signal assuming a sine wave. We would then generate
@@ -332,8 +350,9 @@ def is_peak(x, y, xpeak, band=50):
         return True
     return False
 
+
 def get_num_opposition(elong, width=4):
-    """ Estimate the number of opposition according to the solar elongation
+    """Estimate the number of opposition according to the solar elongation
 
     Under the hood, it assumes `elong` is peroidic, and uses a periodogram.
 
