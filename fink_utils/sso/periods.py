@@ -21,7 +21,8 @@ from fink_utils.sso.spins import (
     func_hg12,
     func_hg,
 )
-from gatspy import periodic
+from astropy.timeseries import LombScargleMultiband
+
 import requests
 import numpy as np
 import io
@@ -217,80 +218,37 @@ def extract_period_from_number(
     # Compute the residuals (obs - model)
     residuals = compute_residuals(pdf, flavor, phyparam)
 
-    # fit model
-    model = fit_model(
+    model = LombScargleMultiband(
         jd=pdf["i:jd"],
         residuals=residuals,
-        sigmapsf=pdf["i:sigmapsf"],
         fid=pdf["i:fid"],
-        Nterms_base=Nterms_base,
-        Nterms_band=Nterms_band,
-        period_range=period_range,
+        sigmapsf=pdf["i:sigmapsf"],
+        nterms_base=Nterms_base,
+        nterms_band=Nterms_band
     )
 
-    prediction = model.predict(
-        pdf["i:jd"].to_numpy(), period=model.best_period, filts=pdf["i:fid"].to_numpy()
+    frequency, power = model.autopower(
+        method="fast",
+        minimum_frequency=1/period_range[1],
+        maximum_frequency=1/period_range[0]
     )
+    freq_maxpower = frequency[np.argmax(power)]
+    best_period = 1 / freq_maxpower
+
+    out = model.model(pdf["i:jd"].to_numpy(), freq_maxpower)
+    prediction = np.zeros_like(residuals)
+    for index, filt in enumerate(pdf["i:fid"].unique()):
+        cond = pdf["i:fid"] == filt
+        prediction[cond] = out[index][cond]
+
     chi2 = np.sum(((residuals - prediction) / pdf["i:sigmapsf"].to_numpy()) ** 2)
     reduced_chi2 = chi2 / len(residuals - 1)
 
     if return_extra_info:
         pdf["residuals"] = residuals
-        return model.best_period * 24, reduced_chi2, model, pdf
+        return best_period * 24, reduced_chi2, frequency, power, model, pdf
     else:
-        return model.best_period * 24, reduced_chi2
-
-
-def fit_model(
-    jd, residuals, sigmapsf, fid, Nterms_base=1, Nterms_band=1, period_range=(0.05, 1.2)
-):
-    """Fit the Multiband Periodogram model to the data.
-
-    Parameters
-    ----------
-    jd: array-like of float
-        Times
-    residuals: array-like of float
-        Difference observation - model
-    fid: array-like of int
-        Filter ID for each measurement
-    sigmapsf: array-like of float
-        Error estimates on `residuals`
-    Nterms_base: int
-        Number of frequency terms to use for the
-        base model common to all bands. Default is 1.
-    Nterms_band: int
-        Number of frequency terms to use for the
-        residuals between the base model and
-        each individual band. Default is 1.
-    period_range: tupe of float
-        (min_period, max_period) for the search, in days.
-        Default is (0.05, 1.2), that is between
-        1.2 hours and 28.8 hours.
-
-    Returns
-    -------
-    model: object
-        LombScargleMultiband model
-    """
-    model = periodic.LombScargleMultiband(
-        Nterms_base=Nterms_base,
-        Nterms_band=Nterms_band,
-        fit_period=True,
-    )
-
-    # Not sure about that...
-    model.optimizer.period_range = period_range
-    model.optimizer.quiet = True
-
-    model.fit(
-        jd,
-        residuals,
-        sigmapsf,
-        fid,
-    )
-
-    return model
+        return best_period * 24, reduced_chi2
 
 
 if __name__ == "__main__":
