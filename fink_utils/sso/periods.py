@@ -151,9 +151,10 @@ def compute_residuals(pdf, flavor, phyparam):
 
 
 @profile
-def extract_period_from_number(
+def estimate_synodic_period(
     ssnamenr: str,
     pdf=None,
+    phyparam=None,
     flavor="SHG1G2",
     Nterms_base=1,
     Nterms_band=1,
@@ -161,12 +162,20 @@ def extract_period_from_number(
     sb_method="auto",
     return_extra_info=False,
 ):
-    """Extract the period of a Solar System objeect seen by Fink
+    """Estimate the synodic period of a Solar System object seen by Fink
 
     Parameters
     ----------
     ssnamenr: str
         SSO number (we do not resolve name yet)
+    pdf: pandas DataFrame, optional
+        Pandas DataFrame with Fink SSO data for one object.
+        If not specified, data will be downloaded from Fink servers
+        using `ssnamenr`.
+    phyparam: dict, optional
+        Dictionary containing physical properties (phase curve, etc.)
+        of the object. If not specified, they will be recomputed
+        from the data.
     flavor: str, optional
         Model flavor: SHG1G2 (default), HG1G2, HG12, or HG
     Nterms_base: int, optional
@@ -205,20 +214,20 @@ def extract_period_from_number(
     Examples
     --------
     >>> ssnamenr = 2363
-    >>> P, chi2 = extract_period_from_number(ssnamenr, flavor="SHG1G2", Nterms_base=2)
+    >>> P, chi2 = estimate_synodic_period(ssnamenr, flavor="SHG1G2", Nterms_base=2)
     >>> assert int(P) == 20, P
 
-    >>> P_HG, chi2_HG = extract_period_from_number(ssnamenr, flavor="HG", Nterms_base=2)
+    >>> P_HG, chi2_HG = estimate_synodic_period(ssnamenr, flavor="HG", Nterms_base=2)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
 
 
     One can also use the nifty-ls implementation (faster and more accurate)
-    >>> P_nifty, _ = extract_period_from_number(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
+    >>> P_nifty, _ = estimate_synodic_period(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
     >>> assert np.isclose(P, P_nifty)
 
     One can also directly specify the Pandas dataframe with Fink data:
     >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
-    >>> P_from_pdf, _ = extract_period_from_number(pdf=pdf, flavor="SHG1G2", sb_method="fastnifty")
+    >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2", sb_method="fastnifty")
     >>> assert np.isclose(P, P_from_pdf)
     """
     if pdf is None:
@@ -230,8 +239,9 @@ def extract_period_from_number(
 
         pdf = pd.read_json(io.BytesIO(r.content))
 
-    # get the physical parameters with the latest data
-    phyparam = extract_physical_parameters(pdf, flavor)
+    if phyparam is None:
+        # get the physical parameters with the latest data
+        phyparam = extract_physical_parameters(pdf, flavor)
 
     # Compute the residuals (obs - model)
     residuals = compute_residuals(pdf, flavor, phyparam)
