@@ -247,10 +247,10 @@ def estimate_synodic_period(
     residuals = compute_residuals(pdf, flavor, phyparam)
 
     model = LombScargleMultiband(
-        jd=pdf["i:jd"],
-        residuals=residuals,
+        pdf["i:jd"],
+        residuals,
         fid=pdf["i:fid"],
-        sigmapsf=pdf["i:sigmapsf"],
+        pdf["i:sigmapsf"],
         nterms_base=Nterms_base,
         nterms_band=Nterms_band,
     )
