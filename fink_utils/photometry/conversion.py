@@ -1,4 +1,4 @@
-# Copyright 2019-2023 AstroLab Software
+# Copyright 2019-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,8 +49,9 @@ def apparent_flux(
     isdiffpos: int,
     jansky: bool = True,
 ) -> Tuple[float, float]:
-    """Compute apparent flux from difference magnitude supplied by ZTF
-    Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
+    """Compute apparent flux from ZTF difference magnitude
+
+    Implementation according to p.107 of the ZTF Science Data System Explanatory Supplement
     https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
 
     Parameters
@@ -105,8 +106,9 @@ def dc_mag(
     sigmagnr: float,
     isdiffpos: int,
 ) -> Tuple[float, float]:
-    """Compute apparent magnitude from difference magnitude supplied by ZTF
-    Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
+    """Compute apparent magnitude from ZTF difference magnitude
+
+    Implementation according to p.107 of the ZTF Science Data System Explanatory Supplement
     https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
 
     Parameters

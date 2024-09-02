@@ -1,4 +1,4 @@
-# Copyright 2020-2021 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@ def format_data_as_snana(
     fid,
     candid,
     mask,
-    filter_conversion_dic={1: "g", 2: "r"},
+    filter_conversion_dic=None,
     transform_to_flux=True,
 ):
     """Format data in SNANA units and format
@@ -81,6 +81,8 @@ def format_data_as_snana(
         DataFrame a la SNANA with SNID, MJD, FLUXCAL, FLUXCALERR, FLT.
 
     """
+    if filter_conversion_dic is None:
+        filter_conversion_dic = {1: "g", 2: "r"}
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict({"jd": jd[mask], "SNID": candid[mask]})
     df_tmp = df_tmp.explode("jd")
@@ -109,8 +111,7 @@ def format_data_as_snana(
 
 
 def extract_history(history_list: list, field: str) -> list:
-    """Extract the historical measurements contained in the alerts
-    for the parameter `field`.
+    """Extract the historical measurements contained in the alerts for the parameter `field`.
 
     Parameters
     ----------
@@ -207,6 +208,6 @@ def load_pcs(fn, npcs):
     comp = pd.read_csv(fn)
     pcs = {}
     for i in range(npcs):
-        pcs[i + 1] = comp.iloc[i].values
+        pcs[i + 1] = comp.iloc[i].to_numpy()
 
     return pd.DataFrame(pcs)

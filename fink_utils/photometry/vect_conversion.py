@@ -1,4 +1,4 @@
-# Copyright 2019-2023 AstroLab Software
+# Copyright 2019-2024 AstroLab Software
 # Author: Roman Le Montagner
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ def vect_mag2fluxcal_snana(
     magpsf: "np.array[np.float]", sigmapsf: "np.array[np.float]"
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Conversion from magnitude to Fluxcal from SNANA manual.
+
     vectorized version
 
     Parameters
@@ -54,6 +55,7 @@ def vect_apparent_flux(
     jansky: bool = True,
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent flux from difference magnitude supplied by ZTF
+
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
     https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
     vectorized version
@@ -112,6 +114,7 @@ def vect_dc_mag(
     isdiffpos: "np.array[str]",
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent magnitude from difference magnitude supplied by ZTF
+
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
     https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
     vectorized version

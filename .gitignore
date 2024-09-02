@@ -8,3 +8,4 @@ htmlcov
 fink_utils.egg-info/
 *.crc
 default.profraw
+*.lprof

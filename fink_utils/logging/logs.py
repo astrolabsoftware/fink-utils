@@ -13,7 +13,7 @@ class CustomTZFormatter(logging.Formatter):  # pragma: no cover
         tzinfo = pytz.timezone("Europe/Paris")
         return tzinfo.localize(dt)
 
-    def formatTime(self, record, datefmt=None):
+    def formatTime(self, record, datefmt=None):  # noqa: N802
         dt = self.converter(record.created)
         if datefmt:
             s = dt.strftime(datefmt)
