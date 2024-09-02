@@ -15,6 +15,7 @@
 """Utilities for manipulating Avro data and schemas.
 Some routines borrowed from lsst-dm/alert_stream and adapted.
 """
+
 import io
 import fastavro
 
@@ -25,18 +26,21 @@ __all__ = ["writeavrodata", "readschemadata", "readschemafromavrofile"]
 
 def writeavrodata(json_data: dict, json_schema: dict) -> io._io.BytesIO:
     """Encode json into Avro format given a schema.
+
     Parameters
     ----------
     json_data : `dict`
         The JSON data containing message content.
     json_schema : `dict`
         The writer Avro schema for encoding data.
+
     Returns
     -------
     `_io.BytesIO`
         Encoded data.
+
     Examples
-    ----------
+    --------
     >>> with open(ztf_alert_sample, mode='rb') as file_data:
     ...   data = readschemadata(file_data)
     ...   # Read the schema
@@ -53,16 +57,19 @@ def writeavrodata(json_data: dict, json_schema: dict) -> io._io.BytesIO:
 
 def readschemadata(bytes_io: io._io.BytesIO) -> fastavro._read.reader:
     """Read data that already has an Avro schema.
+
     Parameters
     ----------
     bytes_io : `_io.BytesIO`
         Data to be decoded.
+
     Returns
     -------
     `fastavro._read.reader`
         Iterator over records (`dict`) in an avro file.
+
     Examples
-    ----------
+    --------
     Open an avro file, and read the schema and the records
     >>> with open(ztf_alert_sample, mode='rb') as file_data:
     ...   data = readschemadata(file_data)
@@ -80,16 +87,19 @@ def readschemadata(bytes_io: io._io.BytesIO) -> fastavro._read.reader:
 
 def readschemafromavrofile(fn: str) -> dict:
     """Reach schema from a binary avro file.
+
     Parameters
     ----------
     fn: str
         Input Avro file with schema.
+
     Returns
-    ----------
+    -------
     schema: dict
         Dictionary (JSON) describing the schema.
+
     Examples
-    ----------
+    --------
     >>> schema = readschemafromavrofile(ztf_alert_sample)
     >>> print(schema['version'])
     3.3

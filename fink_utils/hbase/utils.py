@@ -27,7 +27,7 @@ def load_hbase_catalog_as_dict(path_to_catalog: str) -> dict:
         Path to the json file containing the HBase table catalog
 
     Returns
-    ----------
+    -------
     dcat: dict
         Dictionary containing the table catalog
     rowkey: str
@@ -53,7 +53,7 @@ def select_columns_in_catalog(catalog: dict, cols: list) -> (dict, str):
         List of column names to keep
 
     Returns
-    ----------
+    -------
     dcat_small: dict
         Same as input, but with fewer columns
     catalog_small: str
@@ -88,7 +88,7 @@ def group_by_key(df: DataFrame, key: str, position: int, sep="_") -> DataFrame:
         Separator to use for splitting `key`. Default is `_`.
 
     Returns
-    ---------
+    -------
     df_grouped: DataFrame
         Result of the group by with two columns `id`, `count`.
         `id` = split(`key`, '_')[`position`]

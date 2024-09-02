@@ -33,7 +33,9 @@ def concat_col(
     current: str = "candidate",
     history: str = "prv_candidates",
 ):
-    """Add new column to the DataFrame named `prefix`+`colname`, containing
+    """Concatenate historical and current measurements
+
+    Add new column to the DataFrame named `prefix`+`colname`, containing
     the concatenation of historical and current measurements.
 
     Parameters
@@ -54,7 +56,7 @@ def concat_col(
         Default is `prv_candidates` from ZTF schema.
 
     Returns
-    ----------
+    -------
     df: DataFrame
         Dataframe with new column containing the concatenation of
         historical and current measurements.
@@ -72,12 +74,11 @@ def concat_col(
 
 
 def return_flatten_names(
-    df: DataFrame, pref: str = "", flatten_schema: list = []
+    df: DataFrame, pref: str = "", flatten_schema: list = None
 ) -> list:
-    """From a nested schema (using struct), retrieve full paths for entries
-    in the form level1.level2.etc.entry.
+    """Retrieve full path from a nested schema
 
-    Example, if I have a nested structure such as:
+    Example, if one has a nested structure such as:
     root
      |-- timestamp: timestamp (nullable = true)
      |-- decoded: struct (nullable = true)
@@ -106,14 +107,14 @@ def return_flatten_names(
         List containing the names of the flatten schema names.
 
     Examples
-    -------
+    --------
     >>> df = spark.read.format("parquet").load("datatest")
     >>> flatten_schema = return_flatten_names(df)
     >>> assert("candidate.candid" in flatten_schema)
     """
-    if flatten_schema == []:
+    if (flatten_schema == []) or (flatten_schema is None):
         for colname in df.columns:
-            flatten_schema.append(colname)
+            flatten_schema.append(colname)  # noqa: PERF402
 
     # If the entry is not top level, it is then hidden inside a nested structure
     l_struct_names = [i.name for i in df.schema if isinstance(i.dataType, StructType)]
@@ -153,7 +154,7 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
         Spark DataFrame with filtered alert data
 
     Examples
-    -------
+    --------
     >>> from pyspark.sql.functions import struct
     >>> colnames = ["cdsxmatch", "rb", "magdiff"]
     >>> df = spark.sparkContext.parallelize(zip(
@@ -212,9 +213,7 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
             raise AssertionError(
                 """
                 Column name {} is not a valid column of the DataFrame.
-                """.format(
-                    argname
-                )
+                """.format(argname)
             )
         colnames.append(colname[0])
 
@@ -232,7 +231,7 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
 
 @pandas_udf(ArrayType(BooleanType()), PandasUDFType.SCALAR)
 def apply_quality_flags_on_history(rb, nbad):
-    """ Apply quality flags for the history vector
+    """Apply quality flags for the history vector
 
     Parameters
     ----------
@@ -244,13 +243,13 @@ def apply_quality_flags_on_history(rb, nbad):
         `nbad` values from `prv_candidates`
 
     Returns
-    ----------
+    -------
     out: Series
         Pandas Series of list of boolean. True if good candidate
         False otherwise.
 
     Examples
-    -------
+    --------
     >>> df = spark.read.format("parquet").load("fink_utils/test_data/online")
     >>> df = df.withColumn(
     ...     'history_flag',
@@ -264,8 +263,9 @@ def apply_quality_flags_on_history(rb, nbad):
     f = [np.array(i) * np.array(j) for i, j in zip(rbf.to_list(), nbadf.to_list())]
     return pd.Series(f)
 
-def check_status_last_prv_candidates(df, status='valid'):
-    """ Check the `status` of the last alert in the history
+
+def check_status_last_prv_candidates(df, status="valid"):
+    """Check the `status` of the last alert in the history
 
     Parameters
     ----------
@@ -278,12 +278,12 @@ def check_status_last_prv_candidates(df, status='valid'):
             - upper: upper limit from ZTF
 
     Returns
-    ----------
+    -------
     out: Spark DataFrame
         Input DataFrame with an extra column (boolean) named `status`.
 
     Examples
-    -------
+    --------
     >>> df = spark.read.format("parquet").load("fink_utils/test_data/online")
     >>> print(df.count())
     11
@@ -302,16 +302,16 @@ def check_status_last_prv_candidates(df, status='valid'):
     """
     # measurements are ordered from the most ancient to the newest
     # we want to check the last one
-    rb = F.element_at('prv_candidates.rb', -1)
-    nbad = F.element_at('prv_candidates.nbad', -1)
-    magpsf = F.element_at('prv_candidates.magpsf', -1)
-    if status == 'valid':
+    rb = F.element_at("prv_candidates.rb", -1)
+    nbad = F.element_at("prv_candidates.nbad", -1)
+    magpsf = F.element_at("prv_candidates.magpsf", -1)
+    if status == "valid":
         f1 = (rb >= 0.55) & (nbad == 0)
         cond = f1 & magpsf.isNotNull()
-    elif status == 'uppervalid':
+    elif status == "uppervalid":
         f1 = (rb >= 0.55) & (nbad == 0)
         cond = ~f1 & magpsf.isNotNull()
-    elif status == 'upper':
+    elif status == "upper":
         cond = ~magpsf.isNotNull()
 
     return df.withColumn(status, cond)

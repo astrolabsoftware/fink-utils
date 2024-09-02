@@ -48,6 +48,7 @@ def get_kafka_df(
     a StructType column and convert it into avro(binary).
     To be able to decode the sent Kafka messages, the avro schema is stored
     at schema_path which is passed as an argument.
+
     Parameters
     ----------
     df: DataFrame
@@ -58,8 +59,9 @@ def get_kafka_df(
     saveschema: bool
         If True, save the alert schema on disk. Work only in Spark local mode,
         and for testing purposes. Default is False.
+
     Returns
-    ----------
+    -------
     df: DataFrame
         A Spark DataFrame with an avro(binary) encoded Column named "value"
     """
@@ -121,6 +123,7 @@ def save_avro_schema_stream(
     ).start()
     time.sleep(10)
     toto.stop()
+
     Parameters
     ----------
     df: DataFrame
@@ -138,6 +141,7 @@ def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False
     To automatically change the schema with changing requirements, ensure to
     delete the schema file at the given path whenever the structure of DF
     read from science db or the contents to be distributed are changed.
+
     Parameters
     ----------
     df: DataFrame
@@ -145,7 +149,6 @@ def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False
     schema_path: str
         Path where to store the avro schema
     """
-
     # Check if the file exists
     if not os.path.isfile(schema_path):
         # Store the df as an avro file
@@ -178,9 +181,7 @@ def save_avro_schema(df: DataFrame, schema_path: str, save_on_hdfs: bool = False
     else:
         msg = """
             {} already exists - cannot write the new schema
-        """.format(
-            schema_path
-        )
+        """.format(schema_path)
         print(msg)
 
 
@@ -197,19 +198,22 @@ def decode_kafka_df(df_kafka: DataFrame, schema_path: str) -> DataFrame:
     The value column contains the structured data of the alert encoded into
     avro(binary). This routine creates a Spark DataFrame with a decoded
     StructType column using the avro schema at schema_path.
+
     Parameters
     ----------
     df_kafka: DataFrame
         A Spark DataFrame created after reading the Kafka Source
     schema_path: str
         Path where the avro schema to decode the Kafka message is stored
+
     Returns
     -------
     df: DataFrame
         A Spark DataFrame with a StructType Column with decoded data of
         the avro(binary) column named "value"
+
     Examples
-    ----------
+    --------
     # >>> from pyspark.sql.functions import col
     # >>> df = spark.sparkContext.parallelize(zip(
     # ...     ["ZTF18aceatkx", "ZTF18acsbjvw"],
@@ -264,6 +268,7 @@ def get_distribution_offset(
     offsetfile: str, startingoffset_dist: str = "latest"
 ) -> int:
     """Read and return distribution offset from file
+
     Parameters
     ----------
     offsetfile: str
@@ -272,12 +277,14 @@ def get_distribution_offset(
         Offset(timestamp) from where to start the distribution. Options are
         latest (read timestamp from file), earliest (from the beginning of time),
         timestamp (custom timestamp input by user)
+
     Returns
-    ----------
+    -------
     timestamp: int
         a timestamp (typical unix timestamp: time in ms since epoch)
+
     Examples
-    ----------
+    --------
     # set a test timestamp
     >>> test_t = int(round(time.time() * 1000))
     >>> with open('dist.offset.test', 'w') as f: # write to a file
@@ -343,6 +350,7 @@ def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
      |-- candidate: struct (nullable = false)
      |    |-- ra: double (nullable = true)
      |    |-- dec: double (nullable = true)
+
     Parameters
     ----------
     df: Spark DataFrame
@@ -351,12 +359,14 @@ def group_df_into_struct(df: DataFrame, colfamily: str, key: str) -> DataFrame:
         prefix of columns to be grouped into a struct
     key: str
         a column with unique values (used for join)
+
     Returns
-    ----------
+    -------
     df: Spark DataFrame
         a Spark dataframe with columns grouped into struct
+
     Examples
-    ----------
+    --------
     >>> df = spark.sparkContext.parallelize(zip(
     ...     ["ZTF18aceatkx", "ZTF18acsbjvw"],
     ...     [697251923115015002, 697251921215010004],

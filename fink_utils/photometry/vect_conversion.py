@@ -36,7 +36,6 @@ def vect_mag2fluxcal_snana(
         Absolute error on fluxcal (the derivative has a minus sign)
 
     """
-
     magpsf = np.where(np.equal(magpsf, None), np.nan, magpsf)
     sigmapsf = np.where(np.equal(sigmapsf, None), np.nan, sigmapsf)
 
@@ -52,7 +51,7 @@ def vect_apparent_flux(
     magnr: "np.array[np.float]",
     sigmagnr: "np.array[np.float]",
     isdiffpos: "np.array[str]",
-    jansky: bool = True
+    jansky: bool = True,
 ) -> Tuple["np.array[np.float]", "np.array[np.float]"]:
     """Compute apparent flux from difference magnitude supplied by ZTF
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
@@ -60,7 +59,7 @@ def vect_apparent_flux(
     vectorized version
 
     Parameters
-    ---------
+    ----------
     magpsf,sigmapsf; floats
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr: floats
@@ -79,7 +78,6 @@ def vect_apparent_flux(
     dc_sigflux: float
         Error on apparent flux
     """
-
     magpsf = np.where(np.equal(magpsf, None), np.nan, magpsf)
     magnr = np.where(magnr < 0.0, np.nan, magnr)
 
@@ -91,7 +89,9 @@ def vect_apparent_flux(
 
     # add or subract difference flux based on isdiffpos
     dc_flux = np.where(
-        (isdiffpos == "t") | (isdiffpos == "1"), ref_flux + difference_flux, ref_flux - difference_flux
+        (isdiffpos == "t") | (isdiffpos == "1"),
+        ref_flux + difference_flux,
+        ref_flux - difference_flux,
     )
 
     # assumes errors are independent. Maybe too conservative.
@@ -128,7 +128,7 @@ def vect_dc_mag(
         f or 0 => candidate is from negative (ref minus sci) subtraction
 
     Returns
-    --------
+    -------
     dc_mag: float
         Apparent magnitude
     dc_sigmag: float

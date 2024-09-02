@@ -76,7 +76,7 @@ def format_data_as_snana(
         magnitude and then SNANA flux. Default is True.
 
     Returns
-    ----------
+    -------
     pdf: pd.DataFrame
         DataFrame a la SNANA with SNID, MJD, FLUXCAL, FLUXCALERR, FLT.
 
@@ -97,15 +97,13 @@ def format_data_as_snana(
         flux_error = error[mask].explode()
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict(
-        {
-            "SNID": df_tmp["SNID"],
-            "MJD": df_tmp["jd"].astype("float"),
-            "FLUXCAL": flux.astype("float"),
-            "FLUXCALERR": flux_error.astype("float"),
-            "FLT": fid[mask].explode().replace(filter_conversion_dic),
-        }
-    )
+    pdf = pd.DataFrame.from_dict({
+        "SNID": df_tmp["SNID"],
+        "MJD": df_tmp["jd"].astype("float"),
+        "FLUXCAL": flux.astype("float"),
+        "FLUXCALERR": flux_error.astype("float"),
+        "FLT": fid[mask].explode().replace(filter_conversion_dic),
+    })
 
     return pdf
 
@@ -123,7 +121,7 @@ def extract_history(history_list: list, field: str) -> list:
         a key of elements of history_list
 
     Returns
-    ----------
+    -------
     measurement: list
         List of all the `field` measurements contained in the alerts.
     """
@@ -132,13 +130,14 @@ def extract_history(history_list: list, field: str) -> list:
     try:
         measurement = [obs[field] for obs in history_list]
     except KeyError:
-        print('{} not in history data'.format(field))
+        print("{} not in history data".format(field))
         measurement = []
 
     return measurement
 
+
 def extract_field(alert: dict, field: str) -> np.array:
-    """ Concatenate current and historical observation data for a given field.
+    """Concatenate current and historical observation data for a given field.
 
     Parameters
     ----------
@@ -148,18 +147,16 @@ def extract_field(alert: dict, field: str) -> np.array:
         Name of the field to extract.
 
     Returns
-    ----------
+    -------
     data: np.array
         List containing previous measurements and current measurement at the
         end. If `field` is not in the category, data will be
         [alert['diaSource'][field]].
     """
-    data = np.concatenate(
-        [
-            [alert["candidate"][field]],
-            extract_history(alert["prv_candidates"], field)
-        ]
-    )
+    data = np.concatenate([
+        [alert["candidate"][field]],
+        extract_history(alert["prv_candidates"], field),
+    ])
     return data
 
 
@@ -176,6 +173,7 @@ def load_scikit_model(fn: str = ""):
     clf: sklearn.ensemble.forest.RandomForestClassifier
 
     Examples
+    --------
     >>> fn = 'fink_science/data/models/default-model_bazin.obj'
     >>> model = load_scikit_model(fn)
     >>> 'RandomForestClassifier' in str(type(model))

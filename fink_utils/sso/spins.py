@@ -1,4 +1,4 @@
-# Copyright 2022-2023 AstroLab Software
+# Copyright 2022-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,7 +151,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     return func1 + func2
 
 
-def color_correction_to_V():
+def color_correction_to_V():  # noqa: N802
     """Color correction from band to V
 
     Available:
@@ -211,14 +211,14 @@ def compute_color_correction(filters: np.array) -> np.array:
     filts = np.unique(filters)
     color_sso = np.zeros_like(filters, dtype=float)
     conversion = color_correction_to_V()
-    for i, filt in enumerate(filts):
+    for filt in filts:
         cond = filters == filt
         color_sso[cond] = conversion[filt]
 
     return color_sso
 
 
-def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
+def build_eqs(x, filters, ph, rhs, func=None):
     """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
     Parameters
@@ -267,7 +267,8 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
             func(
                 ph[mask],
                 *params_per_band[index],
-            ) - rhs[mask]
+            )
+            - rhs[mask]
         )
 
         eqs = np.concatenate((eqs, myfunc))
@@ -275,7 +276,7 @@ def build_eqs(x, filters=[], ph=[], rhs=[], func=None):
     return np.ravel(eqs)
 
 
-def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
+def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
     """Build the system of equations to solve using the HG1G2 + spin model
 
     Parameters
@@ -334,7 +335,8 @@ def build_eqs_for_spins(x, filters=[], ph=[], ra=[], dec=[], rhs=[]):
                 R,
                 alpha,
                 delta,
-            ) - rhs[mask]
+            )
+            - rhs[mask]
         )
 
         eqs = np.concatenate((eqs, myfunc))
@@ -351,8 +353,8 @@ def estimate_sso_params(
     dec=None,
     model="SHG1G2",
     normalise_to_V=False,
-    p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-    bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2]),
+    p0=None,
+    bounds=None,
 ):
     """Fit for phase curve parameters
 
@@ -507,6 +509,11 @@ def estimate_sso_params(
     Traceback (most recent call last):
     AssertionError: model toto is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG
     """
+    if p0 is None:
+        p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
+    if bounds is None:
+        bounds = ([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+
     if normalise_to_V:
         color = compute_color_correction(filters)
         ydata = magpsf_red + color
@@ -538,8 +545,8 @@ def fit_legacy_models(
     phase,
     filters,
     model,
-    p0=[15, 0.15, 0.15],
-    bounds=([0, 0, 0], [30, 1, 1]),
+    p0=None,
+    bounds=None,
 ):
     """Fit for phase curve parameters
 
@@ -571,6 +578,11 @@ def fit_legacy_models(
     chi2_red: float
         Reduced chi2
     """
+    if p0 is None:
+        p0 = [15, 0.15, 0.15]
+    if bounds is None:
+        bounds = ([0, 0, 0], [30, 1, 1])
+
     if model == "HG1G2":
         func = func_hg1g2
         nparams = 3
@@ -601,12 +613,12 @@ def fit_legacy_models(
         params = np.concatenate((params, tmp))
 
     initial_guess = []
-    for filt in ufilters:
+    for _ in ufilters:
         initial_guess = np.concatenate((initial_guess, p0))
 
     lower_bounds = []
     upper_bounds = []
-    for filt in ufilters:
+    for _ in ufilters:
         lower_bounds = np.concatenate((lower_bounds, bounds[0]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1]))
 
@@ -685,16 +697,7 @@ def fit_legacy_models(
     return outdic
 
 
-def fit_spin(
-    magpsf_red,
-    sigmapsf,
-    phase,
-    ra,
-    dec,
-    filters,
-    p0=[15.0, 0.15, 0.15, 0.8, np.pi, 0.0],
-    bounds=([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2]),
-):
+def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, p0=None, bounds=None):
     """Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
 
     Code for quality `fit`:
@@ -744,6 +747,12 @@ def fit_spin(
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
     """
+    if p0 is None:
+        p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
+
+    if bounds is None:
+        bounds = ([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+
     ufilters = np.unique(filters)
 
     params = ["R", "alpha0", "delta0"]
@@ -753,12 +762,12 @@ def fit_spin(
         params = np.concatenate((params, spin_params_with_filt))
 
     initial_guess = p0[3:]
-    for filt in ufilters:
+    for _ in ufilters:
         initial_guess = np.concatenate((initial_guess, p0[:3]))
 
     lower_bounds = bounds[0][3:]
     upper_bounds = bounds[1][3:]
-    for filt in ufilters:
+    for _ in ufilters:
         lower_bounds = np.concatenate((lower_bounds, bounds[0][:3]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
 

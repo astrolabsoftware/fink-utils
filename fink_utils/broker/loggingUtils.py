@@ -22,6 +22,7 @@ from logging import Logger
 
 def get_fink_logger(name: str = "test", log_level: str = "INFO") -> Logger:
     """Initialise python logger. Suitable for both driver and executors.
+
     Parameters
     ----------
     name : str
@@ -29,12 +30,14 @@ def get_fink_logger(name: str = "test", log_level: str = "INFO") -> Logger:
         function or module.
     log_level : str
         Minimum level of log wanted: DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF
+
     Returns
-    ----------
+    -------
     logger : logging.Logger
         Python Logger
+
     Examples
-    ----------
+    --------
     >>> log = get_fink_logger(__name__, "INFO")
     >>> log.info("Hi!")
     """
@@ -61,12 +64,14 @@ def get_fink_logger(name: str = "test", log_level: str = "INFO") -> Logger:
 def inspect_application(logger):
     """Print INFO and DEBUG statements about the current application such
     as the Spark configuration, the Spark & Python versions.
+
     Parameters
     ----------
     logger : log4j logger
         Logger initialised by get_fink_logger.
+
     Examples
-    -------
+    --------
     >>> log = get_fink_logger(__name__, "DEBUG")
     >>> inspect_application(log) # doctest: +SKIP
     """

@@ -26,7 +26,7 @@ def mag2fluxcal_snana(magpsf: float, sigmapsf: float) -> Tuple[float, float]:
     sigmapsf: float
 
     Returns
-    ----------
+    -------
     fluxcal: float
         Flux cal as used by SNANA
     fluxcal_err: float
@@ -47,14 +47,14 @@ def apparent_flux(
     magnr: float,
     sigmagnr: float,
     isdiffpos: int,
-    jansky: bool = True
+    jansky: bool = True,
 ) -> Tuple[float, float]:
     """Compute apparent flux from difference magnitude supplied by ZTF
     Implemented according to p.107 of the ZTF Science Data System Explanatory Supplement
     https://irsa.ipac.caltech.edu/data/ZTF/docs/ztf_explanatory_supplement.pdf
 
     Parameters
-    ---------
+    ----------
     magpsf,sigmapsf; floats
         magnitude from PSF-fit photometry, and 1-sigma error
     magnr,sigmagnr: floats
@@ -67,7 +67,7 @@ def apparent_flux(
         If True, normalise units to Jansky. Default is True.
 
     Returns
-    --------
+    -------
     dc_flux: float
         Apparent flux
     dc_sigflux: float
@@ -83,7 +83,7 @@ def apparent_flux(
     ref_sigflux = (sigmagnr / 1.0857) * ref_flux
 
     # add or subract difference flux based on isdiffpos
-    if (isdiffpos == 't') or (isdiffpos == '1'):
+    if (isdiffpos == "t") or (isdiffpos == "1"):
         dc_flux = ref_flux + difference_flux
     else:
         dc_flux = ref_flux - difference_flux
@@ -96,6 +96,7 @@ def apparent_flux(
         dc_sigflux *= 3631
 
     return dc_flux, dc_sigflux
+
 
 def dc_mag(
     magpsf: float,
@@ -120,7 +121,7 @@ def dc_mag(
         f or 0 => candidate is from negative (ref minus sci) subtraction
 
     Returns
-    --------
+    -------
     dc_mag: float
         Apparent magnitude
     dc_sigmag: float

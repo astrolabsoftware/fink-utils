@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Part of these functionalities were taken from the Anomaly detection module """
+"""Part of these functionalities were taken from the Anomaly detection module"""
+
 import os
 import io
 import time
@@ -34,6 +35,7 @@ COLORS_ZTF = {1: "#15284F", 2: "#F5622E"}
 
 def status_check(res, header, sleep=8, timeout=25):
     """Checks whether the request was successful.
+
     In case of an error, sends information about the error to the @fink_test telegram channel
 
     Parameters
@@ -50,9 +52,7 @@ def status_check(res, header, sleep=8, timeout=25):
         msg = """
         {}
         Content: {}
-        """.format(
-            header, res.content
-        )
+        """.format(header, res.content)
         url = "https://api.telegram.org/bot"
         url += os.environ["FINK_TG_TOKEN"]
         method = url + "/sendMessage"
@@ -68,7 +68,7 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
     """Send `tg_data` to a telegram channel
 
     Notes
-    ----------
+    -----
     The function sends notifications to the "channel_id" channel of Telegram.
 
     Parameters
@@ -129,7 +129,7 @@ def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seco
     """Multi-cutout version of `msg_handler_tg`
 
     Notes
-    ----------
+    -----
     The function sends notifications to the "channel_id" channel of Telegram.
 
     Parameters
@@ -208,7 +208,7 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
         Choose between `alert`[default], or API.
 
     Returns
-    ----------
+    -------
     out : BytesIO stream
         cutout image in png format
     """
@@ -265,7 +265,7 @@ def get_curve(
     """Generate PNG lightcurve
 
     Notes
-    ----------
+    -----
     Based on `origin`, the other arguments are mandatory:
     - origin=API: objectId
     - origin=alert: alert
@@ -387,7 +387,9 @@ def get_curve(
                 continue
 
             # y data -- assume NaN (Spark style) and None (Pandas style) for missing values
-            maskNotNone = np.array([~np.isnan(i) and (i is not None) for i in magpsf[mask]])
+            maskNotNone = np.array([
+                ~np.isnan(i) and (i is not None) for i in magpsf[mask]
+            ])
             plt.errorbar(
                 dates[mask][maskNotNone],
                 magpsf[mask][maskNotNone],

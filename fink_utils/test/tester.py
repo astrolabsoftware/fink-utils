@@ -20,11 +20,13 @@ import numpy as np
 
 def regular_unit_tests(global_args: dict = None, verbose: bool = False):
     """Base commands for the regular unit test suite
+
     Include this routine in the main of a module, and execute:
     python3 mymodule.py
     to run the tests.
     It should exit gracefully if no error (exit code 0),
     otherwise it will print on the screen the failure.
+
     Parameters
     ----------
     global_args: dict, optional
@@ -33,8 +35,9 @@ def regular_unit_tests(global_args: dict = None, verbose: bool = False):
     verbose: bool
         If True, print useful debug messages.
         Default is False.
+
     Examples
-    ----------
+    --------
     Set "toto" to "myvalue", such that it can be used during tests:
     >>> globs = globals()
     >>> globs["toto"] = "myvalue"
@@ -148,21 +151,17 @@ def spark_unit_tests_science(global_args: dict = None, verbose: bool = False):
     confdic = {"spark.python.daemon.module": "coverage_daemon"}
 
     if spark.version.startswith("2"):
-        confdic.update(
-            {
-                "spark.jars.packages": "org.apache.spark:spark-avro_2.11:{}".format(
-                    spark.version
-                )
-            }
-        )
+        confdic.update({
+            "spark.jars.packages": "org.apache.spark:spark-avro_2.11:{}".format(
+                spark.version
+            )
+        })
     elif spark.version.startswith("3"):
-        confdic.update(
-            {
-                "spark.jars.packages": "org.apache.spark:spark-avro_2.12:{}".format(
-                    spark.version
-                )
-            }
-        )
+        confdic.update({
+            "spark.jars.packages": "org.apache.spark:spark-avro_2.12:{}".format(
+                spark.version
+            )
+        })
     conf.setMaster("local[2]")
     conf.setAppName("fink_science_test")
     for k, v in confdic.items():

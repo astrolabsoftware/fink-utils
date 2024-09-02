@@ -180,7 +180,7 @@ def extract_period_from_number(
         Default is (0.05, 1.2), that is between
         1.2 hours and 28.8 hours.
     sb_method: str, optional
-        Specify the single-band lomb scargle implementation to use. 
+        Specify the single-band lomb scargle implementation to use.
         See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
         If nifty-ls is installed, one can also specify fastnifty. Although
         in this case it does not work yet for Nterms_* higher than 1.
@@ -235,14 +235,14 @@ def extract_period_from_number(
         fid=pdf["i:fid"],
         sigmapsf=pdf["i:sigmapsf"],
         nterms_base=Nterms_base,
-        nterms_band=Nterms_band
+        nterms_band=Nterms_band,
     )
 
     frequency, power = model.autopower(
         method="fast",
         sb_method=sb_method,
-        minimum_frequency=1/period_range[1],
-        maximum_frequency=1/period_range[0]
+        minimum_frequency=1 / period_range[1],
+        maximum_frequency=1 / period_range[0],
     )
     freq_maxpower = frequency[np.argmax(power)]
     best_period = 1 / freq_maxpower

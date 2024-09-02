@@ -42,12 +42,12 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
         it is much slower (x1000) than the latter. Default is False.
 
     Returns
-    ---------
+    -------
     out: list
         List of labels
 
     Examples
-    ---------
+    --------
     >>> gals = return_list_of_eg_host(full_simbad_conversion=True)
     >>> print(len(gals))
     42
@@ -117,12 +117,12 @@ def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.Data
         the DataFrame. Default is True.
 
     Returns
-    ----------
+    -------
     pdf: pd.DataFrame
         Data formatted in a pandas DataFrame: otype, old_label, new_label
 
     Examples
-    ----------
+    --------
     >>> pdf = get_conversion_dic(remove_unknown=False)
     >>> print(len(pdf))
     199
@@ -180,19 +180,19 @@ def old2new(conv, old_label=""):
         Old label in SIMBAD
 
     Returns
-    ----------
+    -------
     new_label: str
         New label in SIMBAD corresponding to the old label
 
     Examples
-    ----------
+    --------
     >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
     >>> pdf = get_conversion_dic(path)
     >>> new_label = old2new(pdf, 'BlueCompG')
     >>> print(new_label)
     BlueCompactG
     """
-    out = conv[conv["old_label"] == old_label]["new_label"].values
+    out = conv[conv["old_label"] == old_label]["new_label"].to_numpy()
 
     if len(out) == 1:
         return out[0]
@@ -213,19 +213,19 @@ def new2old(conv, new_label=""):
         New label in SIMBAD
 
     Returns
-    ----------
+    -------
     old_label: str
         Old label in SIMBAD corresponding to the new label
 
     Examples
-    ----------
+    --------
     >>> path = 'https://simbad.cds.unistra.fr/guide/otypes.labels.txt'
     >>> pdf = get_conversion_dic(path)
     >>> old_label = new2old(pdf, 'GtowardsGroup')
     >>> print(old_label)
     GinGroup
     """
-    out = conv[conv["new_label"] == new_label]["old_label"].values
+    out = conv[conv["new_label"] == new_label]["old_label"].to_numpy()
 
     if len(out) == 1:
         return out[0]
@@ -248,13 +248,13 @@ def get_simbad_labels(which: str, remove_unknown=True):
         the DataFrame. Default is True.
 
     Returns
-    ----------
+    -------
     out: list
         List of labels (str)
 
 
     Examples
-    ----------
+    --------
     >>> labels = get_simbad_labels(which='old')
     >>> print(len(labels))
     198
@@ -282,16 +282,16 @@ def get_simbad_labels(which: str, remove_unknown=True):
     """
     pdf = get_conversion_dic(remove_unknown=remove_unknown)
     if which == "old":
-        return pdf["old_label"].values
+        return pdf["old_label"].to_numpy()
     elif which == "new":
-        return pdf["new_label"].values
+        return pdf["new_label"].to_numpy()
     elif which == "old_and_new":
-        old = pdf["old_label"].values
-        new = pdf["new_label"].values
+        old = pdf["old_label"].to_numpy()
+        new = pdf["new_label"].to_numpy()
         out = np.concatenate((old, new))
         return np.unique(out)
     elif which == "otype":
-        return pdf["otype"].values
+        return pdf["otype"].to_numpy()
 
 
 if __name__ == "__main__":

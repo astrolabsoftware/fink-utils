@@ -26,6 +26,7 @@ from pyspark.sql import SparkSession, DataFrame
 def load_hbase_data(catalog: str, rowkey: str) -> DataFrame:
     """Load table data from HBase into a Spark DataFrame
     The row(s) containing the different schemas are skipped (only data is loaded)
+
     Parameters
     ----------
     catalog: str
@@ -33,8 +34,9 @@ def load_hbase_data(catalog: str, rowkey: str) -> DataFrame:
         `fink_utils.hbase` for more information.
     rowkey: str
         Name of the rowkey
+
     Returns
-    ----------
+    -------
     df: DataFrame
         Spark DataFrame with the table data
     """
@@ -56,6 +58,7 @@ def load_hbase_data(catalog: str, rowkey: str) -> DataFrame:
 
 def write_catalog_on_disk(catalog, catalogname) -> None:
     """Save HBase catalog in json format on disk
+
     Parameters
     ----------
     catalog: str
@@ -79,6 +82,7 @@ def push_to_hbase(
     catfolder=".",
 ) -> None:
     """Push DataFrame data to HBase
+
     Parameters
     ----------
     df: Spark DataFrame
@@ -143,10 +147,12 @@ def load_science_portal_column_names():
         - i: for column that identify the alert (original alert)
         - d: for column that further describe the alert (Fink added value)
         - b: for binary blob (FITS image)
+
     Returns
-    --------
+    -------
     cols_*: list of string
         List of DataFrame column names to use for the science portal
+
     Examples
     --------
     >>> cols_i, cols_d, cols_b = load_science_portal_column_names()
@@ -199,6 +205,7 @@ def assign_column_family_names(df, cols_i, cols_d, cols_b):
         - b: for binary types. It currently contains:
             - binary gzipped FITS image
     The split is done in `load_science_portal_column_names`.
+
     Parameters
     ----------
     df: DataFrame
@@ -206,8 +213,9 @@ def assign_column_family_names(df, cols_i, cols_d, cols_b):
         See `load_parquet_files` for more information.
     cols_*: list of string
         List of DataFrame column names to use for the science portal.
+
     Returns
-    ---------
+    -------
     cf: dict
         Dictionary with keys being column names (also called
         column qualifiers), and the corresponding column family.
@@ -225,8 +233,9 @@ def retrieve_row_key_cols():
     as you can replace (remove and add) columns for existing table,
     but you cannot change keys, you must copy the table into new table
     when changing keys design.
+
     Returns
-    --------
+    -------
     row_key_cols: list of string
     """
     # build the row key: objectId_jd
@@ -239,20 +248,23 @@ def attach_rowkey(df, sep="_"):
     The column used to define the row key are declared in
     `retrieve_row_key_cols`. the row key is made of a string concatenation
     of those column data, with a separator: str(col1_col2_col3_etc)
+
     Parameters
     ----------
     df: DataFrame
         Input DataFrame containing alert data from the raw science DB (parquet),
         and already flattened with a select (i.e. candidate.jd must be jd).
+
     Returns
-    ----------
+    -------
     df: DataFrame
         Input DataFrame with a new column with the row key. The type of the
         row key value is string.
     row_key_name: string
         Name of the rowkey, made of the columns that were used.
+
     Examples
-    ----------
+    --------
     # Read alert from the raw database
     >>> df = spark.read.format("parquet").load(ztf_alert_sample_scidatabase)
     >>> df = df.select(['objectId', 'candidate.*'])
@@ -277,6 +289,7 @@ def construct_hbase_catalog_from_flatten_schema(
     {'name': 'schemavsn', 'type': 'string', 'nullable': True, 'metadata': {}}
     To
     'schemavsn': {'cf': 'i', 'col': 'schemavsn', 'type': 'string'},
+
     Parameters
     ----------
     schema : dict
@@ -289,10 +302,12 @@ def construct_hbase_catalog_from_flatten_schema(
         Dictionary with keys being column names (also called
         column qualifiers), and the corresponding column family.
         See `assign_column_family_names`.
+
     Returns
-    ----------
+    -------
     catalog : str
         Catalog for HBase.
+
     Examples
     --------
     # Read alert from the raw database
@@ -340,9 +355,7 @@ def construct_hbase_catalog_from_flatten_schema(
         if column["name"] == rowkeyname:
             catalog += """
             '{}': {{'cf': 'rowkey', 'col': '{}', 'type': '{}'}}{}
-            """.format(
-                column["name"], column["name"], column["type"], sep
-            )
+            """.format(column["name"], column["name"], column["type"], sep)
         else:
             catalog += """
             '{}': {{'cf': '{}', 'col': '{}', 'type': '{}'}}{}
@@ -363,6 +376,7 @@ def construct_hbase_catalog_from_flatten_schema(
 def construct_schema_row(df, rowkeyname, version):
     """Construct a DataFrame whose columns are those of the
     original ones, and one row containing schema types
+
     Parameters
     ----------
     df: Spark DataFrame
@@ -371,11 +385,13 @@ def construct_schema_row(df, rowkeyname, version):
         Name of the HBase row key (column name)
     version: string
         Version of the HBase table (row value for the rowkey column).
+
     Returns
-    ---------
+    -------
     df_schema: Spark DataFrame
         Spark DataFrame with one row (the types of its column). Only the row
         key is the version of the HBase table.
+
     Examples
     --------
     # Read alert from the raw database
