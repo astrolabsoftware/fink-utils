@@ -153,6 +153,7 @@ def compute_residuals(pdf, flavor, phyparam):
 @profile
 def extract_period_from_number(
     ssnamenr: str,
+    pdf=None,
     flavor="SHG1G2",
     Nterms_base=1,
     Nterms_band=1,
@@ -214,14 +215,20 @@ def extract_period_from_number(
     One can also use the nifty-ls implementation (faster and more accurate)
     >>> P_nifty, _ = extract_period_from_number(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
     >>> assert np.isclose(P, P_nifty)
-    """
-    # TODO: use quaero
-    r = requests.post(
-        "https://fink-portal.org/api/v1/sso",
-        json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
-    )
 
-    pdf = pd.read_json(io.BytesIO(r.content))
+    One can also directly specify the Pandas dataframe with Fink data:
+    >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
+    >>> P_from_pdf, _ = extract_period_from_number(pdf=pdf, flavor="SHG1G2", sb_method="fastnifty")
+    >>> assert np.isclose(P, P_from_pdf)
+    """
+    if pdf is None:
+        # TODO: use quaero
+        r = requests.post(
+            "https://fink-portal.org/api/v1/sso",
+            json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
+        )
+
+        pdf = pd.read_json(io.BytesIO(r.content))
 
     # get the physical parameters with the latest data
     phyparam = extract_physical_parameters(pdf, flavor)
