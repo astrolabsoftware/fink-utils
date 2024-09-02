@@ -28,7 +28,7 @@ import numpy as np
 import io
 import pandas as pd
 from line_profiler import profile
-import nifty_ls
+import nifty_ls # noqa: F401
 
 import logging
 
