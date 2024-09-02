@@ -1,4 +1,4 @@
-# Copyright 2022-2023 AstroLab Software
+# Copyright 2022-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,7 +110,7 @@ def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0):
 
 
 def query_miriade_epehemcc(
-    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, parameters={}
+    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, parameters=None
 ):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -195,7 +195,13 @@ def query_miriade_epehemcc(
 
 
 def get_miriade_data(
-    pdf, observer="I41", rplane="1", tcoor=5, withecl=True, method="rest", parameters={}
+    pdf,
+    observer="I41",
+    rplane="1",
+    tcoor=5,
+    withecl=True,
+    method="rest",
+    parameters=None,
 ):
     """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
 
@@ -217,14 +223,17 @@ def get_miriade_data(
         Default is True.
     method: str
         Use the REST API (`rest`), or a local installation of miriade (`ephemcc`)
-    parameters: dict
-        If method == `ephemcc`, specify the mapping of extra parameters here.
+    parameters: dict, optional
+        If method == `ephemcc`, specify the mapping of extra parameters here. Default is {}.
 
     Returns
     -------
     out: pd.DataFrame
         DataFrame of the same length, but with new columns from the ephemerides service.
     """
+    if parameters is None:
+        parameters = {}
+
     ssnamenrs = np.unique(pdf["i:ssnamenr"].values)
 
     infos = []

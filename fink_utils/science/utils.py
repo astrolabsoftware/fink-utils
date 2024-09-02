@@ -1,4 +1,4 @@
-# Copyright 2020-2022 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@ def ra2phi(ra: float) -> float:
 @pandas_udf(LongType(), PandasUDFType.SCALAR)
 def ang2pix(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
     """Compute pixel number at given nside
+
     Parameters
     ----------
     ra: float
@@ -41,12 +42,14 @@ def ang2pix(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
         Spark column containing RA (float)
     nside: int
         Spark column containing nside
+
     Returns
-    ----------
+    -------
     out: long
         Spark column containing pixel number
+
     Examples
-    ----------
+    --------
     >>> from fink_broker.sparkUtils import load_parquet_files
     >>> df = load_parquet_files(ztf_alert_sample)
     >>> df_index = df.withColumn(
@@ -57,14 +60,16 @@ def ang2pix(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
     True
     """
     return pd.Series(
-        hp.ang2pix(nside.values[0], dec2theta(dec.values), ra2phi(ra.values))
+        hp.ang2pix(
+            nside.to_numpy()[0], dec2theta(dec.to_numpy()), ra2phi(ra.to_numpy())
+        )
     )
 
 
 @pandas_udf(StringType(), PandasUDFType.SCALAR)
 def ang2pix_array(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
-    """Return a col string with the pixel numbers corresponding to the nsides
-    pix@nside[0]_pix@nside[1]_...etc
+    """Return a col string with the pixel numbers corresponding to the nsides pix@nside[0]_pix@nside[1]_...etc
+
     Parameters
     ----------
     ra: float
@@ -73,12 +78,14 @@ def ang2pix_array(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
         Spark column containing RA (float)
     nside: list
         Spark column containing list of nside
+
     Returns
-    ----------
+    -------
     out: str
         Spark column containing _ separated pixel values
+
     Examples
-    ----------
+    --------
     >>> from fink_broker.sparkUtils import load_parquet_files
     >>> df = load_parquet_files(ztf_alert_sample)
     >>> nsides = F.array([F.lit(256), F.lit(4096), F.lit(131072)])
@@ -91,8 +98,8 @@ def ang2pix_array(ra: pd.Series, dec: pd.Series, nside: pd.Series) -> pd.Series:
     3
     """
     pixs = [
-        hp.ang2pix(int(nside_), dec2theta(dec.values), ra2phi(ra.values))
-        for nside_ in nside.values[0]
+        hp.ang2pix(int(nside_), dec2theta(dec.to_numpy()), ra2phi(ra.to_numpy()))
+        for nside_ in nside.to_numpy()[0]
     ]
 
     to_return = ["_".join(list(np.array(i, dtype=str))) for i in np.transpose(pixs)]

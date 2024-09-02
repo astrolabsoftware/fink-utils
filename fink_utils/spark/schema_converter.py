@@ -1,5 +1,5 @@
-# Copyright 2023 AstroLab Software
-# Author: Fabrice Jammes
+# Copyright 2023-2024 AstroLab Software
+# Author: Fabrice Jammes, Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,52 +12,54 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""
-Convert a Spark dataframe schema to an Avro schema
-"""
+"""Convert a Spark dataframe schema to an Avro schema"""
 
 import json
 from typing import Any, Dict
 
 from pyspark.sql.types import StructType
 
+
 def _is_nullable(field: Dict[Any, Any], avro_type: Any) -> Any:
     avro_type_out: Any
-    if field['nullable']:
+    if field["nullable"]:
         avro_type_out = [avro_type, "null"]
-    elif not field['nullable']:
+    elif not field["nullable"]:
         avro_type_out = avro_type
     else:
         raise ValueError("Unknown value for 'nullable' key in field: ", field)
     return avro_type_out
 
+
 def _parse_array(data: Dict[Any, Any], name: str) -> Dict[Any, Any]:
     out: Dict[Any, Any] = dict()
-    out['type'] = "array"
-    if data['elementType']['type'] == 'struct':
-        items = _parse_struct(data['elementType'], name)
-        if data['containsNull']:
-            out['items'] = [items, "null"]
+    out["type"] = "array"
+    if data["elementType"]["type"] == "struct":
+        items = _parse_struct(data["elementType"], name)
+        if data["containsNull"]:
+            out["items"] = [items, "null"]
         else:
-            out['items'] = items
+            out["items"] = items
     else:
         raise ValueError("Unknown type in parse_array()")
     return out
 
+
 def _parse_map(data: Dict[Any, Any]) -> Dict[Any, Any]:
     out: Dict[Any, Any] = dict()
-    out['type'] = "map"
-    values = data['valueType']
-    out['values'] = "map"
-    if data['valueContainsNull']:
-        out['values'] = [values, "null"]
+    out["type"] = "map"
+    values = data["valueType"]
+    out["values"] = "map"
+    if data["valueContainsNull"]:
+        out["values"] = [values, "null"]
     else:
-        out['values'] = values
+        out["values"] = values
     return out
+
 
 def _parse_struct(data: Dict[Any, Any], name: str = "") -> Dict[Any, Any]:
     """Convert struct below
+
     {
       "fields":[
       {
@@ -129,41 +131,42 @@ def _parse_struct(data: Dict[Any, Any], name: str = "") -> Dict[Any, Any]:
         In case an unknown entity is found in Spark Dataframe schema
     """
     avroRecord: Dict[Any, Any] = dict()
-    avroRecord['type'] = "record"
+    avroRecord["type"] = "record"
     if name:
-        avroRecord['name'] = "topLevelRecord." + name
+        avroRecord["name"] = "topLevelRecord." + name
     else:
-        avroRecord['name'] = "topLevelRecord"
-    if data['type'] not in ['struct']:
-        raise ValueError("Expected ['struct'] type, is ", data['type'])
-    avroRecord['fields'] = []
+        avroRecord["name"] = "topLevelRecord"
+    if data["type"] not in ["struct"]:
+        raise ValueError("Expected ['struct'] type, is ", data["type"])
+    avroRecord["fields"] = []
     avro_type: Any
-    for field in data['fields']:
+    for field in data["fields"]:
         outField: Dict[Any, Any] = dict()
-        outField['name'] = field['name']
-        if isinstance(field['type'], str):
-            if field['type'] == "integer":
-                avro_type = 'int'
-            elif field['type'] == "binary":
-                avro_type = 'bytes'
+        outField["name"] = field["name"]
+        if isinstance(field["type"], str):
+            if field["type"] == "integer":
+                avro_type = "int"
+            elif field["type"] == "binary":
+                avro_type = "bytes"
             else:
-                avro_type = field['type']
-            outField['type'] = _is_nullable(field, avro_type)
-            avroRecord['fields'].append(outField)
-        elif 'type' in field['type']:
-            subData = field['type']
-            if subData['type'] == 'struct':
-                outField['type'] = _parse_struct(subData, field['name'])
-            elif subData['type'] == 'array':
-                avro_type = _parse_array(subData, field['name'])
-                outField['type'] = _is_nullable(field, avro_type)
-            elif subData['type'] == 'map':
+                avro_type = field["type"]
+            outField["type"] = _is_nullable(field, avro_type)
+            avroRecord["fields"].append(outField)
+        elif "type" in field["type"]:
+            subData = field["type"]
+            if subData["type"] == "struct":
+                outField["type"] = _parse_struct(subData, field["name"])
+            elif subData["type"] == "array":
+                avro_type = _parse_array(subData, field["name"])
+                outField["type"] = _is_nullable(field, avro_type)
+            elif subData["type"] == "map":
                 avro_type = _parse_map(subData)
-                outField['type'] = _is_nullable(field, avro_type)
+                outField["type"] = _is_nullable(field, avro_type)
             else:
-                raise ValueError("Unknown type", subData['type'])
-            avroRecord['fields'].append(outField)
+                raise ValueError("Unknown type", subData["type"])
+            avroRecord["fields"].append(outField)
     return avroRecord
+
 
 def to_avro(spark_schema: StructType) -> str:
     """Convert a Spark dataframe schema to an Avro schema
@@ -172,6 +175,7 @@ def to_avro(spark_schema: StructType) -> str:
     ----------
     spark_schema : StructType
         Spark dataframe schema
+
     Returns
     -------
     str

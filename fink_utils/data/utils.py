@@ -1,4 +1,4 @@
-# Copyright 2020-2021 AstroLab Software
+# Copyright 2020-2024 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@ def format_data_as_snana(
     fid,
     candid,
     mask,
-    filter_conversion_dic={1: "g", 2: "r"},
+    filter_conversion_dic=None,
     transform_to_flux=True,
 ):
     """Format data in SNANA units and format
@@ -76,11 +76,13 @@ def format_data_as_snana(
         magnitude and then SNANA flux. Default is True.
 
     Returns
-    ----------
+    -------
     pdf: pd.DataFrame
         DataFrame a la SNANA with SNID, MJD, FLUXCAL, FLUXCALERR, FLT.
 
     """
+    if filter_conversion_dic is None:
+        filter_conversion_dic = {1: "g", 2: "r"}
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict({"jd": jd[mask], "SNID": candid[mask]})
     df_tmp = df_tmp.explode("jd")
@@ -97,22 +99,19 @@ def format_data_as_snana(
         flux_error = error[mask].explode()
 
     # make a Pandas DataFrame with exploded series
-    pdf = pd.DataFrame.from_dict(
-        {
-            "SNID": df_tmp["SNID"],
-            "MJD": df_tmp["jd"].astype("float"),
-            "FLUXCAL": flux.astype("float"),
-            "FLUXCALERR": flux_error.astype("float"),
-            "FLT": fid[mask].explode().replace(filter_conversion_dic),
-        }
-    )
+    pdf = pd.DataFrame.from_dict({
+        "SNID": df_tmp["SNID"],
+        "MJD": df_tmp["jd"].astype("float"),
+        "FLUXCAL": flux.astype("float"),
+        "FLUXCALERR": flux_error.astype("float"),
+        "FLT": fid[mask].explode().replace(filter_conversion_dic),
+    })
 
     return pdf
 
 
 def extract_history(history_list: list, field: str) -> list:
-    """Extract the historical measurements contained in the alerts
-    for the parameter `field`.
+    """Extract the historical measurements contained in the alerts for the parameter `field`.
 
     Parameters
     ----------
@@ -123,7 +122,7 @@ def extract_history(history_list: list, field: str) -> list:
         a key of elements of history_list
 
     Returns
-    ----------
+    -------
     measurement: list
         List of all the `field` measurements contained in the alerts.
     """
@@ -132,13 +131,14 @@ def extract_history(history_list: list, field: str) -> list:
     try:
         measurement = [obs[field] for obs in history_list]
     except KeyError:
-        print('{} not in history data'.format(field))
+        print("{} not in history data".format(field))
         measurement = []
 
     return measurement
 
+
 def extract_field(alert: dict, field: str) -> np.array:
-    """ Concatenate current and historical observation data for a given field.
+    """Concatenate current and historical observation data for a given field.
 
     Parameters
     ----------
@@ -148,18 +148,16 @@ def extract_field(alert: dict, field: str) -> np.array:
         Name of the field to extract.
 
     Returns
-    ----------
+    -------
     data: np.array
         List containing previous measurements and current measurement at the
         end. If `field` is not in the category, data will be
         [alert['diaSource'][field]].
     """
-    data = np.concatenate(
-        [
-            [alert["candidate"][field]],
-            extract_history(alert["prv_candidates"], field)
-        ]
-    )
+    data = np.concatenate([
+        [alert["candidate"][field]],
+        extract_history(alert["prv_candidates"], field),
+    ])
     return data
 
 
@@ -176,6 +174,7 @@ def load_scikit_model(fn: str = ""):
     clf: sklearn.ensemble.forest.RandomForestClassifier
 
     Examples
+    --------
     >>> fn = 'fink_science/data/models/default-model_bazin.obj'
     >>> model = load_scikit_model(fn)
     >>> 'RandomForestClassifier' in str(type(model))
@@ -209,6 +208,6 @@ def load_pcs(fn, npcs):
     comp = pd.read_csv(fn)
     pcs = {}
     for i in range(npcs):
-        pcs[i + 1] = comp.iloc[i].values
+        pcs[i + 1] = comp.iloc[i].to_numpy()
 
     return pd.DataFrame(pcs)

@@ -18,7 +18,7 @@ from fink_utils.test.tester import regular_unit_tests
 
 
 def is_source_behind(distnr: float, chinr: float = None, sharpnr: float = None) -> bool:
-    """ Check if the alert is behind a source
+    """Check if the alert is behind a source
 
     Parameters
     ----------
@@ -30,12 +30,12 @@ def is_source_behind(distnr: float, chinr: float = None, sharpnr: float = None) 
         DAOPhot sharp parameter of nearest source in reference image PSF-catalog within 30 arcsec
 
     Returns
-    ----------
+    -------
     out: bool
         True if there is a source behind. False otherwise.
 
     Examples
-    ----------
+    --------
     >>> is_source_behind(distnr=0.5)
     True
 
