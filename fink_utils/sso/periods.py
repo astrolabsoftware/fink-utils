@@ -28,8 +28,13 @@ import numpy as np
 import io
 import pandas as pd
 from line_profiler import profile
+import nifty_ls
+
+import logging
 
 from fink_utils.test.tester import regular_unit_tests
+
+_LOG = logging.getLogger(__name__)
 
 
 def extract_physical_parameters(pdf, flavor):
@@ -152,7 +157,7 @@ def compute_residuals(pdf, flavor, phyparam):
 
 @profile
 def estimate_synodic_period(
-    ssnamenr: str,
+    ssnamenr: str = None,
     pdf=None,
     phyparam=None,
     flavor="SHG1G2",
@@ -227,15 +232,19 @@ def estimate_synodic_period(
 
     One can also directly specify the Pandas dataframe with Fink data:
     >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
     >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2", sb_method="fastnifty")
     >>> assert np.isclose(P, P_from_pdf)
     """
     if pdf is None:
-        # TODO: use quaero
-        r = requests.post(
-            "https://fink-portal.org/api/v1/sso",
-            json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
-        )
+        if ssnamenr is not None:
+            # TODO: use quaero
+            r = requests.post(
+                "https://fink-portal.org/api/v1/sso",
+                json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
+            )
+        else:
+            _LOG.error("You need to specify either `ssnamenr` or `pdf`.")
 
         pdf = pd.read_json(io.BytesIO(r.content))
 
@@ -249,7 +258,7 @@ def estimate_synodic_period(
     model = LombScargleMultiband(
         pdf["i:jd"],
         residuals,
-        fid=pdf["i:fid"],
+        pdf["i:fid"],
         pdf["i:sigmapsf"],
         nterms_base=Nterms_base,
         nterms_band=Nterms_band,
