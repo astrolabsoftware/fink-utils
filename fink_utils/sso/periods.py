@@ -157,6 +157,7 @@ def extract_period_from_number(
     Nterms_base=1,
     Nterms_band=1,
     period_range=(0.05, 1.2),
+    sb_method="auto",
     return_extra_info=False,
 ):
     """Extract the period of a Solar System objeect seen by Fink
@@ -165,20 +166,25 @@ def extract_period_from_number(
     ----------
     ssnamenr: str
         SSO number (we do not resolve name yet)
-    flavor: str
-        Model flavor: SHG1G2, HG1G2, HG12, or HG
-    Nterms_base: int
+    flavor: str, optional
+        Model flavor: SHG1G2 (default), HG1G2, HG12, or HG
+    Nterms_base: int, optional
         Number of frequency terms to use for the
         base model common to all bands. Default is 1.
-    Nterms_band: int
+    Nterms_band: int, optional
         Number of frequency terms to use for the
         residuals between the base model and
         each individual band. Default is 1.
-    period_range: tupe of float
+    period_range: tupe of float, optional
         (min_period, max_period) for the search, in days.
         Default is (0.05, 1.2), that is between
         1.2 hours and 28.8 hours.
-    return_extra_info: bool
+    sb_method: str, optional
+        Specify the single-band lomb scargle implementation to use. 
+        See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
+        If nifty-ls is installed, one can also specify fastnifty. Although
+        in this case it does not work yet for Nterms_* higher than 1.
+    return_extra_info: bool, optional
         If True, returns also the fitted model, and the original
         SSO data used for the fit. Default is False.
 
@@ -203,6 +209,11 @@ def extract_period_from_number(
 
     >>> P_HG, chi2_HG = extract_period_from_number(ssnamenr, flavor="HG", Nterms_base=2)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
+
+
+    One can also use the nifty-ls implementation (faster and more accurate)
+    >>> P_nifty, _ = extract_period_from_number(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
+    >>> assert np.isclose(P, P_nifty)
     """
     # TODO: use quaero
     r = requests.post(
@@ -229,6 +240,7 @@ def extract_period_from_number(
 
     frequency, power = model.autopower(
         method="fast",
+        sb_method=sb_method,
         minimum_frequency=1/period_range[1],
         maximum_frequency=1/period_range[0]
     )
