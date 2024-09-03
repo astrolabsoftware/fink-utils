@@ -29,11 +29,14 @@ from fink_utils.broker.avroUtils import readschemafromavrofile
 
 def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
     """Decode the Avro data contained in a DataFrame column into a struct.
-    Note:
+
+    Notes
+    -----
     Pyspark does not have all features contained in Spark core (Scala), hence
     we provide here a wrapper around the Scala function `from_avro`.
     You need to have the package org.apache.spark:spark-avro_2.11:2.x.y in the
     classpath to have access to it from the JVM.
+
     Parameters
     ----------
     dfcol: Column
@@ -41,12 +44,14 @@ def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
         Typically this is what comes from reading stream from Kafka.
     jsonformatschema: str
         Avro schema in JSON string format.
+
     Returns
-    ----------
+    -------
     out: Column
         DataFrame Column with decoded Avro data.
+
     Examples
-    ----------
+    --------
     >>> _, _, alert_schema_json = get_schemas_from_avro(ztf_avro_sample)
     >>> df_decoded = dfstream.select(
     ...   from_avro(dfstream["value"], alert_schema_json).alias("decoded"))
@@ -61,24 +66,28 @@ def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
 
 
 def to_avro(dfcol: Column) -> Column:
-    """Serialize the structured data of a DataFrame column into
-    avro data (binary).
-    Note:
+    """Serialize the structured data of a DataFrame column into avro data (binary).
+
+    Notes
+    -----
     Since Pyspark does not have a function to convert a column to and from
     avro data, this is a wrapper around the scala function 'to_avro'.
     Just like the function above, to be able to use this you need to have
     the package org.apache.spark:spark-avro_2.11:2.x.y in the classpath.
+
     Parameters
     ----------
     dfcol: Column
         A DataFrame Column with Structured data
+
     Returns
-    ----------
+    -------
     out: Column
         DataFrame Column encoded into avro data (binary).
         This is what is required to publish to Kafka Server for distribution.
+
     Examples
-    ----------
+    --------
     >>> from pyspark.sql.functions import col, struct
     >>> avro_example_schema = '''
     ... {
@@ -103,12 +112,14 @@ def to_avro(dfcol: Column) -> Column:
 
 def write_to_csv(batchdf: DataFrame, batchid: int, fn: str = "web/data/simbadtype.csv"):
     """Write DataFrame data into a CSV file.
+
     The only supported Output Modes for File Sink is `Append`, but we need the
     complete table updated and dumped on disk here.
     Therefore this routine allows us to use CSV file sink with `Complete`
     output mode.
     TODO: that would be great to generalise this method!
     Get rid of these hardcoded paths!
+
     Parameters
     ----------
     batchdf: DataFrame
@@ -118,8 +129,9 @@ def write_to_csv(batchdf: DataFrame, batchid: int, fn: str = "web/data/simbadtyp
         ID of the batch.
     fn: str, optional
         Filename for storing the output.
+
     Examples
-    ----------
+    --------
     >>> rdd = spark.sparkContext.parallelize(zip([1, 2, 3], [4, 5, 6]))
     >>> df = rdd.toDF(["type", "count"])
     >>> write_to_csv(df, 0, fn="test.csv")
@@ -132,8 +144,8 @@ def write_to_csv(batchdf: DataFrame, batchid: int, fn: str = "web/data/simbadtyp
 def init_sparksession(
     name: str, shuffle_partitions: int = None, tz=None
 ) -> SparkSession:
-    """Initialise SparkSession, the level of log for Spark and
-    some configuration parameters
+    """Initialise SparkSession, the level of log for Spark and some configuration parameters
+
     Parameters
     ----------
     name: str
@@ -144,12 +156,14 @@ def init_sparksession(
         Default is None.
     tz: str, optional
         Timezone. Default is None.
+
     Returns
-    ----------
+    -------
     spark: SparkSession
         Spark Session initialised.
+
     Examples
-    ----------
+    --------
     >>> spark_tmp = init_sparksession("test")
     >>> conf = spark_tmp.sparkContext.getConf().getAll()
     """
@@ -171,15 +185,17 @@ def init_sparksession(
 
 
 def get_spark_context() -> SparkContext:
-    """
-    Return the current SparkContext.
+    """Return the current SparkContext.
+
     Raise a RuntimeError if spark hasn't been initialized.
+
     Returns
-    ---------
+    -------
     sparkContext : SparkContext instance
         The active sparkContext
+
     Examples
-    ---------
+    --------
     >>> pysc = get_spark_context()
     >>> print(type(pysc))
     <class 'pyspark.context.SparkContext'>
@@ -198,6 +214,7 @@ def connect_to_kafka(
     kerberos: bool = False,
 ) -> DataFrame:
     """Initialise SparkSession, and set default Kafka parameters
+
     Parameters
     ----------
     servers: str
@@ -215,12 +232,14 @@ def connect_to_kafka(
         exceeding a retention period for example). Default is False.
     kerberos: bool, optional
         If True, add options for a kerberized Kafka cluster. Default is False.
+
     Returns
-    ----------
+    -------
     df: Streaming DataFrame
         Streaming DataFrame connected to Kafka stream
+
     Examples
-    ----------
+    --------
     >>> dfstream_tmp = connect_to_kafka("localhost:29092", "ztf-stream-sim")
     >>> dfstream_tmp.isStreaming
     True
@@ -241,7 +260,7 @@ def connect_to_kafka(
         df = df.option("kafka.sasl.kerberos.service.name", "kafka")
 
     # Naive check for secure connection - this can be improved...
-    to_secure = sum(["-Djava.security.auth.login.config=" in i[1] for i in conf])
+    to_secure = sum(["-Djava.security.auth.login.config=" in i[1] for i in conf])  # noqa: C419
     if to_secure > 0:
         if kerberos:
             df = df.option("kafka.security.protocol", "SASL_PLAINTEXT").option(
@@ -264,6 +283,7 @@ def connect_to_kafka(
 
 def connect_to_raw_database(basepath: str, path: str, latestfirst: bool) -> DataFrame:
     """Initialise SparkSession, and connect to the raw database (Parquet)
+
     Parameters
     ----------
     basepath: str
@@ -273,12 +293,14 @@ def connect_to_raw_database(basepath: str, path: str, latestfirst: bool) -> Data
     latestfirst: bool
         whether to process the latest new files first,
         useful when there is a large backlog of files
+
     Returns
-    ----------
+    -------
     df: Streaming DataFrame
         Streaming DataFrame connected to the database
+
     Examples
-    ----------
+    --------
     >>> dfstream_tmp = connect_to_raw_database(
     ...   "online/raw", "online/raw/*", True)
     >>> dfstream_tmp.isStreaming
@@ -304,18 +326,22 @@ def connect_to_raw_database(basepath: str, path: str, latestfirst: bool) -> Data
 
 def load_parquet_files(path: str) -> DataFrame:
     """Initialise SparkSession, and load parquet files with Spark
+
     Unlike connect_to_raw_database, you get a standard DataFrame, and
     not a Streaming DataFrame.
+
     Parameters
     ----------
     path: str
         The path to the data
+
     Returns
-    ----------
+    -------
     df: DataFrame
         Spark SQL DataFrame
+
     Examples
-    ----------
+    --------
     >>> df = load_parquet_files(ztf_alert_sample)
     """
     # Grab the running Spark Session
@@ -329,20 +355,23 @@ def load_parquet_files(path: str) -> DataFrame:
 
 def get_schemas_from_avro(avro_path: str) -> Tuple[StructType, dict, str]:
     """Build schemas from an avro file (DataFrame & JSON compatibility)
+
     Parameters
     ----------
     avro_path: str
         Path to avro file from which schema will be extracted
+
     Returns
-    ----------
+    -------
     df_schema: pyspark.sql.types.StructType
         Avro DataFrame schema
     alert_schema: dict
         Schema of the alert as a dictionary (DataFrame Style)
     alert_schema_json: str
         Schema of the alert as a string (JSON style)
+
     Examples
-    ----------
+    --------
     >>> df_schema, alert_schema, alert_schema_json = get_schemas_from_avro(
     ...   ztf_avro_sample)
     >>> print(type(df_schema))
