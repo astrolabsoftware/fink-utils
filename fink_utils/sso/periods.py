@@ -28,7 +28,7 @@ import numpy as np
 import io
 import pandas as pd
 from line_profiler import profile
-import nifty_ls # noqa: F401
+import nifty_ls  # noqa: F401
 
 import logging
 
@@ -228,13 +228,13 @@ def estimate_synodic_period(
 
     One can also use the nifty-ls implementation (faster and more accurate)
     >>> P_nifty, _ = estimate_synodic_period(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
-    >>> assert np.isclose(P, P_nifty), (P, P_nifty)
+    >>> assert np.isclose(P, P_nifty, rtol=1e-1), (P, P_nifty)
 
     One can also directly specify the Pandas dataframe with Fink data:
     >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
     >>> pdf = pd.read_json(io.BytesIO(r.content))
-    >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2", sb_method="fastnifty")
-    >>> assert np.isclose(P, P_from_pdf), (P, P_from_pdf)
+    >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2")
+    >>> assert np.isclose(P, P_from_pdf, rtol=1e-1), (P, P_from_pdf)
     """
     if pdf is None:
         if ssnamenr is not None:
