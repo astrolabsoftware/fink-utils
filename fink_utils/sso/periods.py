@@ -21,14 +21,20 @@ from fink_utils.sso.spins import (
     func_hg12,
     func_hg,
 )
-from gatspy import periodic
+from astropy.timeseries import LombScargleMultiband
+
 import requests
 import numpy as np
 import io
 import pandas as pd
 from line_profiler import profile
+import nifty_ls  # noqa: F401
+
+import logging
 
 from fink_utils.test.tester import regular_unit_tests
+
+_LOG = logging.getLogger(__name__)
 
 
 def extract_physical_parameters(pdf, flavor):
@@ -150,34 +156,50 @@ def compute_residuals(pdf, flavor, phyparam):
 
 
 @profile
-def extract_period_from_number(
-    ssnamenr: str,
+def estimate_synodic_period(
+    ssnamenr: str = None,
+    pdf=None,
+    phyparam=None,
     flavor="SHG1G2",
     Nterms_base=1,
     Nterms_band=1,
     period_range=(0.05, 1.2),
+    sb_method="auto",
     return_extra_info=False,
 ):
-    """Extract the period of a Solar System objeect seen by Fink
+    """Estimate the synodic period of a Solar System object seen by Fink
 
     Parameters
     ----------
     ssnamenr: str
         SSO number (we do not resolve name yet)
-    flavor: str
-        Model flavor: SHG1G2, HG1G2, HG12, or HG
-    Nterms_base: int
+    pdf: pandas DataFrame, optional
+        Pandas DataFrame with Fink SSO data for one object.
+        If not specified, data will be downloaded from Fink servers
+        using `ssnamenr`.
+    phyparam: dict, optional
+        Dictionary containing physical properties (phase curve, etc.)
+        of the object. If not specified, they will be recomputed
+        from the data.
+    flavor: str, optional
+        Model flavor: SHG1G2 (default), HG1G2, HG12, or HG
+    Nterms_base: int, optional
         Number of frequency terms to use for the
         base model common to all bands. Default is 1.
-    Nterms_band: int
+    Nterms_band: int, optional
         Number of frequency terms to use for the
         residuals between the base model and
         each individual band. Default is 1.
-    period_range: tupe of float
+    period_range: tupe of float, optional
         (min_period, max_period) for the search, in days.
         Default is (0.05, 1.2), that is between
         1.2 hours and 28.8 hours.
-    return_extra_info: bool
+    sb_method: str, optional
+        Specify the single-band lomb scargle implementation to use.
+        See https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargleMultiband.html#astropy.timeseries.LombScargleMultiband.autopower
+        If nifty-ls is installed, one can also specify fastnifty. Although
+        in this case it does not work yet for Nterms_* higher than 1.
+    return_extra_info: bool, optional
         If True, returns also the fitted model, and the original
         SSO data used for the fit. Default is False.
 
@@ -197,100 +219,74 @@ def extract_period_from_number(
     Examples
     --------
     >>> ssnamenr = 2363
-    >>> P, chi2 = extract_period_from_number(ssnamenr, flavor="SHG1G2", Nterms_base=2)
+    >>> P, chi2 = estimate_synodic_period(ssnamenr, flavor="SHG1G2", Nterms_base=2)
     >>> assert int(P) == 20, P
 
-    >>> P_HG, chi2_HG = extract_period_from_number(ssnamenr, flavor="HG", Nterms_base=2)
+    >>> P_HG, chi2_HG = estimate_synodic_period(ssnamenr, flavor="HG", Nterms_base=2)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
+
+
+    One can also use the nifty-ls implementation (faster and more accurate)
+    >>> P_nifty, _ = estimate_synodic_period(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
+    >>> assert np.isclose(P, P_nifty, rtol=1e-1), (P, P_nifty)
+
+    One can also directly specify the Pandas dataframe with Fink data:
+    >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
+    >>> pdf = pd.read_json(io.BytesIO(r.content))
+    >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2")
+    >>> assert np.isclose(P, P_from_pdf, rtol=1e-1), (P, P_from_pdf)
     """
-    # TODO: use quaero
-    r = requests.post(
-        "https://fink-portal.org/api/v1/sso",
-        json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
-    )
+    if pdf is None:
+        if ssnamenr is not None:
+            # TODO: use quaero
+            r = requests.post(
+                "https://fink-portal.org/api/v1/sso",
+                json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
+            )
+        else:
+            _LOG.error("You need to specify either `ssnamenr` or `pdf`.")
 
-    pdf = pd.read_json(io.BytesIO(r.content))
+        pdf = pd.read_json(io.BytesIO(r.content))
 
-    # get the physical parameters with the latest data
-    phyparam = extract_physical_parameters(pdf, flavor)
+    if phyparam is None:
+        # get the physical parameters with the latest data
+        phyparam = extract_physical_parameters(pdf, flavor)
 
     # Compute the residuals (obs - model)
     residuals = compute_residuals(pdf, flavor, phyparam)
 
-    # fit model
-    model = fit_model(
-        jd=pdf["i:jd"],
-        residuals=residuals,
-        sigmapsf=pdf["i:sigmapsf"],
-        fid=pdf["i:fid"],
-        Nterms_base=Nterms_base,
-        Nterms_band=Nterms_band,
-        period_range=period_range,
+    model = LombScargleMultiband(
+        pdf["i:jd"],
+        residuals,
+        pdf["i:fid"],
+        pdf["i:sigmapsf"],
+        nterms_base=Nterms_base,
+        nterms_band=Nterms_band,
     )
 
-    prediction = model.predict(
-        pdf["i:jd"].to_numpy(), period=model.best_period, filts=pdf["i:fid"].to_numpy()
+    frequency, power = model.autopower(
+        method="fast",
+        sb_method=sb_method,
+        minimum_frequency=1 / period_range[1],
+        maximum_frequency=1 / period_range[0],
     )
+    freq_maxpower = frequency[np.argmax(power)]
+    best_period = 1 / freq_maxpower
+
+    out = model.model(pdf["i:jd"].to_numpy(), freq_maxpower)
+    prediction = np.zeros_like(residuals)
+    for index, filt in enumerate(pdf["i:fid"].unique()):
+        cond = pdf["i:fid"] == filt
+        prediction[cond] = out[index][cond]
+
     chi2 = np.sum(((residuals - prediction) / pdf["i:sigmapsf"].to_numpy()) ** 2)
     reduced_chi2 = chi2 / len(residuals - 1)
 
     if return_extra_info:
         pdf["residuals"] = residuals
-        return model.best_period * 24, reduced_chi2, model, pdf
+        return best_period * 24, reduced_chi2, frequency, power, model, pdf
     else:
-        return model.best_period * 24, reduced_chi2
-
-
-def fit_model(
-    jd, residuals, sigmapsf, fid, Nterms_base=1, Nterms_band=1, period_range=(0.05, 1.2)
-):
-    """Fit the Multiband Periodogram model to the data.
-
-    Parameters
-    ----------
-    jd: array-like of float
-        Times
-    residuals: array-like of float
-        Difference observation - model
-    fid: array-like of int
-        Filter ID for each measurement
-    sigmapsf: array-like of float
-        Error estimates on `residuals`
-    Nterms_base: int
-        Number of frequency terms to use for the
-        base model common to all bands. Default is 1.
-    Nterms_band: int
-        Number of frequency terms to use for the
-        residuals between the base model and
-        each individual band. Default is 1.
-    period_range: tupe of float
-        (min_period, max_period) for the search, in days.
-        Default is (0.05, 1.2), that is between
-        1.2 hours and 28.8 hours.
-
-    Returns
-    -------
-    model: object
-        LombScargleMultiband model
-    """
-    model = periodic.LombScargleMultiband(
-        Nterms_base=Nterms_base,
-        Nterms_band=Nterms_band,
-        fit_period=True,
-    )
-
-    # Not sure about that...
-    model.optimizer.period_range = period_range
-    model.optimizer.quiet = True
-
-    model.fit(
-        jd,
-        residuals,
-        sigmapsf,
-        fid,
-    )
-
-    return model
+        return best_period * 24, reduced_chi2
 
 
 if __name__ == "__main__":

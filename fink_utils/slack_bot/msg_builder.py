@@ -55,16 +55,14 @@ class Message:
         allow_emoji : bool, optional
             if True allow emoji in the header, by default False
         """
-        self.blocks["blocks"].append(
-            {
-                "type": "header",
-                "text": {
-                    "type": TypeText.PLAIN_TXT.value,
-                    "text": header_txt,
-                    "emoji": allow_emoji,
-                },
-            }
-        )
+        self.blocks["blocks"].append({
+            "type": "header",
+            "text": {
+                "type": TypeText.PLAIN_TXT.value,
+                "text": header_txt,
+                "emoji": allow_emoji,
+            },
+        })
         return self
 
 

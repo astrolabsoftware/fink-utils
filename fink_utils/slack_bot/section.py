@@ -11,8 +11,8 @@ class Section:
     def __init__(
         self, type_text: TypeText, section_text: str, allow_emoji: bool = False
     ) -> None:
-        """
-        Instanciate a section.
+        """Instanciate a section.
+
         A section has always a text and cannot be empty.
 
         Parameters
@@ -29,8 +29,7 @@ class Section:
         self.add_text(type_text, section_text, allow_emoji)
 
     def add_text(self, type_txt: TypeText, txt: str, allow_emoji: bool = False):
-        """
-        Override the text set by the constructor
+        """Override the text set by the constructor
 
         Parameters
         ----------
@@ -48,8 +47,8 @@ class Section:
     def add_textfield(
         self, type_txt: TypeText, txt: str, allow_emoji: bool = False
     ) -> Self:
-        """
-        Add a text field in the section.
+        """Add a text field in the section.
+
         The first call create the field.
         The next calls add more field into the textfield.
 
@@ -78,8 +77,7 @@ class Section:
         return self
 
     def add_slack_image(self, image_slack_url: str, image_txt: str):
-        """
-        Add an image in the section with a text.
+        """Add an image in the section with a text.
 
         WARNING: Call multiple times this method in the same section will override the previous call.
         Create multiple sections to add multiple images.
@@ -98,8 +96,7 @@ class Section:
         }
 
     def add_url_image(self, image_url: str, image_txt: str):
-        """
-        Add an image from the url in the section.
+        """Add an image from the url in the section.
 
         Parameters
         ----------
@@ -122,8 +119,7 @@ class Section:
         url: str,
         allow_emoji: bool = False,
     ):
-        """
-        Add a button with a url, click on it will redirect to the url.
+        """Add a button with a url, click on it will redirect to the url.
 
         Parameters
         ----------

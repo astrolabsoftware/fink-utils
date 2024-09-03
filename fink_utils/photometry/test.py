@@ -37,7 +37,9 @@ def requests_alerts():
 
     request_object = ",".join(list(pdf["i:objectId"]))
     request_object += ",ZTF21abeyuqh,ZTF21abeyutr,ZTF21abeyuua"
-    request_columns = "i:objectId,i:candid,i:magpsf,i:sigmapsf,i:magnr,i:sigmagnr,i:isdiffpos"
+    request_columns = (
+        "i:objectId,i:candid,i:magpsf,i:sigmapsf,i:magnr,i:sigmagnr,i:isdiffpos"
+    )
 
     r = requests.post(
         "https://fink-portal.org/api/v1/objects",
@@ -88,7 +90,6 @@ def test_dc_mag(requests_alerts):
 
 
 def test_flux_snana(requests_alerts):
-
     t_before = t.time()
     vect_flux, vect_sigflux = vect_mag2fluxcal_snana(
         requests_alerts["i:magpsf"].values, requests_alerts["i:sigmapsf"].values
