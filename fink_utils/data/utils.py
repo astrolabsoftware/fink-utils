@@ -69,7 +69,7 @@ def format_data_as_snana(
         Series containing information on which alerts to keep (boolean).
     filter_conversion_dic: dict
         Mapping from telescope filter code (e.g. [1, 2] for ZTF) to
-        SNANA filter code (['g', 'r']). Default is {1: 'g', 2: 'r'}.
+        SNANA filter code (['g', 'r']). Default is {1: 'g', 2: 'r', 3: 'i'}.
     transform_to_flux: boolean
         Set it to True if `measurement` is in Difference magnitude
         units (default for ZTF), in which case we will convert to apparent
@@ -82,7 +82,7 @@ def format_data_as_snana(
 
     """
     if filter_conversion_dic is None:
-        filter_conversion_dic = {1: "g", 2: "r"}
+        filter_conversion_dic = {1: "g", 2: "r", 3: "i"}
     # add an exploded column with SNID
     df_tmp = pd.DataFrame.from_dict({"jd": jd[mask], "SNID": candid[mask]})
     df_tmp = df_tmp.explode("jd")
