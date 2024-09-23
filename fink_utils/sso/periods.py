@@ -114,6 +114,8 @@ def compute_residuals(pdf, flavor, phyparam):
     """
     pdf["preds"] = 0.0
     for filtnum in pdf["i:fid"].unique():
+        if filtnum == 3:
+            continue
         cond = pdf["i:fid"] == filtnum
 
         if flavor == "SHG1G2":
@@ -276,6 +278,8 @@ def estimate_synodic_period(
     out = model.model(pdf["i:jd"].to_numpy(), freq_maxpower)
     prediction = np.zeros_like(residuals)
     for index, filt in enumerate(pdf["i:fid"].unique()):
+        if filt == 3:
+            continue
         cond = pdf["i:fid"] == filt
         prediction[cond] = out[index][cond]
 
