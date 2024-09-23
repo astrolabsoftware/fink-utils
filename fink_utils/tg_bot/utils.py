@@ -316,6 +316,8 @@ def get_curve(
         plt.figure(figsize=(15, 10))
 
         for filt in pdf["i:fid"].unique():
+            if filt == 3:
+                continue
             maskFilt = pdf["i:fid"] == filt
 
             # The column `d:tag` is used to check data type
