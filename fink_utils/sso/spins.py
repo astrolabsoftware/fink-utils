@@ -212,6 +212,8 @@ def compute_color_correction(filters: np.array) -> np.array:
     color_sso = np.zeros_like(filters, dtype=float)
     conversion = color_correction_to_V()
     for filt in filts:
+        if filt == 3:
+            continue
         cond = filters == filt
         color_sso[cond] = conversion[filt]
 
