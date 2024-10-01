@@ -29,7 +29,9 @@ from scipy import signal
 from fink_utils.test.tester import regular_unit_tests
 
 
-def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0):
+def query_miriade(
+    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, timeout=30
+):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
     Original function by M. Mahlke, adapted for Fink usage.
@@ -55,6 +57,8 @@ def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0):
     shift: float
         Time shift to center exposure times, in second.
         Default is 15 seconds which is half of the exposure time for ZTF.
+    timeout: int
+        Timeout in seconds. Default is 30.
 
     Returns
     -------
@@ -94,7 +98,7 @@ def query_miriade(ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0):
 
     # Execute query
     try:
-        r = requests.post(url, params=params, files=files, timeout=10)
+        r = requests.post(url, params=params, files=files, timeout=timeout)
     except requests.exceptions.ReadTimeout:
         return pd.DataFrame()
 
@@ -202,6 +206,7 @@ def get_miriade_data(
     withecl=True,
     method="rest",
     parameters=None,
+    timeout=30,
 ):
     """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
 
@@ -225,6 +230,8 @@ def get_miriade_data(
         Use the REST API (`rest`), or a local installation of miriade (`ephemcc`)
     parameters: dict, optional
         If method == `ephemcc`, specify the mapping of extra parameters here. Default is {}.
+    timeout: int, optional
+        Timeout in seconds when using the REST API. Default is 30.
 
     Returns
     -------
@@ -248,6 +255,7 @@ def get_miriade_data(
                 observer=observer,
                 rplane=rplane,
                 tcoor=tcoor,
+                timeout=timeout,
             )
         elif method == "ephemcc":
             eph = query_miriade_epehemcc(
@@ -274,7 +282,11 @@ def get_miriade_data(
                 # Add Ecliptic coordinates
                 if method == "rest":
                     eph_ec = query_miriade(
-                        str(ssnamenr), pdf_sub["i:jd"], observer=observer, rplane="2"
+                        str(ssnamenr),
+                        pdf_sub["i:jd"],
+                        observer=observer,
+                        rplane="2",
+                        timeout=timeout,
                     )
                 elif method == "ephemcc":
                     eph_ec = query_miriade_epehemcc(
