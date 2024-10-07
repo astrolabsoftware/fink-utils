@@ -200,6 +200,7 @@ def query_miriade_epehemcc(
 
 def get_miriade_data(
     pdf,
+    sso_colname="i:ssnamenr",
     observer="I41",
     rplane="1",
     tcoor=5,
@@ -214,6 +215,10 @@ def get_miriade_data(
     ----------
     pdf: pd.DataFrame
         Pandas DataFrame containing Fink alert data for a (or several) SSO
+    sso_colname: str, optional
+        Name of the column containing the SSO name to use when querying
+        the miriade service. Beware that `ssnamenr` from ZTF is not very
+        accurate, and it is better to use quaero before. Default is `i:ssnamenr`
     observer: str
         IAU Obs code - default to ZTF
         https://minorplanetcenter.net//iau/lists/ObsCodesF.html
@@ -241,11 +246,11 @@ def get_miriade_data(
     if parameters is None:
         parameters = {}
 
-    ssnamenrs = np.unique(pdf["i:ssnamenr"].values)
+    ssnamenrs = np.unique(pdf[sso_colname].values)
 
     infos = []
     for ssnamenr in ssnamenrs:
-        mask = pdf["i:ssnamenr"] == ssnamenr
+        mask = pdf[sso_colname] == ssnamenr
         pdf_sub = pdf[mask]
 
         if method == "rest":
