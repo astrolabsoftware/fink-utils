@@ -514,7 +514,7 @@ def estimate_sso_params(
     if p0 is None:
         p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
     if bounds is None:
-        bounds = ([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+        bounds = ([0, 0, 0, 3e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
 
     if normalise_to_V:
         color = compute_color_correction(filters)
