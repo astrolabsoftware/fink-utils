@@ -216,7 +216,7 @@ def get_miriade_data(
     pdf: pd.DataFrame
         Pandas DataFrame containing Fink alert data for a (or several) SSO
     sso_colname: str, optional
-        Name of the column containing the SSO name to use when querying 
+        Name of the column containing the SSO name to use when querying
         the miriade service. Beware that `ssnamenr` from ZTF is not very
         accurate, and it is better to use quaero before. Default is `i:ssnamenr`
     observer: str
