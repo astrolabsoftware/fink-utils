@@ -643,7 +643,7 @@ def estimate_sso_params(
     ...    pdf['i:jd'].values,
     ...    model='SSHG1G2',
     ...    normalise_to_V=False)
-    >>> assert len(sshg1g2) == 39, "Found {} parameters: {}".format(len(sshg1g2), sshg1g2)
+    >>> assert len(sshg1g2) == 45, "Found {} parameters: {}".format(len(sshg1g2), sshg1g2)
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
@@ -670,11 +670,6 @@ def estimate_sso_params(
     Traceback (most recent call last):
     AssertionError: model toto is not understood. Please choose among: SSHG1G2, SHG1G2, HG1G2, HG12, HG
     """
-    if p0 is None:
-        p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
-    if bounds is None:
-        bounds = ([0, 0, 0, 3e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
-
     if normalise_to_V:
         color = compute_color_correction(filters)
         ydata = magpsf_red + color
@@ -944,12 +939,12 @@ def fit_spin(
     if bounds is None:
         if model == "SHG1G2":
             bounds = (
-                [0, 0, 0, 1e-1, 0, -np.pi / 2],
+                [0, 0, 0, 3e-1, 0, -np.pi / 2],
                 [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
             )
         elif model == "SSHG1G2":
             bounds = (
-                [0, 0, 0, 1e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [0, 0, 0, 3e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
             )
 
