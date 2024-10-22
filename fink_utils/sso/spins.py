@@ -464,14 +464,12 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
 
         myfunc = (
             func_sshg1g2(
-                np.vstack(
-                    [
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]
-                ),
+                np.vstack([
+                    ph[mask].tolist(),
+                    ra[mask].tolist(),
+                    dec[mask].tolist(),
+                    jd[mask].tolist(),
+                ]),
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -864,7 +862,18 @@ def fit_legacy_models(
     return outdic
 
 
-def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, jd=None, p0=None, bounds=None, model="SHG1G2"):
+def fit_spin(
+    magpsf_red,
+    sigmapsf,
+    phase,
+    ra,
+    dec,
+    filters,
+    jd=None,
+    p0=None,
+    bounds=None,
+    model="SHG1G2",
+):
     """Fit for phase curve parameters
 
     SHG1G2: (H^b, G_1^b, G_2^b, alpha, delta, R)
@@ -929,7 +938,10 @@ def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, jd=None, p0=None, bo
 
     if bounds is None:
         if model == "SHG1G2":
-            bounds = ([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+            bounds = (
+                [0, 0, 0, 1e-1, 0, -np.pi / 2],
+                [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
+            )
         elif model == "SSHG1G2":
             bounds = (
                 [0, 0, 0, 1e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],

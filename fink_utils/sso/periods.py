@@ -269,7 +269,7 @@ def estimate_synodic_period(
 
     if lt_correction:
         # Speed of light in AU/day
-        c_speed = const.c.to('au/day').value
+        c_speed = const.c.to("au/day").value
         time = pdf["i:jd"] - pdf["Dobs"] / c_speed
     else:
         time = pdf["i:jd"]
