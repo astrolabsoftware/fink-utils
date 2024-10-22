@@ -682,13 +682,18 @@ def estimate_sso_params(
     else:
         ydata = magpsf_red
 
-    if model == "SSHG1G2":
-        outdic = fit_spin_shape(
-            ydata, sigmapsf, phase, ra, dec, jd, filters, p0=p0, bounds=bounds
-        )
-    elif model == "SHG1G2":
+    if model in ["SSHG1G2", "SHG1G2"]:
         outdic = fit_spin(
-            ydata, sigmapsf, phase, ra, dec, filters, p0=p0, bounds=bounds
+            ydata,
+            sigmapsf,
+            phase,
+            ra,
+            dec,
+            jd,
+            filters,
+            p0=p0,
+            bounds=bounds,
+            model=model,
         )
     elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
