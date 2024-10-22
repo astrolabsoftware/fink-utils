@@ -635,6 +635,18 @@ def estimate_sso_params(
     ...    normalise_to_V=False)
     >>> assert len(shg1g2) == 39, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
+    >>> sshg1g2 = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    np.deg2rad(pdf['i:ra'].values),
+    ...    np.deg2rad(pdf['i:dec'].values),
+    ...    pdf['i:jd'].values,
+    ...    model='SSHG1G2',
+    ...    normalise_to_V=False)
+    >>> assert len(sshg1g2) == 39, "Found {} parameters: {}".format(len(sshg1g2), sshg1g2)
+
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -658,7 +670,7 @@ def estimate_sso_params(
     ...    model='toto',
     ...    normalise_to_V=True) # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
-    AssertionError: model toto is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG
+    AssertionError: model toto is not understood. Please choose among: SSHG1G2, SHG1G2, HG1G2, HG12, HG
     """
     if p0 is None:
         p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
