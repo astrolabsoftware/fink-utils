@@ -151,6 +151,70 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     return func1 + func2
 
 
+def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+    """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
+
+    Parameters
+    ----------
+    pha: array-like [4, N]
+        List containing [phase angle in radians, RA in radians, Dec in radians, time (jd)]
+    h: float
+        Absolute magnitude in mag
+    G1: float
+        G1 parameter (no unit)
+    G2: float
+        G2 parameter (no unit)
+    alpha0: float
+        RA of the spin (radian)
+    delta0: float
+        Dec of the spin (radian)
+    period: float
+        Spin period (days)
+    a_b: float
+        Equatorial axes ratio
+    a_c: float
+        Polar axes ratio
+    phi0: float
+        Initial rotation phase at reference time t0 (radian)
+    t0: float
+        Reference time (jd)
+
+    Returns
+    -------
+    out: array of floats
+        H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
+    """
+    ph = pha[0]
+    ra = pha[1]
+    dec = pha[2]
+    ep = pha[3]
+
+    # TBD: For the time being, we fix the reference time
+    # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
+    # Kinda middle of ZTF
+    # TODO: take the middle jd?
+    t0 = 2459580.5
+
+    # Standard HG1G2 part: h + f(alpha, G1, G2)
+    func1 = func_hg1g2(ph, h, g1, g2)
+
+    # Spin part
+    cos_aspect = spin_angle(ra, dec, alpha0, delta0)
+    cos_aspect_2 = cos_aspect**2
+    sin_aspect_2 = 1 - cos_aspect_2
+    rot_phase = (2 * np.pi * (ep - t0) / period + phi0) % (2 * np.pi)
+
+    # new
+    # https://ui.adsabs.harvard.edu/abs/1985A%26A...149..186P/abstract
+    func2 = np.sqrt(
+        sin_aspect_2 * (np.cos(rot_phase) ** 2 + (a_b**2) * np.sin(rot_phase) ** 2)
+        + cos_aspect_2 * a_c**2
+    )
+    func2 = -2.5 * np.log10(func2)
+
+    return func1 + func2
+
+
 def color_correction_to_V():  # noqa: N802
     """Color correction from band to V
 
@@ -346,6 +410,84 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
     return np.ravel(eqs)
 
 
+def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
+    """Build the system of equations to solve using the HG1G2 + spin model
+
+    Parameters
+    ----------
+    x: list
+        List of parameters to fit for
+    filters: np.array
+        Array of size N containing the filtername for each measurement
+    ph: np.array
+        Array of size N containing phase angles
+    ra: np.array
+        Array of size N containing the RA (radian)
+    dec: np.array
+        Array of size N containing the Dec (radian)
+    jd: np.array
+        Array of size N containing the time of the measurements (jd)
+    rhs: np.array
+        Array of size N containing the actual measurements (magnitude)
+
+    Returns
+    -------
+    out: np.array
+        Array of size N containing (model - y)
+
+    Notes
+    -----
+    the input `x` should start with filter independent variables,
+    that is (alpha, delta, period, a/b, a/c, phi0), followed by filter dependent variables,
+    that is (H, G1, G2). For example with two bands g & r:
+
+    ```
+    x = [
+        alpha, delta, period, a_b, a_c, phi0,
+        h_g, g_1_g, g_2_g,
+        h_r, g_1_r, g_2_r
+    ]
+    ```
+
+    """
+    alpha, delta, period, a_b, a_c, phi0 = x[0:6]
+    filternames = np.unique(filters)
+
+    params = x[6:]
+    nparams = len(params) / len(filternames)
+    assert int(nparams) == nparams, "You need to input all parameters for all bands"
+
+    params_per_band = np.reshape(params, (len(filternames), int(nparams)))
+    eqs = []
+    for index, filtername in enumerate(filternames):
+        mask = filters == filtername
+
+        myfunc = (
+            func_sshg1g2(
+                np.vstack([
+                    ph[mask].tolist(),
+                    ra[mask].tolist(),
+                    dec[mask].tolist(),
+                    jd[mask].tolist(),
+                ]),
+                params_per_band[index][0],
+                params_per_band[index][1],
+                params_per_band[index][2],
+                alpha,
+                delta,
+                period,
+                a_b,
+                a_c,
+                phi0,
+            )
+            - rhs[mask]
+        )
+
+        eqs = np.concatenate((eqs, myfunc))
+
+    return np.ravel(eqs)
+
+
 def estimate_sso_params(
     magpsf_red,
     sigmapsf,
@@ -353,6 +495,7 @@ def estimate_sso_params(
     filters,
     ra=None,
     dec=None,
+    jd=None,
     model="SHG1G2",
     normalise_to_V=False,
     p0=None,
@@ -396,8 +539,11 @@ def estimate_sso_params(
         Right ascension [rad]. Required for SHG1G2 model.
     dec: optional, array
         Declination [rad]. Required for SHG1G2 model.
+    jd: options, array
+        Observing time (JD). Required for SSHG1G2 model.
     model: str
         Parametric function. Currently supported:
+            - SSHG1G2
             - SHG1G2 (default)
             - HG1G2
             - HG12
@@ -411,7 +557,8 @@ def estimate_sso_params(
     bounds: tuple of lists
         Parameters boundaries ([all_mins], [all_maxs]).
         Lists should be ordered as:
-            - SHG1G2: (H, G1, G2, R, alpha, delta)
+            - SSHG1G2: (H, G1, G2, R, alpha, delta, period, a_b, a_c, phi0, t0)
+            - SHG1G2 (default): (H, G1, G2, R, alpha, delta)
             - HG1G2: (H, G1, G2)
             - HG12: (H, G12)
             - HG: (H, G)
@@ -486,6 +633,18 @@ def estimate_sso_params(
     ...    normalise_to_V=False)
     >>> assert len(shg1g2) == 39, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
+    >>> sshg1g2 = estimate_sso_params(
+    ...    pdf['i:magpsf_red'].values,
+    ...    pdf['i:sigmapsf'].values,
+    ...    np.deg2rad(pdf['Phase'].values),
+    ...    pdf['i:fid'].values,
+    ...    np.deg2rad(pdf['i:ra'].values),
+    ...    np.deg2rad(pdf['i:dec'].values),
+    ...    pdf['i:jd'].values,
+    ...    model='SSHG1G2',
+    ...    normalise_to_V=False)
+    >>> assert len(sshg1g2) == 45, "Found {} parameters: {}".format(len(sshg1g2), sshg1g2)
+
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -509,13 +668,8 @@ def estimate_sso_params(
     ...    model='toto',
     ...    normalise_to_V=True) # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
-    AssertionError: model toto is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG
+    AssertionError: model toto is not understood. Please choose among: SSHG1G2, SHG1G2, HG1G2, HG12, HG
     """
-    if p0 is None:
-        p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
-    if bounds is None:
-        bounds = ([0, 0, 0, 3e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
-
     if normalise_to_V:
         color = compute_color_correction(filters)
         ydata = magpsf_red + color
@@ -523,9 +677,18 @@ def estimate_sso_params(
     else:
         ydata = magpsf_red
 
-    if model == "SHG1G2":
+    if model in ["SSHG1G2", "SHG1G2"]:
         outdic = fit_spin(
-            ydata, sigmapsf, phase, ra, dec, filters, p0=p0, bounds=bounds
+            ydata,
+            sigmapsf,
+            phase,
+            ra,
+            dec,
+            filters,
+            jd=jd,
+            p0=p0,
+            bounds=bounds,
+            model=model,
         )
     elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
@@ -533,7 +696,7 @@ def estimate_sso_params(
         )
     else:
         raise AssertionError(
-            "model {} is not understood. Please choose among: SHG1G2, HG1G2, HG12, HG".format(
+            "model {} is not understood. Please choose among: SSHG1G2, SHG1G2, HG1G2, HG12, HG".format(
                 model
             )
         )
@@ -699,8 +862,22 @@ def fit_legacy_models(
     return outdic
 
 
-def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, p0=None, bounds=None):
-    """Fit for phase curve parameters (R, alpha, delta, H^b, G_1^b, G_2^b)
+def fit_spin(
+    magpsf_red,
+    sigmapsf,
+    phase,
+    ra,
+    dec,
+    filters,
+    jd=None,
+    p0=None,
+    bounds=None,
+    model="SHG1G2",
+):
+    """Fit for phase curve parameters
+
+    SHG1G2: (H^b, G_1^b, G_2^b, alpha, delta, R)
+    SSHG1G2: (H^b, G_1^b, G_2^b, alpha, delta, period, a_b, a_c, phi0, t0)
 
     Code for quality `fit`:
     0: success
@@ -735,6 +912,8 @@ def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, p0=None, bounds=None
         Declination [rad]
     filters: array
         Filter name for each measurement
+    jd: optional, array
+        Observing time (JD). Required for SSHG1G2 model.
     p0: list
         Initial guess for [H, G1, G2, R, alpha, delta]. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
@@ -749,19 +928,37 @@ def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, p0=None, bounds=None
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
     """
+    assert model in ["SHG1G2", "SSHG1G2"], model
+
     if p0 is None:
-        p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
+        if model == "SHG1G2":
+            p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
+        elif model == "SSHG1G2":
+            p0 = [15.0, 0.15, 0.15, np.pi, 0.0, 1, 1.05, 1.05, 0.0]
 
     if bounds is None:
-        bounds = ([0, 0, 0, 1e-1, 0, -np.pi / 2], [30, 1, 1, 1, 2 * np.pi, np.pi / 2])
+        if model == "SHG1G2":
+            bounds = (
+                [0, 0, 0, 3e-1, 0, -np.pi / 2],
+                [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
+            )
+        elif model == "SSHG1G2":
+            bounds = (
+                [0, 0, 0, 3e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+            )
 
     ufilters = np.unique(filters)
+    if model == "SHG1G2":
+        params = ["R", "alpha0", "delta0"]
+    elif model == "SSHG1G2":
+        params = ["alpha0", "delta0", "period", "a_b", "a_c", "phi0"]
 
-    params = ["R", "alpha0", "delta0"]
-    spin_params = ["H", "G1", "G2"]
+    phase_params = ["H", "G1", "G2"]
+
     for filt in ufilters:
-        spin_params_with_filt = [i + "_{}".format(str(filt)) for i in spin_params]
-        params = np.concatenate((params, spin_params_with_filt))
+        phase_params_with_filt = [i + "_{}".format(str(filt)) for i in phase_params]
+        params = np.concatenate((params, phase_params_with_filt))
 
     initial_guess = p0[3:]
     for _ in ufilters:
@@ -773,18 +970,25 @@ def fit_spin(magpsf_red, sigmapsf, phase, ra, dec, filters, p0=None, bounds=None
         lower_bounds = np.concatenate((lower_bounds, bounds[0][:3]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
 
-    if not np.alltrue([i == i for i in magpsf_red]):
+    if not np.all([i == i for i in magpsf_red]):
         outdic = {"fit": 1, "status": -2}
         return outdic
 
     try:
+        if model == "SHG1G2":
+            func = build_eqs_for_spins
+            args = (filters, phase, ra, dec, magpsf_red)
+        elif model == "SSHG1G2":
+            func = build_eqs_for_spin_shape
+            args = (filters, phase, ra, dec, jd, magpsf_red)
+
         res_lsq = least_squares(
-            build_eqs_for_spins,
+            func,
             x0=initial_guess,
             bounds=(lower_bounds, upper_bounds),
             jac="2-point",
             loss="soft_l1",
-            args=(filters, phase, ra, dec, magpsf_red),
+            args=args,
         )
 
     except RuntimeError:

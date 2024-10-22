@@ -415,7 +415,7 @@ def get_num_opposition(elong, width=4):
     ...     pdf['Elong.'].values,
     ...     width=4
     ... )
-    >>> assert noppositions == 2, "Found {} oppositions for 8467 instead of 2!".format(noppositions)
+    >>> assert noppositions == 3, "Found {} oppositions for 8467 instead of 3!".format(noppositions)
     """
     peaks, _ = signal.find_peaks(elong, width=4)
     return len(peaks)

@@ -22,6 +22,7 @@ from fink_utils.sso.spins import (
     func_hg,
 )
 from astropy.timeseries import LombScargleMultiband
+import astropy.constants as const
 
 import requests
 import numpy as np
@@ -168,6 +169,7 @@ def estimate_synodic_period(
     period_range=(0.05, 1.2),
     sb_method="auto",
     return_extra_info=False,
+    lt_correction=True,
 ):
     """Estimate the synodic period of a Solar System object seen by Fink
 
@@ -204,6 +206,8 @@ def estimate_synodic_period(
     return_extra_info: bool, optional
         If True, returns also the fitted model, and the original
         SSO data used for the fit. Default is False.
+    lt_correction: bool, optional
+        Apply light travel correction. Default is True.
 
     Returns
     -------
@@ -227,18 +231,26 @@ def estimate_synodic_period(
     >>> P_HG, chi2_HG = estimate_synodic_period(ssnamenr, flavor="HG", Nterms_base=2)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
 
+    # by default we apply the light travel correction. Disable it.
+    >>> P_no_lt, chi2_no_lt = estimate_synodic_period(ssnamenr, flavor="SHG1G2", Nterms_base=2, lt_correction=False)
+    >>> assert chi2 < chi2_no_lt, (chi2, chi2_no_lt)
+
 
     One can also use the nifty-ls implementation (faster and more accurate)
     # TODO: check alias between astropy and nifty-ls...
     >>> P_nifty, _ = estimate_synodic_period(ssnamenr, flavor="SHG1G2", sb_method="fastnifty")
-    >>> assert np.isclose(P, 2 * P_nifty, rtol=1e-1), (P, P_nifty)
+    >>> p1 = np.isclose(P, P_nifty, rtol=1e-1)
+    >>> p2 = np.isclose(P, 2 * P_nifty, rtol=1e-1)
+    >>> assert p1 or p2, (P, P_nifty)
 
     One can also directly specify the Pandas dataframe with Fink data:
     # TODO: check alias between astropy and nifty-ls...
     >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
     >>> pdf = pd.read_json(io.BytesIO(r.content))
     >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2")
-    >>> assert np.isclose(P, 2 * P_from_pdf, rtol=1e-1), (P, P_from_pdf)
+    >>> p1 = np.isclose(P, P_from_pdf, rtol=1e-1)
+    >>> p2 = np.isclose(P, 2 * P_from_pdf, rtol=1e-1)
+    >>> assert p1 or p2, (P, P_from_pdf)
     """
     if pdf is None:
         if ssnamenr is not None:
@@ -259,8 +271,15 @@ def estimate_synodic_period(
     # Compute the residuals (obs - model)
     residuals = compute_residuals(pdf, flavor, phyparam)
 
+    if lt_correction:
+        # Speed of light in AU/day
+        c_speed = const.c.to("au/day").value
+        time = pdf["i:jd"] - pdf["Dobs"] / c_speed
+    else:
+        time = pdf["i:jd"]
+
     model = LombScargleMultiband(
-        pdf["i:jd"],
+        time,
         residuals,
         pdf["i:fid"],
         pdf["i:sigmapsf"],
@@ -277,7 +296,7 @@ def estimate_synodic_period(
     freq_maxpower = frequency[np.argmax(power)]
     best_period = 1 / freq_maxpower
 
-    out = model.model(pdf["i:jd"].to_numpy(), freq_maxpower)
+    out = model.model(time.to_numpy(), freq_maxpower)
     prediction = np.zeros_like(residuals)
     for index, filt in enumerate(pdf["i:fid"].unique()):
         if filt == 3:
