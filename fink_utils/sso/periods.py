@@ -16,6 +16,7 @@
 
 from fink_utils.sso.spins import (
     estimate_sso_params,
+    func_sshg1g2,
     func_hg1g2_with_spin,
     func_hg1g2,
     func_hg12,
@@ -119,7 +120,25 @@ def compute_residuals(pdf, flavor, phyparam):
             continue
         cond = pdf["i:fid"] == filtnum
 
-        if flavor == "SHG1G2":
+        if flavor == "SSHG1G2":
+            pha = [
+                np.deg2rad(pdf["Phase"][cond]),
+                np.deg2rad(pdf["i:ra"][cond]),
+                np.deg2rad(pdf["i:dec"][cond]),
+            ]
+            preds = func_sshg1g2(
+                pha,
+                phyparam["H_{}".format(filtnum)],
+                phyparam["G1_{}".format(filtnum)],
+                phyparam["G2_{}".format(filtnum)],
+                np.deg2rad(phyparam["alpha0"]),
+                np.deg2rad(phyparam["delta0"]),
+                phyparam["period"],
+                phyparam["a_b"],
+                phyparam["a_c"],
+                phyparam["phi0"],
+            )
+        elif flavor == "SHG1G2":
             pha = [
                 np.deg2rad(pdf["Phase"][cond]),
                 np.deg2rad(pdf["i:ra"][cond]),
@@ -294,7 +313,9 @@ def estimate_synodic_period(
         maximum_frequency=1 / period_range[0],
     )
     freq_maxpower = frequency[np.argmax(power)]
-    best_period = 1 / freq_maxpower
+    # Rotation in days (2* LS value: double-peaked lightcurve)
+    # TODO: I need to be convinced...
+    best_period = 2 / freq_maxpower
 
     out = model.model(time.to_numpy(), freq_maxpower)
     prediction = np.zeros_like(residuals)
