@@ -991,7 +991,7 @@ def fit_spin(
             args=args,
         )
 
-    except RuntimeError:
+    except (RuntimeError, ValueError):
         outdic = {"fit": 3, "status": -2}
         return outdic
 
