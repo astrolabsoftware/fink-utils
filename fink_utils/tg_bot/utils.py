@@ -25,9 +25,7 @@ from astropy.io import fits
 
 import matplotlib.pyplot as plt
 
-from PIL import Image
 
-from fink_science.image_classification.utils import img_normalizer
 from fink_utils.data.utils import extract_field
 
 COLORS_ZTF = {1: "#15284F", 2: "#F5622E"}
@@ -222,8 +220,15 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
             },
             timeout=25,
         )
-        status_check(r)
-        data = io.BytesIO(r.content)
+        if not status_check(r, header=ztf_id):
+            return io.BytesIO()
+        data = np.log(np.array(r.json()[0]["b:cutoutScience_stampData"], dtype=float))
+        plt.axis("off")
+        plt.imshow(data, cmap="PuBu_r")
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
+        buf.seek(0)
+        plt.close()
     elif origin == "alert":
         assert cutout is not None
 
@@ -234,22 +239,17 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
             ) as hdul:
                 img = hdul[0].data[::-1]
 
-        # Set the contrast
-        img = np.nan_to_num(img)
-        img = img_normalizer(img, 0, 255)
-
-        # Make a PNG
-        img = Image.fromarray(img).convert("L")
-        _ = plt.figure(figsize=(15, 6))
-        plt.imshow(img, cmap="gray", vmin=0, vmax=255)
-        data = io.BytesIO()
-        plt.savefig(data, format="png")
-        data.seek(0)
+        data = np.log(img)
+        plt.axis("off")
+        plt.imshow(data, cmap="PuBu_r")
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
+        buf.seek(0)
         plt.close()
     else:
-        data = io.BytesIO()
+        buf = io.BytesIO()
 
-    return data
+    return buf
 
 
 def get_curve(
