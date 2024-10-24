@@ -25,9 +25,7 @@ from astropy.io import fits
 
 import matplotlib.pyplot as plt
 
-from PIL import Image
 
-from fink_science.image_classification.utils import img_normalizer
 from fink_utils.data.utils import extract_field
 
 COLORS_ZTF = {1: "#15284F", 2: "#F5622E"}
@@ -224,11 +222,11 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
         )
         if not status_check(r, header=ztf_id):
             return io.BytesIO()
-        data = np.log(np.array(r.json()[0]['b:cutoutScience_stampData'], dtype=float))
-        plt.axis('off')
-        plt.imshow(data, cmap='PuBu_r')
+        data = np.log(np.array(r.json()[0]["b:cutoutScience_stampData"], dtype=float))
+        plt.axis("off")
+        plt.imshow(data, cmap="PuBu_r")
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+        plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
         buf.seek(0)
         plt.close()
     elif origin == "alert":
@@ -242,10 +240,10 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
                 img = hdul[0].data[::-1]
 
         data = np.log(img)
-        plt.axis('off')
-        plt.imshow(data, cmap='PuBu_r')
+        plt.axis("off")
+        plt.imshow(data, cmap="PuBu_r")
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+        plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
         buf.seek(0)
         plt.close()
     else:
