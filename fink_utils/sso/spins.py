@@ -151,6 +151,82 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     return func1 + func2
 
 
+def cos_aspect_angle(ra, dec, ra0, dec0):
+    """Compute the cosine of the aspect angle
+
+    This angle is computed from the coordinates of the target and
+    the coordinates of its pole.
+
+    Parameters
+    ----------
+    ra: float
+        Right ascension of the target in radians.
+    dec: float
+        Declination of the target in radians.
+    ra0: float
+        Right ascension of the pole in radians.
+    dec0: float
+        Declination of the pole in radians.
+
+    Returns
+    -------
+    float: The cosine of the aspect angle
+    """
+    return np.sin(dec) * np.sin(dec0) + np.cos(dec) * np.cos(dec0) * np.cos(ra - ra0)
+
+
+def rotation_phase(t, W0, W1, t0):
+    """Compute the rotational phase
+
+    This angle is computed from the location of the prime meridian at
+    at reference epoch (W0, t0), and an angular velocity (W1)
+
+    Parameters
+    ----------
+    t: float
+        Time (JD)
+    W0: float
+        Location of the prime meridian at reference epoch (radian)
+    W1: float
+        Angular velocity of the target in radians/day.
+    t0: float
+        Reference epoch (JD)
+
+    Returns
+    -------
+    float: The rotational phase W (radian)
+    """
+    return W0 + W1 * (t - t0)
+
+
+def subobserver_longitude(ra, dec, ra0, dec0, W):
+    """Compute the subobserver longitude (radian)
+
+    This angle is computed from the coordinates of the target,
+    the coordinates of its pole, and its rotation phase
+
+    Parameters
+    ----------
+    ra: float
+        Right ascension of the target in radians.
+    dec: float
+        Declination of the target in radians.
+    ra0: float
+        Right ascension of the pole in radians.
+    dec0: float
+        Declination of the pole in radians.
+    W: float
+        Rotation phase of the target in radians.
+
+    Returns
+    -------
+    float: The subobserver longitude in radians.
+    """
+    x = -np.cos(dec0) * np.sin(dec) + np.sin(dec0) * np.cos(dec) * np.cos(ra - ra0)
+    y = -(np.cos(dec0) ** np.sin(ra - ra0))
+    return W - np.arctan2(x, y)
+
+
 def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
 
@@ -169,7 +245,7 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     delta0: float
         Dec of the spin (radian)
     period: float
-        Spin period (days)
+        Sidereal rotation period (days)
     a_b: float
         Equatorial axes ratio
     a_c: float
@@ -199,12 +275,14 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     func1 = func_hg1g2(ph, h, g1, g2)
 
     # Spin part
-    cos_aspect = spin_angle(ra, dec, alpha0, delta0)
+    cos_aspect = cos_aspect_angle(ra, dec, alpha0, delta0)
     cos_aspect_2 = cos_aspect**2
     sin_aspect_2 = 1 - cos_aspect_2
-    rot_phase = (2 * np.pi * (ep - t0) / period + phi0) % (2 * np.pi)
 
-    # new
+    # Sidereal
+    W = rotation_phase(ep, phi0, 2 * np.pi * period, t0)
+    rot_phase = subobserver_longitude(ra, dec, alpha0, delta0, W)
+
     # https://ui.adsabs.harvard.edu/abs/1985A%26A...149..186P/abstract
     func2 = np.sqrt(
         sin_aspect_2 * (np.cos(rot_phase) ** 2 + (a_b**2) * np.sin(rot_phase) ** 2)
