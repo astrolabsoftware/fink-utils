@@ -539,14 +539,12 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
 
         myfunc = (
             func_sshg1g2(
-                np.vstack(
-                    [
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]
-                ),
+                np.vstack([
+                    ph[mask].tolist(),
+                    ra[mask].tolist(),
+                    dec[mask].tolist(),
+                    jd[mask].tolist(),
+                ]),
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -829,23 +827,23 @@ def fit_legacy_models(
         func = func_hg1g2
         nparams = 3
         params_ = ["H", "G1", "G2"]
-        assert (
-            len(bounds[0]) == nparams
-        ), "You need to specify bounds on all (H, G1, G2) parameters"
+        assert len(bounds[0]) == nparams, (
+            "You need to specify bounds on all (H, G1, G2) parameters"
+        )
     elif model == "HG12":
         func = func_hg12
         nparams = 2
         params_ = ["H", "G12"]
-        assert (
-            len(bounds[0]) == nparams
-        ), "You need to specify bounds on all (H, G12) parameters"
+        assert len(bounds[0]) == nparams, (
+            "You need to specify bounds on all (H, G12) parameters"
+        )
     elif model == "HG":
         func = func_hg
         nparams = 2
         params_ = ["H", "G"]
-        assert (
-            len(bounds[0]) == nparams
-        ), "You need to specify bounds on all (H, G) parameters"
+        assert len(bounds[0]) == nparams, (
+            "You need to specify bounds on all (H, G) parameters"
+        )
 
     ufilters = np.unique(filters)
 
