@@ -105,12 +105,6 @@ def func_hg1g2(ph, h, g1, g2):
     return h + func1
 
 
-def spin_angle(ra, dec, alpha0, delta0):
-    return np.sin(dec) * np.sin(delta0) + np.cos(dec) * np.cos(delta0) * np.cos(
-        ra - alpha0
-    )
-
-
 def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
@@ -144,7 +138,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     func1 = func_hg1g2(ph, h, g1, g2)
 
     # Spin part
-    geo = spin_angle(ra, dec, alpha0, delta0)
+    geo = cos_aspect_angle(ra, dec, alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = 2.5 * np.log10(func2)
 
@@ -156,6 +150,7 @@ def cos_aspect_angle(ra, dec, ra0, dec0):
 
     This angle is computed from the coordinates of the target and
     the coordinates of its pole.
+    See Eq 12.4 "Introduction to Ephemerides and Astronomical Phenomena", IMCCE
 
     Parameters
     ----------
@@ -180,6 +175,7 @@ def rotation_phase(t, W0, W1, t0):
 
     This angle is computed from the location of the prime meridian at
     at reference epoch (W0, t0), and an angular velocity (W1)
+    See Eq 12.1 "Introduction to Ephemerides and Astronomical Phenomena", IMCCE
 
     Parameters
     ----------
@@ -204,6 +200,7 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
 
     This angle is computed from the coordinates of the target,
     the coordinates of its pole, and its rotation phase
+    See Eq 12.4 "Introduction to Ephemerides and Astronomical Phenomena", IMCCE
 
     Parameters
     ----------
@@ -542,12 +539,14 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
 
         myfunc = (
             func_sshg1g2(
-                np.vstack([
-                    ph[mask].tolist(),
-                    ra[mask].tolist(),
-                    dec[mask].tolist(),
-                    jd[mask].tolist(),
-                ]),
+                np.vstack(
+                    [
+                        ph[mask].tolist(),
+                        ra[mask].tolist(),
+                        dec[mask].tolist(),
+                        jd[mask].tolist(),
+                    ]
+                ),
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -830,23 +829,23 @@ def fit_legacy_models(
         func = func_hg1g2
         nparams = 3
         params_ = ["H", "G1", "G2"]
-        assert len(bounds[0]) == nparams, (
-            "You need to specify bounds on all (H, G1, G2) parameters"
-        )
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G1, G2) parameters"
     elif model == "HG12":
         func = func_hg12
         nparams = 2
         params_ = ["H", "G12"]
-        assert len(bounds[0]) == nparams, (
-            "You need to specify bounds on all (H, G12) parameters"
-        )
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G12) parameters"
     elif model == "HG":
         func = func_hg
         nparams = 2
         params_ = ["H", "G"]
-        assert len(bounds[0]) == nparams, (
-            "You need to specify bounds on all (H, G) parameters"
-        )
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G) parameters"
 
     ufilters = np.unique(filters)
 
@@ -1092,7 +1091,7 @@ def fit_spin(
     chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    geo = spin_angle(
+    geo = cos_aspect_angle(
         ra,
         dec,
         popt[params.tolist().index("alpha0")],
