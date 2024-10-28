@@ -252,6 +252,11 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     t0: float
         Reference time (jd)
 
+    Notes
+    -----
+    Input times must be corrected from the light travel time,
+    that is jd_lt = jd - d_obs / c_speed
+
     Returns
     -------
     out: array of floats
@@ -501,7 +506,7 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
     dec: np.array
         Array of size N containing the Dec (radian)
     jd: np.array
-        Array of size N containing the time of the measurements (jd)
+        Array of size N containing the (time travel corrected) time of the measurements (jd)
     rhs: np.array
         Array of size N containing the actual measurements (magnitude)
 
@@ -615,7 +620,7 @@ def estimate_sso_params(
     dec: optional, array
         Declination [rad]. Required for SHG1G2 model.
     jd: options, array
-        Observing time (JD). Required for SSHG1G2 model.
+        Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
     model: str
         Parametric function. Currently supported:
             - SSHG1G2
@@ -988,7 +993,7 @@ def fit_spin(
     filters: array
         Filter name for each measurement
     jd: optional, array
-        Observing time (JD). Required for SSHG1G2 model.
+        Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
     p0: list
         Initial guess for parameters. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
