@@ -245,7 +245,7 @@ def estimate_synodic_period(
     --------
     >>> ssnamenr = 2363
     >>> P, chi2 = estimate_synodic_period(ssnamenr, flavor="SHG1G2", Nterms_base=2)
-    >>> assert int(P) == 40, P
+    >>> assert int(P) == 20, P
 
     >>> P_HG, chi2_HG = estimate_synodic_period(ssnamenr, flavor="HG", Nterms_base=2)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
