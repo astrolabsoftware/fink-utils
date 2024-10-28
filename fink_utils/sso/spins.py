@@ -280,7 +280,7 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     sin_aspect_2 = 1 - cos_aspect_2
 
     # Sidereal
-    W = rotation_phase(ep, phi0, 2 * np.pi * period, t0)
+    W = rotation_phase(ep, phi0, 2 * np.pi / period, t0)
     rot_phase = subobserver_longitude(ra, dec, alpha0, delta0, W)
 
     # https://ui.adsabs.harvard.edu/abs/1985A%26A...149..186P/abstract
