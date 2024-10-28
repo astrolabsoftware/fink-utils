@@ -22,6 +22,7 @@ import numpy as np
 
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
+import astropy.constants as const
 import astropy.units as u
 
 from scipy import signal
@@ -419,6 +420,21 @@ def get_num_opposition(elong, width=4):
     """
     peaks, _ = signal.find_peaks(elong, width=4)
     return len(peaks)
+
+
+def compute_light_travel_correction(jd, d_obs):
+    """Compute the time with light travel corrected
+
+    Parameters
+    ----------
+    jd: np.array
+        Array of times (JD), in day
+    d_obs: np.array
+        Array of distance to the observer, in AU
+    """
+    c_speed = const.c.to("au/day").value
+    jd_lt = jd - d_obs / c_speed
+    return jd_lt
 
 
 if __name__ == "__main__":

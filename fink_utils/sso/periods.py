@@ -22,8 +22,8 @@ from fink_utils.sso.spins import (
     func_hg12,
     func_hg,
 )
+from fink_utils.sso.utils import compute_light_travel_correction
 from astropy.timeseries import LombScargleMultiband
-import astropy.constants as const
 
 import requests
 import numpy as np
@@ -292,8 +292,7 @@ def estimate_synodic_period(
 
     if lt_correction:
         # Speed of light in AU/day
-        c_speed = const.c.to("au/day").value
-        time = pdf["i:jd"] - pdf["Dobs"] / c_speed
+        time = compute_light_travel_correction(pdf["i:jd"], pdf["Dobs"])
     else:
         time = pdf["i:jd"]
 
