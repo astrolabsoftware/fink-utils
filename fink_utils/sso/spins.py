@@ -105,12 +105,6 @@ def func_hg1g2(ph, h, g1, g2):
     return h + func1
 
 
-def spin_angle(ra, dec, alpha0, delta0):
-    return np.sin(dec) * np.sin(delta0) + np.cos(dec) * np.cos(delta0) * np.cos(
-        ra - alpha0
-    )
-
-
 def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
@@ -144,7 +138,7 @@ def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
     func1 = func_hg1g2(ph, h, g1, g2)
 
     # Spin part
-    geo = spin_angle(ra, dec, alpha0, delta0)
+    geo = cos_aspect_angle(ra, dec, alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = 2.5 * np.log10(func2)
 
@@ -156,6 +150,7 @@ def cos_aspect_angle(ra, dec, ra0, dec0):
 
     This angle is computed from the coordinates of the target and
     the coordinates of its pole.
+    See Eq 12.4 "Introduction to Ephemerides and Astronomical Phenomena", IMCCE
 
     Parameters
     ----------
@@ -180,6 +175,7 @@ def rotation_phase(t, W0, W1, t0):
 
     This angle is computed from the location of the prime meridian at
     at reference epoch (W0, t0), and an angular velocity (W1)
+    See Eq 12.1 "Introduction to Ephemerides and Astronomical Phenomena", IMCCE
 
     Parameters
     ----------
@@ -204,6 +200,7 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
 
     This angle is computed from the coordinates of the target,
     the coordinates of its pole, and its rotation phase
+    See Eq 12.4 "Introduction to Ephemerides and Astronomical Phenomena", IMCCE
 
     Parameters
     ----------
@@ -255,6 +252,11 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     t0: float
         Reference time (jd)
 
+    Notes
+    -----
+    Input times must be corrected from the light travel time,
+    that is jd_lt = jd - d_obs / c_speed
+
     Returns
     -------
     out: array of floats
@@ -280,7 +282,7 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     sin_aspect_2 = 1 - cos_aspect_2
 
     # Sidereal
-    W = rotation_phase(ep, phi0, 2 * np.pi * period, t0)
+    W = rotation_phase(ep, phi0, 2 * np.pi / period, t0)
     rot_phase = subobserver_longitude(ra, dec, alpha0, delta0, W)
 
     # https://ui.adsabs.harvard.edu/abs/1985A%26A...149..186P/abstract
@@ -504,7 +506,7 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
     dec: np.array
         Array of size N containing the Dec (radian)
     jd: np.array
-        Array of size N containing the time of the measurements (jd)
+        Array of size N containing the (time travel corrected) time of the measurements (jd)
     rhs: np.array
         Array of size N containing the actual measurements (magnitude)
 
@@ -618,7 +620,7 @@ def estimate_sso_params(
     dec: optional, array
         Declination [rad]. Required for SHG1G2 model.
     jd: options, array
-        Observing time (JD). Required for SSHG1G2 model.
+        Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
     model: str
         Parametric function. Currently supported:
             - SSHG1G2
@@ -991,7 +993,7 @@ def fit_spin(
     filters: array
         Filter name for each measurement
     jd: optional, array
-        Observing time (JD). Required for SSHG1G2 model.
+        Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
     p0: list
         Initial guess for parameters. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
@@ -1092,7 +1094,7 @@ def fit_spin(
     chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    geo = spin_angle(
+    geo = cos_aspect_angle(
         ra,
         dec,
         popt[params.tolist().index("alpha0")],
