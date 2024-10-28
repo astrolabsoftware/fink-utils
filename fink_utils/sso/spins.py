@@ -635,7 +635,7 @@ def estimate_sso_params(
     bounds: tuple of lists
         Parameters boundaries ([all_mins], [all_maxs]).
         Lists should be ordered as:
-            - SSHG1G2: (H, G1, G2, R, alpha, delta, period, a_b, a_c, phi0, t0)
+            - SSHG1G2: (H, G1, G2, alpha, delta, period, a_b, a_c, phi0)
             - SHG1G2 (default): (H, G1, G2, R, alpha, delta)
             - HG1G2: (H, G1, G2)
             - HG12: (H, G12)
@@ -993,7 +993,7 @@ def fit_spin(
     jd: optional, array
         Observing time (JD). Required for SSHG1G2 model.
     p0: list
-        Initial guess for [H, G1, G2, R, alpha, delta]. Note that even if
+        Initial guess for parameters. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
     bounds: tuple of lists
         Parameters boundaries for `func_hg1g2_with_spin` ([all_mins], [all_maxs]).
@@ -1022,7 +1022,7 @@ def fit_spin(
             )
         elif model == "SSHG1G2":
             bounds = (
-                [0, 0, 0, 3e-1, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [0, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
             )
 
