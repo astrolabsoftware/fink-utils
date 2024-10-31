@@ -220,7 +220,7 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
     float: The subobserver longitude in radians.
     """
     x = -np.cos(dec0) * np.sin(dec) + np.sin(dec0) * np.cos(dec) * np.cos(ra - ra0)
-    y = -(np.cos(dec0) ** np.sin(ra - ra0))
+    y = -(np.cos(dec0) * np.sin(ra - ra0))
     return W - np.arctan2(x, y)
 
 
