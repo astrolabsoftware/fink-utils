@@ -712,7 +712,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
     ...    normalise_to_V=False)
-    >>> assert len(shg1g2) == 39, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
     >>> sshg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -736,7 +736,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
     ...    normalise_to_V=True)
-    >>> assert len(shg1g2) == 28, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert len(shg1g2) == 30, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
     # If you enter a wrong model name, raise an error
     >>> wrong = estimate_sso_params(
