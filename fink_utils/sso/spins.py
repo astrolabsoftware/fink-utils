@@ -1110,12 +1110,6 @@ def fit_spin(
         "fit": 0,
     }
 
-    if "R" in outdic:
-        # SHG1G2
-        a_b, a_c = estimate_axes_ratio(res_lsq.fun, outdic["R"])
-        outdic["a_b"] = a_b
-        outdic["a_c"] = a_c
-
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
     outdic["rms"] = rms
@@ -1153,6 +1147,12 @@ def fit_spin(
         else:
             outdic[params[i]] = popt[i]
             outdic["err_" + params[i]] = perr[i]
+
+    if "R" in outdic:
+        # SHG1G2
+        a_b, a_c = estimate_axes_ratio(res_lsq.fun, outdic["R"])
+        outdic["a_b"] = a_b
+        outdic["a_c"] = a_c
 
     return outdic
 
