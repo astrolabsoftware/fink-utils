@@ -16,6 +16,7 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy import linalg
 
+from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.test.tester import regular_unit_tests
 
 
