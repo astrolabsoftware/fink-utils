@@ -16,6 +16,7 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy import linalg
 
+from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.test.tester import regular_unit_tests
 
 
@@ -711,7 +712,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
     ...    normalise_to_V=False)
-    >>> assert len(shg1g2) == 39, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
     >>> sshg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -735,7 +736,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
     ...    normalise_to_V=True)
-    >>> assert len(shg1g2) == 28, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert len(shg1g2) == 30, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
     # If you enter a wrong model name, raise an error
     >>> wrong = estimate_sso_params(
@@ -1146,6 +1147,12 @@ def fit_spin(
         else:
             outdic[params[i]] = popt[i]
             outdic["err_" + params[i]] = perr[i]
+
+    if "R" in outdic:
+        # SHG1G2
+        a_b, a_c = estimate_axes_ratio(res_lsq.fun, outdic["R"])
+        outdic["a_b"] = a_b
+        outdic["a_c"] = a_c
 
     return outdic
 
