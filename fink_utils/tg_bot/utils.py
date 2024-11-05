@@ -214,10 +214,7 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
         assert ztf_id is not None
         r = requests.post(
             "https://fink-portal.org/api/v1/cutouts",
-            json={
-                "objectId": ztf_id,
-                "kind": kind,
-            },
+            json={"objectId": ztf_id, "kind": kind, "output-format": "array"},
             timeout=25,
         )
         if not status_check(r, header=ztf_id):
@@ -313,7 +310,7 @@ def get_curve(
         # Format output in a DataFrame
         pdf = pd.read_json(io.BytesIO(r.content))
 
-        plt.figure(figsize=(15, 10))
+        plt.figure(figsize=(12, 4))
 
         for filt in pdf["i:fid"].unique():
             if filt == 3:
