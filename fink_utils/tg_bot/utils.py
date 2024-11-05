@@ -214,11 +214,7 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
         assert ztf_id is not None
         r = requests.post(
             "https://fink-portal.org/api/v1/cutouts",
-            json={
-                "objectId": ztf_id,
-                "kind": kind,
-                'output-format': 'array'
-            },
+            json={"objectId": ztf_id, "kind": kind, "output-format": "array"},
             timeout=25,
         )
         if not status_check(r, header=ztf_id):
