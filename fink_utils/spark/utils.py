@@ -17,7 +17,14 @@ import pandas as pd
 
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import ArrayType, BooleanType, StructType, MapType, StringType, FloatType
+from pyspark.sql.types import (
+    ArrayType,
+    BooleanType,
+    StructType,
+    MapType,
+    StringType,
+    FloatType,
+)
 from pyspark.sql import DataFrame
 
 import importlib
@@ -74,7 +81,7 @@ def concat_col(
 
 
 def extract_values(cmagpsf, cdiffmaglim):
-    """ Extract the first upper values before measurements start
+    """Extract the first upper values before measurements start
 
     Parameters
     ----------
@@ -130,7 +137,7 @@ def extract_values(cmagpsf, cdiffmaglim):
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
 def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
-    """ Extend valid measurements with the last upper limit for each band
+    """Extend valid measurements with the last upper limit for each band
 
     Notes
     -----
@@ -198,7 +205,6 @@ def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
         out.append(row)
 
     return pd.Series(out)
-
 
 
 def return_flatten_names(
