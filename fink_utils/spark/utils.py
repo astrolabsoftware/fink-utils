@@ -17,7 +17,7 @@ import pandas as pd
 
 import pyspark.sql.functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import ArrayType, BooleanType, StructType
+from pyspark.sql.types import ArrayType, BooleanType, StructType, MapType, StringType, FloatType
 from pyspark.sql import DataFrame
 
 import importlib
@@ -71,6 +71,134 @@ def concat_col(
             ),
         ).otherwise(F.array(df["{}.{}".format(current, colname)])),
     )
+
+
+def extract_values(cmagpsf, cdiffmaglim):
+    """ Extract the first upper values before measurements start
+
+    Parameters
+    ----------
+    cmagpsf: np.array
+        Array of magpsf (history + current)
+    cdiffmaglim: np.array
+        Array of diffmaglim (history + current)
+
+    Returns
+    -------
+    val: float
+        Last diffmaglim values before measurements start
+
+    Examples
+    --------
+    >>> cmagpsf = [np.nan, np.nan, 1.0, 2.0, np.nan, 3.0]
+    >>> cdiffmaglim = [0.3, 0.2, 0.4, 0.7, 0.4, 0.2]
+    >>> val = extract_values(cmagpsf, cdiffmaglim)
+    >>> assert val == 0.2
+    """
+    if len(cmagpsf) == 0:
+        return np.nan
+
+    if not np.isnan(cmagpsf[0]):
+        # young transient must start with NaN
+        return np.nan
+
+    if np.alltrue(np.isnan(cmagpsf)):
+        # all NaNs
+        return np.nan
+
+    # 0..N_alert
+    array_indices = np.arange(len(cmagpsf))
+
+    # Position of the last upper values
+    element = np.nan
+    pos = 0
+    while np.isnan(element) and pos < len(cmagpsf):
+        element = cmagpsf[pos]
+        pos += 1
+
+    if (pos == len(cmagpsf)) and np.isnan(element):
+        return np.nan
+
+    # Arrays with only upper values
+    diffmaglim = cdiffmaglim[array_indices <= pos - 2]
+
+    if len(diffmaglim) == 0:
+        return np.nan
+    else:
+        return diffmaglim[-1]
+
+
+@pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
+def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
+    """ Extend valid measurements with the last upper limit for each band
+
+    Notes
+    -----
+    The extended time-series can have:
+    1. new measurements in r & g
+    2. new measurements in r or g
+    3. no new measurements
+
+    In the case of (2) or (3), missing addition means the history
+    already starts with a valid measurement, and there is nothing to
+    be further added.
+
+    Parameters
+    ----------
+    cmagpsf: pd.Series of np.array
+        Series of arrays of magpsf (history + current)
+    csigmapsf: pd.Series of np.array
+        Series of arrays of sigmapsf (history + current)
+    cfid: pd.Series of np.array
+        Series of arrays of fid (history + current)
+    cdiffmaglim: pd.Series of np.array
+        Series of arrays of diffmaglim (history + current)
+
+    Returns
+    -------
+    pd.Series
+        new column with dictionaries containing extended
+        time-series (`cmagpsf_ext` & `csigmapsf_ext`). Note that
+        added values for sigmapsf is always 0.2 mag.
+
+    Examples
+    --------
+    >>> to_expand = ["jd", "fid", "magpsf", "sigmapsf", "diffmaglim", "sigmapsf"]
+    >>> prefix = "c"
+    >>> for colname in to_expand:
+    ...     df = concat_col(df, colname, prefix=prefix)
+
+    >>> df = spark.read.format("parquet").load("datatest")
+    >>> df = df.withColumn("ext", extend_lc_with_upper_limits(
+    ...     "cmagpsf", "csigmapsf", "cfid", "cdiffmaglim"))
+    >>> df = df.withColumn("cmagpsf_ext", df["ext"].getItem("cmagpsf_ext"))
+    >>> df = df.withColumn("csigmapsf_ext", df["ext"].getItem("csigmapsf_ext"))
+
+    >>> pdf = df.select(["cmagpsf", "cmagpsf_ext"]).toPandas()
+
+    >>> cmagpsf, cmagpsf_ext = pdf.to_numpy()[0]
+    >>> assert len(cmagpsf) == len(cmagpsf_ext) # they have the same size
+
+    >>> assert len(cmagpsf[~np.isnan(cmagpsf)]) <= len(cmagpsf_ext[~np.isnan(cmagpsf_ext)])
+    """
+    out = []
+    for index in range(len(cmagpsf)):
+        row = {"cmagpsf_ext": cmagpsf[index], "csigmapsf_ext": csigmapsf[index]}
+        for fid in [1, 2]:
+            mask = cfid[index] == fid
+            val = extract_values(
+                cmagpsf[index][mask],
+                cdiffmaglim[index][mask],
+            )
+            if not np.isnan(val):
+                offset = np.where(cdiffmaglim[index] == val)[0][0]
+                row["cmagpsf_ext"][offset] = val
+                row["csigmapsf_ext"][offset] = 0.2
+
+        out.append(row)
+
+    return pd.Series(out)
+
 
 
 def return_flatten_names(
