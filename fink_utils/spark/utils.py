@@ -80,7 +80,7 @@ def concat_col(
     )
 
 
-def extract_values(cmagpsf, cdiffmaglim):
+def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
     """Extract the first upper values before measurements start
 
     Parameters
@@ -89,6 +89,9 @@ def extract_values(cmagpsf, cdiffmaglim):
         Array of magpsf (history + current)
     cdiffmaglim: np.array
         Array of diffmaglim (history + current)
+    onlyfainterlimits: bool, optional
+        If True, only consider upper limits that are fainter than the
+        first measurement. Default False
 
     Returns
     -------
@@ -129,6 +132,10 @@ def extract_values(cmagpsf, cdiffmaglim):
     # Arrays with only upper values
     diffmaglim = cdiffmaglim[array_indices <= pos - 2]
 
+    # Selecting only fainter limits if required
+    if onlyfainterlimits:
+        diffmaglim = diffmaglim[diffmaglim > cmagpsf[pos]]
+
     if len(diffmaglim) == 0:
         return np.nan
     else:
@@ -136,7 +143,9 @@ def extract_values(cmagpsf, cdiffmaglim):
 
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
-def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
+def extend_lc_with_upper_limits(
+    cmagpsf, csigmapsf, cfid, cdiffmaglim, onlyfainterlimits=False
+):
     """Extend valid measurements with the last upper limit for each band
 
     Notes
@@ -160,6 +169,9 @@ def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
         Series of arrays of fid (history + current)
     cdiffmaglim: pd.Series of np.array
         Series of arrays of diffmaglim (history + current)
+    onlyfainterlimits: bool, optional
+        If True, only consider upper limits that are fainter than the
+        first measurement. Default False
 
     Returns
     -------
@@ -196,6 +208,7 @@ def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
             val = extract_values(
                 cmagpsf[index][mask],
                 cdiffmaglim[index][mask],
+                onlyfainterlimits=onlyfainterlimits,
             )
             if not np.isnan(val):
                 offset = np.where(cdiffmaglim[index] == val)[0][0]
@@ -347,7 +360,9 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
             raise AssertionError(
                 """
                 Column name {} is not a valid column of the DataFrame.
-                """.format(argname)
+                """.format(
+                    argname
+                )
             )
         colnames.append(colname[0])
 
