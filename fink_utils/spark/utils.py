@@ -80,7 +80,7 @@ def concat_col(
     )
 
 
-def extract_values(cmagpsf, cdiffmaglim):
+def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
     """Extract the first upper values before measurements start
 
     Parameters
@@ -89,6 +89,9 @@ def extract_values(cmagpsf, cdiffmaglim):
         Array of magpsf (history + current)
     cdiffmaglim: np.array
         Array of diffmaglim (history + current)
+    onlyfainterlimits: bool, optional
+        If True, only consider upper limits that are fainter than the
+        first measurement. Default False
 
     Returns
     -------
@@ -117,17 +120,21 @@ def extract_values(cmagpsf, cdiffmaglim):
     array_indices = np.arange(len(cmagpsf))
 
     # Position of the last upper values
-    element = np.nan
+    first_mag = np.nan
     pos = 0
-    while np.isnan(element) and pos < len(cmagpsf):
-        element = cmagpsf[pos]
+    while np.isnan(first_mag) and pos < len(cmagpsf):
+        first_mag = cmagpsf[pos]
         pos += 1
 
-    if (pos == len(cmagpsf)) and np.isnan(element):
+    if (pos == len(cmagpsf)) and np.isnan(first_mag):
         return np.nan
 
     # Arrays with only upper values
     diffmaglim = cdiffmaglim[array_indices <= pos - 2]
+
+    # Selecting only fainter limits if required
+    if onlyfainterlimits:
+        diffmaglim = diffmaglim[diffmaglim > first_mag]
 
     if len(diffmaglim) == 0:
         return np.nan
@@ -136,7 +143,9 @@ def extract_values(cmagpsf, cdiffmaglim):
 
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
-def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
+def extend_lc_with_upper_limits(
+    cmagpsf, csigmapsf, cfid, cdiffmaglim, onlyfainterlimits=False
+):
     """Extend valid measurements with the last upper limit for each band
 
     Notes
@@ -160,6 +169,9 @@ def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
         Series of arrays of fid (history + current)
     cdiffmaglim: pd.Series of np.array
         Series of arrays of diffmaglim (history + current)
+    onlyfainterlimits: bool, optional
+        If True, only consider upper limits that are fainter than the
+        first measurement. Default False
 
     Returns
     -------
@@ -196,6 +208,7 @@ def extend_lc_with_upper_limits(cmagpsf, csigmapsf, cfid, cdiffmaglim):
             val = extract_values(
                 cmagpsf[index][mask],
                 cdiffmaglim[index][mask],
+                onlyfainterlimits=onlyfainterlimits,
             )
             if not np.isnan(val):
                 offset = np.where(cdiffmaglim[index] == val)[0][0]
