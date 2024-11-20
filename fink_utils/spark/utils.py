@@ -120,13 +120,13 @@ def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
     array_indices = np.arange(len(cmagpsf))
 
     # Position of the last upper values
-    element = np.nan
+    first_mag = np.nan
     pos = 0
-    while np.isnan(element) and pos < len(cmagpsf):
-        element = cmagpsf[pos]
+    while np.isnan(first_mag) and pos < len(cmagpsf):
+        first_mag = cmagpsf[pos]
         pos += 1
 
-    if (pos == len(cmagpsf)) and np.isnan(element):
+    if (pos == len(cmagpsf)) and np.isnan(first_mag):
         return np.nan
 
     # Arrays with only upper values
@@ -134,7 +134,7 @@ def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
 
     # Selecting only fainter limits if required
     if onlyfainterlimits:
-        diffmaglim = diffmaglim[diffmaglim > cmagpsf[pos]]
+        diffmaglim = diffmaglim[diffmaglim > first_mag]
 
     if len(diffmaglim) == 0:
         return np.nan
