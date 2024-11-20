@@ -360,9 +360,7 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
             raise AssertionError(
                 """
                 Column name {} is not a valid column of the DataFrame.
-                """.format(
-                    argname
-                )
+                """.format(argname)
             )
         colnames.append(colname[0])
 
