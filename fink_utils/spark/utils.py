@@ -200,6 +200,9 @@ def extend_lc_with_upper_limits(
 
     >>> assert len(cmagpsf[~np.isnan(cmagpsf)]) <= len(cmagpsf_ext[~np.isnan(cmagpsf_ext)])
     """
+    if onlyfainterlimits:
+        # Series to boolean
+        onlyfainterlimits = True
     out = []
     for index in range(len(cmagpsf)):
         row = {"cmagpsf_ext": cmagpsf[index], "csigmapsf_ext": csigmapsf[index]}
