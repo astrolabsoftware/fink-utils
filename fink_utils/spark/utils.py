@@ -200,7 +200,7 @@ def extend_lc_with_upper_limits(
 
     >>> assert len(cmagpsf[~np.isnan(cmagpsf)]) <= len(cmagpsf_ext[~np.isnan(cmagpsf_ext)])
     """
-    if onlyfainterlimits:
+    if not isinstance(onlyfainterlimits, bool):
         # Series to boolean
         onlyfainterlimits = True
     out = []
