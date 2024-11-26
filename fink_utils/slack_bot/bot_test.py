@@ -65,9 +65,9 @@ def get_imgs():
         return r.json()["b:cutout{}_stampData".format(kind)]
 
     return (
-        request("Science"),
-        request("Template"),
-        request("Difference"),
+        np.array(request("Science")),
+        np.array(request("Template")),
+        np.array(request("Difference")),
     )
 
 
