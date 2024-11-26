@@ -219,7 +219,7 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
         )
         if not status_check(r, header=ztf_id):
             return io.BytesIO()
-        data = np.log(np.array(r.json()[0]["b:cutoutScience_stampData"], dtype=float))
+        data = np.log(np.array(r.json()["b:cutoutScience_stampData"], dtype=float))
         plt.axis("off")
         plt.imshow(data, cmap="PuBu_r")
         buf = io.BytesIO()
