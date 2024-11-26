@@ -62,16 +62,12 @@ def get_imgs():
                 "output-format": "array",
             },
         )
-        return r
-
-    def decode_array(content):
-        pdf = pd.read_json(io.BytesIO(content))
-        return np.array(pdf[pdf.columns[0]].values[0])
+        return r.json()["b:cutout{}_stampData".format(kind)]
 
     return (
-        decode_array(request("Science").content),
-        decode_array(request("Template").content),
-        decode_array(request("Difference").content),
+        np.array(request("Science")),
+        np.array(request("Template")),
+        np.array(request("Difference")),
     )
 
 
