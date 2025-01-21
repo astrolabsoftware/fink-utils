@@ -115,7 +115,14 @@ def query_miriade(
 
 
 def query_miriade_epehemcc(
-    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, parameters=None, uid=None
+    ident,
+    jd,
+    observer="I41",
+    rplane="1",
+    tcoor=5,
+    shift=15.0,
+    parameters=None,
+    uid=None,
 ):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
