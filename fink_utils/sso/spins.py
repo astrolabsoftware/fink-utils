@@ -676,7 +676,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['Phase'].values),
     ...    pdf['i:fid'].values,
     ...    p0=[15.0, 0.15],
-    ...    bounds=([0, 0], [30, 1]),
+    ...    bounds=([-3, 0], [30, 1]),
     ...    model='HG',
     ...    normalise_to_V=False)
     >>> assert len(hg) == 26, "Found {} parameters: {}".format(len(hg), hg)
@@ -687,7 +687,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['Phase'].values),
     ...    pdf['i:fid'].values,
     ...    p0=[15.0, 0.15],
-    ...    bounds=([0, 0], [30, 1]),
+    ...    bounds=([-3, 0], [30, 1]),
     ...    model='HG12',
     ...    normalise_to_V=False)
     >>> assert len(hg12) == 26, "Found {} parameters: {}".format(len(hg12), hg12)
@@ -698,7 +698,7 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['Phase'].values),
     ...    pdf['i:fid'].values,
     ...    p0=[15.0, 0.15, 0.15],
-    ...    bounds=([0, 0, 0], [30, 1, 1]),
+    ...    bounds=([-3, 0, 0], [30, 1, 1]),
     ...    model='HG1G2',
     ...    normalise_to_V=False)
     >>> assert len(hg1g2) == 30, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
@@ -827,7 +827,7 @@ def fit_legacy_models(
     if p0 is None:
         p0 = [15, 0.15, 0.15]
     if bounds is None:
-        bounds = ([0, 0, 0], [30, 1, 1])
+        bounds = ([-3, 0, 0], [30, 1, 1])
 
     if model == "HG1G2":
         func = func_hg1g2
@@ -1020,12 +1020,12 @@ def fit_spin(
     if bounds is None:
         if model == "SHG1G2":
             bounds = (
-                [0, 0, 0, 3e-1, 0, -np.pi / 2],
+                [-3, 0, 0, 3e-1, 0, -np.pi / 2],
                 [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
             )
         elif model == "SSHG1G2":
             bounds = (
-                [0, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
             )
 
