@@ -337,7 +337,7 @@ def compute_color_correction(filters: np.array) -> np.array:
     >>> import pandas as pd
 
     >>> r = requests.post(
-    ...     'https://fink-portal.org/api/v1/sso',
+    ...     'https://api.fink-portal.org/api/v1/sso',
     ...     json={
     ...         'n_or_d': '1465',
     ...         'output-format': 'json'
@@ -659,7 +659,7 @@ def estimate_sso_params(
     >>> import pandas as pd
 
     >>> r = requests.post(
-    ...     'https://fink-portal.org/api/v1/sso',
+    ...     'https://api.fink-portal.org/api/v1/sso',
     ...     json={
     ...         'n_or_d': '223',
     ...         'withEphem': True,
