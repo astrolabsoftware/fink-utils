@@ -264,7 +264,7 @@ def estimate_synodic_period(
 
     One can also directly specify the Pandas dataframe with Fink data:
     # TODO: check alias between astropy and nifty-ls...
-    >>> r = requests.post("https://fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
+    >>> r = requests.post("https://api.fink-portal.org/api/v1/sso", json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"})
     >>> pdf = pd.read_json(io.BytesIO(r.content))
     >>> P_from_pdf, _ = estimate_synodic_period(pdf=pdf, flavor="SHG1G2")
     >>> p1 = np.isclose(P, P_from_pdf, rtol=1e-1)
@@ -275,7 +275,7 @@ def estimate_synodic_period(
         if ssnamenr is not None:
             # TODO: use quaero
             r = requests.post(
-                "https://fink-portal.org/api/v1/sso",
+                "https://api.fink-portal.org/api/v1/sso",
                 json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
             )
         else:
