@@ -153,8 +153,9 @@ def query_miriade_epehemcc(
 
     """
     # write tmp files on disk
-    date_path = "{}/dates_{}.txt".format(parameters["outdir"], ident)
-    ephem_path = "{}/ephem_{}.json".format(parameters["outdir"], ident)
+    uid = np.random.randint(0, 1e7)
+    date_path = "{}/dates_{}.txt".format(parameters["outdir"], uid)
+    ephem_path = "{}/ephem_{}.json".format(parameters["outdir"], uid)
 
     pdf = pd.DataFrame(jd)
 
@@ -174,6 +175,7 @@ def query_miriade_epehemcc(
         parameters["userconf"],
         parameters["iofile"],
         parameters["outdir"],
+        uid,
     ]
 
     # subprocess.run(cmd, capture_output=True)
