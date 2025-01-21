@@ -57,25 +57,25 @@ def extract_physical_parameters(pdf, flavor):
     """
     if flavor == "HG1G2":
         bounds = (
-            [0, 0, 0],
+            [-3, 0, 0],
             [30, 1, 1],
         )
         p0 = [15.0, 0.15, 0.15]
     elif flavor == "HG12":
         bounds = (
-            [0, 0],
+            [-3, 0],
             [30, 1],
         )
         p0 = [15.0, 0.15]
     elif flavor == "HG":
         bounds = (
-            [0, 0],
+            [-3, 0],
             [30, 1],
         )
         p0 = [15.0, 0.15]
     elif flavor == "SHG1G2":
         bounds = (
-            [0, 0, 0, 3e-1, 0, -np.pi / 2],
+            [-3, 0, 0, 3e-1, 0, -np.pi / 2],
             [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
         )
         p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
