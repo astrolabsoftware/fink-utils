@@ -115,7 +115,7 @@ def query_miriade(
 
 
 def query_miriade_epehemcc(
-    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, parameters=None
+    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, parameters=None, uid=None
 ):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -144,6 +144,9 @@ def query_miriade_epehemcc(
         Default is 15 seconds which is half of the exposure time for ZTF.
     parameters: dict
         runner_path, userconf, iofile, outdir
+    uid: int, optional
+        If specified, ID used to write files on disk. Must be unique for each object.
+        Default is None, i.e. randomly sampled from U(0, 1e7)
 
     Returns
     -------
@@ -153,7 +156,8 @@ def query_miriade_epehemcc(
 
     """
     # write tmp files on disk
-    uid = np.random.randint(0, 1e7)
+    if uid is None:
+        uid = np.random.randint(0, 1e7)
     date_path = "{}/dates_{}.txt".format(parameters["outdir"], uid)
     ephem_path = "{}/ephem_{}.json".format(parameters["outdir"], uid)
 
@@ -211,6 +215,7 @@ def get_miriade_data(
     method="rest",
     parameters=None,
     timeout=30,
+    uid=None,
 ):
     """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
 
@@ -240,6 +245,9 @@ def get_miriade_data(
         If method == `ephemcc`, specify the mapping of extra parameters here. Default is {}.
     timeout: int, optional
         Timeout in seconds when using the REST API. Default is 30.
+    uid: int, optional
+        If specified, ID used to write files on disk. Must be unique for each object.
+        Default is None, i.e. randomly sampled from U(0, 1e7). Only used for method == `ephemcc`.
 
     Returns
     -------
@@ -273,6 +281,7 @@ def get_miriade_data(
                 rplane=rplane,
                 tcoor=tcoor,
                 parameters=parameters,
+                uid=uid,
             )
         else:
             raise AssertionError(
@@ -303,6 +312,7 @@ def get_miriade_data(
                         observer=observer,
                         rplane="2",
                         parameters=parameters,
+                        uid=uid,
                     )
                 else:
                     raise AssertionError(
