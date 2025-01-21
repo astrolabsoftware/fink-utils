@@ -175,7 +175,7 @@ def query_miriade_epehemcc(
         parameters["userconf"],
         parameters["iofile"],
         parameters["outdir"],
-        uid,
+        str(uid),
     ]
 
     # subprocess.run(cmd, capture_output=True)
