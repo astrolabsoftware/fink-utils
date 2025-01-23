@@ -222,7 +222,7 @@ def get_miriade_data(
     method="rest",
     parameters=None,
     timeout=30,
-    shift=15.,
+    shift=15.0,
     uid=None,
 ):
     """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
