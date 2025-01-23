@@ -311,12 +311,12 @@ def estimate_synodic_period(
     residuals = compute_residuals(
         pdf["i:magpsf_red"],
         pdf["phase"],
-        pdf["i:fid"]
+        pdf["i:fid"],
         flavor,
         phyparam,
         ra=pdf["i:ra"],
         dec=pdf["i:dec"],
-        times=times
+        times=times,
     )
 
     model = LombScargleMultiband(
