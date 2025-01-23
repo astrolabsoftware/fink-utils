@@ -301,17 +301,26 @@ def estimate_synodic_period(
         # get the physical parameters with the latest data
         phyparam = extract_physical_parameters(pdf, flavor)
 
-    # Compute the residuals (obs - model)
-    residuals = compute_residuals(pdf, flavor, phyparam)
-
     if lt_correction:
         # Speed of light in AU/day
-        time = compute_light_travel_correction(pdf["i:jd"], pdf["Dobs"])
+        times = compute_light_travel_correction(pdf["i:jd"], pdf["Dobs"])
     else:
-        time = pdf["i:jd"]
+        times = pdf["i:jd"]
+
+    # Compute the residuals (obs - model)
+    residuals = compute_residuals(
+        pdf["i:magpsf_red"],
+        pdf["phase"],
+        pdf["i:fid"]
+        flavor,
+        phyparam,
+        ra=pdf["i:ra"],
+        dec=pdf["i:dec"],
+        times=times
+    )
 
     model = LombScargleMultiband(
-        time,
+        times,
         residuals,
         pdf["i:fid"],
         pdf["i:sigmapsf"],
@@ -330,7 +339,7 @@ def estimate_synodic_period(
     # TODO: I need to be convinced...
     best_period = 2 / freq_maxpower
 
-    out = model.model(time.to_numpy(), freq_maxpower)
+    out = model.model(times.to_numpy(), freq_maxpower)
     prediction = np.zeros_like(residuals)
     for index, filt in enumerate(pdf["i:fid"].unique()):
         if filt == 3:
