@@ -292,6 +292,8 @@ def estimate_synodic_period(
                 "https://api.fink-portal.org/api/v1/sso",
                 json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
             )
+
+            assert r.status_code == 200, r.content
         else:
             _LOG.error("You need to specify either `ssnamenr` or `pdf`.")
 
