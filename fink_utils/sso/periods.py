@@ -96,35 +96,49 @@ def extract_physical_parameters(pdf, flavor):
     return outdic
 
 
-def compute_residuals(pdf, flavor, phyparam):
+def compute_residuals(
+    mag_red, phase, filters, flavor, phyparam, ra=None, dec=None, times=None
+):
     """Compute residuals between data and predictions
 
     Parameters
     ----------
-    pdf: pandas DataFrame
-        DataFrame with SSO data from Fink REST API
+    mag_red: array of float
+        Reduced magnitude (m-d_obs) for each observation
+    phase: array of float
+        Phase angle for each observation, in degree
+    filters: array of int
+        Filter ID for each observation
     flavor: str
         Model flavor: SHG1G2, HG1G2, HG12, or HG
     phyparam: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
+    ra: array of float, optional
+        Array of RA angles, in degree. Only used for flavor in ["SHG1G2", "SSHG1G2"]
+    dec: array of float, optional
+        Array of Dec angles, in degree. Only used for flavor in ["SHG1G2", "SSHG1G2"]
+    times: array of float, optional
+        Array of times, in JD with light travel correction applied.
+        Only used for flavor="SSHG1G2"
 
     Returns
     -------
     pd.Series
         Series containing `observation - model` in magnitude
     """
-    pdf["preds"] = 0.0
-    for filtnum in pdf["i:fid"].unique():
-        if filtnum == 3:
-            continue
-        cond = pdf["i:fid"] == filtnum
+    model = np.zeros_like(phase, dtype=float)
+    for filtnum in np.unique(filters):
+        # if filtnum == 3:
+        #    continue
+        cond = filters == filtnum
 
         if flavor == "SSHG1G2":
             pha = [
-                np.deg2rad(pdf["Phase"][cond]),
-                np.deg2rad(pdf["i:ra"][cond]),
-                np.deg2rad(pdf["i:dec"][cond]),
+                np.deg2rad(phase[cond]),
+                np.deg2rad(ra[cond]),
+                np.deg2rad(dec[cond]),
+                times[cond],
             ]
             preds = func_sshg1g2(
                 pha,
@@ -140,9 +154,9 @@ def compute_residuals(pdf, flavor, phyparam):
             )
         elif flavor == "SHG1G2":
             pha = [
-                np.deg2rad(pdf["Phase"][cond]),
-                np.deg2rad(pdf["i:ra"][cond]),
-                np.deg2rad(pdf["i:dec"][cond]),
+                np.deg2rad(phase[cond]),
+                np.deg2rad(ra[cond]),
+                np.deg2rad(dec[cond]),
             ]
             preds = func_hg1g2_with_spin(
                 pha,
@@ -155,26 +169,26 @@ def compute_residuals(pdf, flavor, phyparam):
             )
         elif flavor == "HG":
             preds = func_hg(
-                np.deg2rad(pdf["Phase"][cond]),
+                np.deg2rad(phase[cond]),
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G_{}".format(filtnum)],
             )
         elif flavor == "HG12":
             preds = func_hg12(
-                np.deg2rad(pdf["Phase"][cond]),
+                np.deg2rad(phase[cond]),
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G12_{}".format(filtnum)],
             )
         elif flavor == "HG1G2":
             preds = func_hg1g2(
-                np.deg2rad(pdf["Phase"][cond]),
+                np.deg2rad(phase[cond]),
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G1_{}".format(filtnum)],
                 phyparam["G2_{}".format(filtnum)],
             )
-        pdf.loc[cond, "preds"] = preds
+        model[cond] = preds
 
-    return pdf["i:magpsf_red"] - pdf["preds"]
+    return mag_red - model
 
 
 @profile
