@@ -222,6 +222,7 @@ def get_miriade_data(
     method="rest",
     parameters=None,
     timeout=30,
+    shift=15.,
     uid=None,
 ):
     """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
@@ -278,6 +279,7 @@ def get_miriade_data(
                 observer=observer,
                 rplane=rplane,
                 tcoor=tcoor,
+                shift=shift,
                 timeout=timeout,
             )
         elif method == "ephemcc":
@@ -287,6 +289,7 @@ def get_miriade_data(
                 observer=observer,
                 rplane=rplane,
                 tcoor=tcoor,
+                shift=shift,
                 parameters=parameters,
                 uid=uid,
             )
@@ -310,6 +313,7 @@ def get_miriade_data(
                         pdf_sub["i:jd"],
                         observer=observer,
                         rplane="2",
+                        shift=shift,
                         timeout=timeout,
                     )
                 elif method == "ephemcc":
@@ -318,6 +322,7 @@ def get_miriade_data(
                         pdf_sub["i:jd"],
                         observer=observer,
                         rplane="2",
+                        shift=shift,
                         parameters=parameters,
                         uid=uid,
                     )
