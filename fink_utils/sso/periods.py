@@ -310,7 +310,7 @@ def estimate_synodic_period(
     # Compute the residuals (obs - model)
     residuals = compute_residuals(
         pdf["i:magpsf_red"],
-        pdf["phase"],
+        pdf["Phase"],
         pdf["i:fid"],
         flavor,
         phyparam,
