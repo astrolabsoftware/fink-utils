@@ -64,11 +64,20 @@ def status_check(res, header, sleep=8, timeout=25):
 
 def send_simple_text_tg(text, channel_id, timeout=25):
     """Send a text message to a telegram channel
+
+    Parameters
+    ----------
+    text: str
+        Message to send. Accept markdown.
+    channel_id: string
+        Channel id in Telegram
+    timeout: int
+        Timeout, in seconds. Default is 25 seconds.
     """
     url = "https://api.telegram.org/bot"
     url += os.environ["FINK_TG_TOKEN"]
 
-    if init_msg != "":
+    if text != "":
         res = requests.post(
             url + "/sendMessage",
             data={"chat_id": channel_id, "text": text, "parse_mode": "markdown"},
