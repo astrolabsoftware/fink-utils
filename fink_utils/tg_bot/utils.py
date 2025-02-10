@@ -62,6 +62,21 @@ def status_check(res, header, sleep=8, timeout=25):
     return True
 
 
+def send_simple_text_tg(text, channel_id, timeout=25):
+    """Send a text message to a telegram channel
+    """
+    url = "https://api.telegram.org/bot"
+    url += os.environ["FINK_TG_TOKEN"]
+
+    if init_msg != "":
+        res = requests.post(
+            url + "/sendMessage",
+            data={"chat_id": channel_id, "text": text, "parse_mode": "markdown"},
+            timeout=timeout,
+        )
+        status_check(res, header=channel_id)
+
+
 def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
     """Send `tg_data` to a telegram channel
 
@@ -94,12 +109,7 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
     method = url + "/sendMediaGroup"
 
     if init_msg != "":
-        res = requests.post(
-            url + "/sendMessage",
-            data={"chat_id": channel_id, "text": init_msg, "parse_mode": "markdown"},
-            timeout=timeout,
-        )
-        status_check(res, header=channel_id)
+        send_simple_text_tg(init_msg, channel_id, timeout=25)
     for text_data, cutout, curve in tg_data:
         files = {"first": curve}
         media = [
@@ -160,12 +170,7 @@ def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seco
     method = url + "/sendMediaGroup"
 
     if init_msg != "":
-        res = requests.post(
-            url + "/sendMessage",
-            data={"chat_id": channel_id, "text": init_msg, "parse_mode": "markdown"},
-            timeout=timeout,
-        )
-        status_check(res, header=channel_id)
+        send_simple_text_tg(init_msg, channel_id, timeout=25)
     for text_data, curve, cutouts in tg_data:
         files = {"first": curve}
         media = [
