@@ -62,6 +62,30 @@ def status_check(res, header, sleep=8, timeout=25):
     return True
 
 
+def send_simple_text_tg(text, channel_id, timeout=25):
+    """Send a text message to a telegram channel
+
+    Parameters
+    ----------
+    text: str
+        Message to send. Accept markdown.
+    channel_id: string
+        Channel id in Telegram
+    timeout: int
+        Timeout, in seconds. Default is 25 seconds.
+    """
+    url = "https://api.telegram.org/bot"
+    url += os.environ["FINK_TG_TOKEN"]
+
+    if text != "":
+        res = requests.post(
+            url + "/sendMessage",
+            data={"chat_id": channel_id, "text": text, "parse_mode": "markdown"},
+            timeout=timeout,
+        )
+        status_check(res, header=channel_id)
+
+
 def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
     """Send `tg_data` to a telegram channel
 
@@ -94,12 +118,7 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
     method = url + "/sendMediaGroup"
 
     if init_msg != "":
-        res = requests.post(
-            url + "/sendMessage",
-            data={"chat_id": channel_id, "text": init_msg, "parse_mode": "markdown"},
-            timeout=timeout,
-        )
-        status_check(res, header=channel_id)
+        send_simple_text_tg(init_msg, channel_id, timeout=25)
     for text_data, cutout, curve in tg_data:
         files = {"first": curve}
         media = [
@@ -160,12 +179,7 @@ def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seco
     method = url + "/sendMediaGroup"
 
     if init_msg != "":
-        res = requests.post(
-            url + "/sendMessage",
-            data={"chat_id": channel_id, "text": init_msg, "parse_mode": "markdown"},
-            timeout=timeout,
-        )
-        status_check(res, header=channel_id)
+        send_simple_text_tg(init_msg, channel_id, timeout=25)
     for text_data, curve, cutouts in tg_data:
         files = {"first": curve}
         media = [
@@ -258,6 +272,10 @@ def get_curve(
     fid=None,
     objectId=None,
     origin="API",
+    ylabel="Difference magnitude",
+    invert_yaxis=True,
+    vline=None,
+    hline=None,
 ):
     """Generate PNG lightcurve
 
@@ -286,6 +304,22 @@ def get_curve(
         unique identifier for this object
     origin: str, optional
         Choose between `alert`, `API`[default], or `fields`.
+    ylabel: str
+        Label for y-axis. Default is `Difference magnitude`
+    invert_yaxis: bool
+        Invert the y-axis. Default is True.
+    vline: None or dictionary
+        If specified, a dictionary with the following structure:
+            {"x": float, "x_label": str}
+        where "x" is the x value for the vertical line, and
+        "x_label" is the label that will appear on the legend.
+        Default is None.
+    hline: None or dictionary
+        If specified, a dictionary with the following structure:
+            {"y": float, "y_label": str}
+        where "y" is the y value for the horizontal line, and
+        "y_label" is the label that will appear on the legend.
+        Default is None.
 
     Returns
     -------
@@ -351,10 +385,17 @@ def get_curve(
                 color=COLORS_ZTF[filt],
             )
 
-        plt.gca().invert_yaxis()
+        if vline is not None:
+            plt.axvline(vline["x"], ls="--", color="black", label=vline["x_label"])
+
+        if hline is not None:
+            plt.axhline(hline["y"], ls="--", color="black", label=hline["y_label"])
+
+        if invert_yaxis:
+            plt.gca().invert_yaxis()
         plt.legend()
         plt.xlabel("Modified Julian Date")
-        plt.ylabel("Difference magnitude")
+        plt.ylabel(ylabel)
 
         buf = io.BytesIO()
         plt.savefig(buf, format="png")
@@ -410,10 +451,18 @@ def get_curve(
                 alpha=0.5,
             )
             plt.title(objectId)
+
+        if vline is not None:
+            plt.axvline(vline["x"], ls="--", color="black", label=vline["x_label"])
+
+        if hline is not None:
+            plt.axhline(hline["y"], ls="--", color="black", label=hline["y_label"])
+
         plt.legend()
-        plt.gca().invert_yaxis()
+        if invert_yaxis:
+            plt.gca().invert_yaxis()
         plt.xlabel("Days to candidates")
-        plt.ylabel("Difference magnitude")
+        plt.ylabel(ylabel)
 
         buf = io.BytesIO()
         plt.savefig(buf, format="png")
