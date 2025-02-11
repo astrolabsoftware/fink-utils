@@ -273,6 +273,7 @@ def get_curve(
     objectId=None,
     origin="API",
     ylabel="Difference magnitude",
+    title=None,
     invert_yaxis=True,
     vline=None,
     hline=None,
@@ -306,6 +307,9 @@ def get_curve(
         Choose between `alert`, `API`[default], or `fields`.
     ylabel: str
         Label for y-axis. Default is `Difference magnitude`
+    title: str
+        Title for the plot. If None, `objectId` will be used.
+        Default is None.
     invert_yaxis: bool
         Invert the y-axis. Default is True.
     vline: None or dictionary
@@ -412,6 +416,9 @@ def get_curve(
             jd = extract_field(alert, "jd")
             objectId = alert["objectId"]
 
+        if title is None:
+            title = objectId
+
         # Rescale dates
         dates = np.array([i - jd[-1] for i in jd])
 
@@ -450,7 +457,7 @@ def get_curve(
                 mew=4,
                 alpha=0.5,
             )
-            plt.title(objectId)
+            plt.title(title)
 
         if vline is not None:
             plt.axvline(vline["x"], ls="--", color="black", label=vline["x_label"])
