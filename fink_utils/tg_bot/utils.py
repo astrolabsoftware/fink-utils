@@ -424,7 +424,7 @@ def get_curve(
 
         # work with arrays
         fid = np.array(fid)
-        magpsf = np,array(magpsf)
+        magpsf = np.array(magpsf)
         sigmapsf = np.array(sigmapsf)
         diffmaglim = np.array(diffmaglim)
 
