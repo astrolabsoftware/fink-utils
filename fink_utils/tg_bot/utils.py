@@ -422,6 +422,12 @@ def get_curve(
         # Rescale dates
         dates = np.array([i - jd[-1] for i in jd])
 
+        # work with arrays
+        fid = np.array(fid)
+        magpsf = np.array(magpsf)
+        sigmapsf = np.array(sigmapsf)
+        diffmaglim = np.array(diffmaglim)
+
         # loop over filters
         plt.figure(num=1, figsize=(12, 4))
 
