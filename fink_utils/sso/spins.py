@@ -545,12 +545,14 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
 
         myfunc = (
             func_sshg1g2(
-                np.vstack([
-                    ph[mask].tolist(),
-                    ra[mask].tolist(),
-                    dec[mask].tolist(),
-                    jd[mask].tolist(),
-                ]),
+                np.vstack(
+                    [
+                        ph[mask].tolist(),
+                        ra[mask].tolist(),
+                        dec[mask].tolist(),
+                        jd[mask].tolist(),
+                    ]
+                ),
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -833,23 +835,23 @@ def fit_legacy_models(
         func = func_hg1g2
         nparams = 3
         params_ = ["H", "G1", "G2"]
-        assert len(bounds[0]) == nparams, (
-            "You need to specify bounds on all (H, G1, G2) parameters"
-        )
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G1, G2) parameters"
     elif model == "HG12":
         func = func_hg12
         nparams = 2
         params_ = ["H", "G12"]
-        assert len(bounds[0]) == nparams, (
-            "You need to specify bounds on all (H, G12) parameters"
-        )
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G12) parameters"
     elif model == "HG":
         func = func_hg
         nparams = 2
         params_ = ["H", "G"]
-        assert len(bounds[0]) == nparams, (
-            "You need to specify bounds on all (H, G) parameters"
-        )
+        assert (
+            len(bounds[0]) == nparams
+        ), "You need to specify bounds on all (H, G) parameters"
 
     ufilters = np.unique(filters)
 
@@ -900,9 +902,12 @@ def fit_legacy_models(
         # raised if jacobian is degenerated
         outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
-
     # For the chi2, we use the error estimate from the data directly
-    chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
+
+    _, sorted_sigmapsf = zip(*sorted(zip(filters, sigmapsf)))  # Sorted by filter
+    sorted_sigmapsf = np.array(sorted_sigmapsf)
+
+    chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
     outdic = {"chi2red": chisq_red, "status": res_lsq.status, "fit": 0}
@@ -910,9 +915,16 @@ def fit_legacy_models(
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
     outdic["rms"] = rms
+    split_at = []
     for filt in ufilters:
         mask = filters == filt
-        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask] ** 2))
+        split_at.append(
+            filters[mask].size
+        )  # N. of observations by oredered filter (N_1, N_2, N_3, N_4)
+    res_lsq_byfilter = np.array_split(res_lsq.fun, np.cumsum(split_at))
+
+    for i, filt in enumerate(ufilters):
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq_byfilter[i] ** 2))
 
     median_error_phot = np.median(sigmapsf)
     outdic["median_error_phot"] = median_error_phot
@@ -1092,7 +1104,10 @@ def fit_spin(
         return outdic
 
     # For the chi2, we use the error estimate from the data directly
-    chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
+    _, sorted_sigmapsf = zip(*sorted(zip(filters, sigmapsf)))  # Sorted by filter
+    sorted_sigmapsf = np.array(sorted_sigmapsf)
+
+    chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
     geo = cos_aspect_angle(
@@ -1113,9 +1128,16 @@ def fit_spin(
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
     outdic["rms"] = rms
+    split_at = []
     for filt in ufilters:
         mask = filters == filt
-        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask] ** 2))
+        split_at.append(
+            filters[mask].size
+        )  # N. of observations by oredered filter (N_1, N_2, N_3, N_4)
+    res_lsq_byfilter = np.array_split(res_lsq.fun, np.cumsum(split_at))
+
+    for i, filt in enumerate(ufilters):
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq_byfilter[i] ** 2))
 
     median_error_phot = np.median(sigmapsf)
     outdic["median_error_phot"] = median_error_phot
