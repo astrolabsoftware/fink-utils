@@ -20,6 +20,48 @@ from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.test.tester import regular_unit_tests
 
 
+def sort_quantity_by_filter(filter, quantity):
+    """Sort a vector (quantity) by its corresponding filter under which it was measured
+
+    Parameters
+    ----------
+    filter: array-like (1xN)
+        filters used to measure quantity (1,2,3,4...)
+    quantity: array-like (1xN)
+        quantity to be sorted according to the filters
+
+    Returns
+    -------
+    sorted_quantity: np.array of floats (1xN)
+        quantity sorted by the filter
+    """
+    _, sorted_quantity = zip(*sorted(zip(filter, quantity)))
+    return np.array(sorted_quantity)
+
+
+def split_quantity_by_filter(list_of_filters, ordered_vector):
+    """
+    Split an ordered (by filter) vector at each filter
+
+    Parameters
+    ----------
+    list_of_filters: array-like (1xN)
+        filters used to measure quantity (1,2,3,4...)
+    ordered_vector: array-like (1xN)
+        quantity to be split according to the filters
+
+    Returns
+    -------
+    Sub-arrays containing the parts of the ordered_vector at the order of the list_of_filters
+    """
+    ufilters = np.unique(list_of_filters)
+    split_at = []
+    for filt in ufilters:
+        mask = list_of_filters == filt
+        split_at.append(list_of_filters[mask].size)
+    return np.array_split(ordered_vector, np.cumsum(split_at))
+
+
 def func_hg(ph, h, g):
     """Return f(H, G) part of the lightcurve in mag space
 
@@ -900,9 +942,11 @@ def fit_legacy_models(
         # raised if jacobian is degenerated
         outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
-
     # For the chi2, we use the error estimate from the data directly
-    chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
+
+    sorted_sigmapsf = sort_quantity_by_filter(filters, sigmapsf)
+
+    chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
     outdic = {"chi2red": chisq_red, "status": res_lsq.status, "fit": 0}
@@ -910,9 +954,11 @@ def fit_legacy_models(
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
     outdic["rms"] = rms
-    for filt in ufilters:
-        mask = filters == filt
-        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask] ** 2))
+
+    res_lsq_byfilter = split_quantity_by_filter(filters, res_lsq.fun)
+
+    for i, filt in enumerate(ufilters):
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq_byfilter[i] ** 2))
 
     median_error_phot = np.median(sigmapsf)
     outdic["median_error_phot"] = median_error_phot
@@ -1092,7 +1138,9 @@ def fit_spin(
         return outdic
 
     # For the chi2, we use the error estimate from the data directly
-    chisq = np.sum((res_lsq.fun / sigmapsf) ** 2)
+    sorted_sigmapsf = sort_quantity_by_filter(filters, sigmapsf)
+
+    chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
     geo = cos_aspect_angle(
@@ -1113,9 +1161,11 @@ def fit_spin(
     # Total RMS, and per-band
     rms = np.sqrt(np.mean(res_lsq.fun**2))
     outdic["rms"] = rms
-    for filt in ufilters:
-        mask = filters == filt
-        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun[mask] ** 2))
+
+    res_lsq_byfilter = split_quantity_by_filter(filters, res_lsq.fun)
+
+    for i, filt in enumerate(ufilters):
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq_byfilter[i] ** 2))
 
     median_error_phot = np.median(sigmapsf)
     outdic["median_error_phot"] = median_error_phot
