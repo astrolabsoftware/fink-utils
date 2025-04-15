@@ -587,14 +587,12 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
 
         myfunc = (
             func_sshg1g2(
-                np.vstack(
-                    [
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]
-                ),
+                np.vstack([
+                    ph[mask].tolist(),
+                    ra[mask].tolist(),
+                    dec[mask].tolist(),
+                    jd[mask].tolist(),
+                ]),
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
