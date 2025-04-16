@@ -14,7 +14,6 @@
 # limitations under the License.
 """Contains definition and functionalities for the SSO Fink Table"""
 
-import os
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 
@@ -416,7 +415,7 @@ def join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr", output_filename
 
     >>> df_join = join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr")
     >>> assert df_join.count() == 2
-    
+
     >>> inp = df_prev.filter(df_prev["ssnamenr"] == "8467").collect()
     >>> len_inp = len(inp[0]["cfid"])
     >>> out = df_join.filter(df_prev["ssnamenr"] == "8467").collect()
@@ -429,7 +428,10 @@ def join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr", output_filename
     >>> len_out = len(out[0]["cfid"])
     >>> assert len_out == len_inp, (len_out, len_inp)
     """
-    assert len([i for i in df_new.columns if i not in df_prev.columns]) == 0, (df_prev.columns, df_new.columns)
+    assert len([i for i in df_new.columns if i not in df_prev.columns]) == 0, (
+        df_prev.columns,
+        df_new.columns,
+    )
 
     # join
     df_join = df_prev.join(
@@ -452,7 +454,9 @@ def join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr", output_filename
     return df_concatenated.select(df_new.columns)
 
 
-def aggregate_ztf_sso_data(year, month, prefix_path="archive/science", output_filename=None):
+def aggregate_ztf_sso_data(
+    year, month, prefix_path="archive/science", output_filename=None
+):
     """Aggregate ZTF SSO data in Fink
 
     Parameters
@@ -512,7 +516,6 @@ def aggregate_ztf_sso_data(year, month, prefix_path="archive/science", output_fi
 
 if __name__ == "__main__":
     """Execute the unit test suite"""
-    from fink_utils import __file__
 
     # Run the Spark test suite
     spark_unit_tests(globals())
