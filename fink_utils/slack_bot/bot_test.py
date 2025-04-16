@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 import fink_utils.slack_bot.bot as slack_bot
 
-from fink_science.image_classification.utils import img_normalizer
+from fink_utils.cutouts.utils import img_normalizer
 from fink_utils.logging.logs import init_logging
 from fink_utils.slack_bot.msg_builder import Message, Divider, Header
 from fink_utils.slack_bot.section import Section, TypeText
