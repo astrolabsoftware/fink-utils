@@ -383,8 +383,8 @@ COLUMNS_HG = {
 }
 
 
-def join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr", output_filename=None):
-    """Join previous agg data with new agg data
+def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=None):
+    """Join two DataFrame containing arrays
 
     Notes
     -----
@@ -413,7 +413,7 @@ def join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr", output_filename
     >>> path = "fink_utils/test_data/agg_benoit_julien_2024"
     >>> df_prev = spark.read.format("parquet").load(path)
 
-    >>> df_join = join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr")
+    >>> df_join = join_aggregated_sso_data(df_prev, df_new, on="ssnamenr")
     >>> assert df_join.count() == 2
 
     >>> inp = df_prev.filter(df_prev["ssnamenr"] == "8467").collect()
