@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import sys
 import doctest
 import numpy as np
@@ -54,12 +53,12 @@ def regular_unit_tests(global_args: dict = None, verbose: bool = False):
 
 
 def spark_unit_tests(global_args: dict = None, verbose: bool = False):
-    """Base commands for the spark unit test suite
+    """Base commands for the Spark unit test suite
 
-    Notes
-    -----
-    Include this routine in the main of a module, and execute
-    `python3 mymodule.py` to run the tests.
+    Include this routine in the main of a module, and execute:
+    python3 mymodule.py
+    to run the tests.
+
     It should exit gracefully if no error (exit code 0),
     otherwise it will print on the screen the failure.
 
@@ -72,12 +71,6 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
         If True, print useful debug messages.
         Default is False.
 
-    Examples
-    --------
-    Set "toto" to "myvalue", such that it can be used during tests:
-    >>> globs = globals()
-    >>> globs["toto"] = "myvalue"
-    >>> spark_unit_tests(global_args=globs)
     """
     if global_args is None:
         global_args = globals()
@@ -85,21 +78,40 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
     from pyspark.sql import SparkSession
     from pyspark import SparkConf
 
+    spark = SparkSession.builder.config(
+        "spark.sql.legacy.parquet.nanosAsLong", True
+    ).getOrCreate()
+
     conf = SparkConf()
-    confdic = {
-        "spark.jars.packages": os.environ["FINK_PACKAGES"],
-        "spark.jars": os.environ["FINK_JARS"],
-        "spark.python.daemon.module": "coverage_daemon",
-    }
+    confdic = {"spark.python.daemon.module": "coverage_daemon"}
+
+    if spark.version.startswith("2"):
+        confdic.update({
+            "spark.jars.packages": "org.apache.spark:spark-avro_2.11:{}".format(
+                spark.version
+            )
+        })
+    elif spark.version.startswith("3"):
+        py4j_mod = "org.slf4j:slf4j-log4j12:1.7.36,org.slf4j:slf4j-simple:1.7.36"
+        confdic.update({
+            "spark.jars.packages": "org.apache.spark:spark-avro_2.12:{},{}".format(
+                spark.version, py4j_mod
+            )
+        })
     conf.setMaster("local[2]")
-    conf.setAppName("fink_test")
+    conf.setAppName("fink_science_test")
     for k, v in confdic.items():
         conf.set(key=k, value=v)
-    spark = SparkSession.builder.config(conf=conf).getOrCreate()
-
-    # Reduce the number of suffled partitions
-    spark.conf.set("spark.sql.shuffle.partitions", 2)
+    spark = (
+        SparkSession.builder.appName("fink_science_test")
+        .config(conf=conf)
+        .getOrCreate()
+    )
 
     global_args["spark"] = spark
+
+    # Numpy introduced non-backward compatible change from v1.14.
+    if np.__version__ >= "1.14.0":
+        np.set_printoptions(legacy="1.13")
 
     sys.exit(doctest.testmod(globs=global_args, verbose=verbose)[0])
