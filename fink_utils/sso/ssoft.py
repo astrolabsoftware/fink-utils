@@ -14,8 +14,11 @@
 # limitations under the License.
 """Contains definition and functionalities for the SSO Fink Table"""
 
+import os
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
+
+from fink_utils.tester import spark_unit_tests
 
 COLUMNS = {
     "ssnamenr": {
@@ -381,7 +384,75 @@ COLUMNS_HG = {
 }
 
 
-def aggregate_ztf_sso_data(year, month, output_filename=None):
+def join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr", output_filename=None):
+    """Join previous agg data with new agg data
+
+    Notes
+    -----
+    We perform an outer join
+
+    Parameters
+    ----------
+    df_prev: Spark DataFrame
+        DataFrame containing previous lightcurves
+    df_new: Spark DataFrame
+        DataFrame containing new lightcurve portions to be added
+    on: str
+        Column name for the join. Must exist in both DataFrames
+    output_filename: str, optional
+        If given, save data on HDFS. Cannot overwrite. Default is None.
+
+    Returns
+    -------
+    out: Spark DataFrame
+        Concatenated DataFrame with full lightcurves
+
+    Examples
+    --------
+    >>> path = "fink_utils/test_data/benoit_julien_2025/science"
+    >>> df_new = aggregate_ztf_sso_data(year=2025, month=1, prefix_path=path)
+    >>> path = "fink_utils/test_data/agg_benoit_julien_2024"
+    >>> df_prev = spark.read.format("parquet").load(path)
+
+    >>> df_join = join_aggregated_ztf_sso_data(df_prev, df_new, on="ssnamenr")
+    >>> assert df_join.count() == 2
+    
+    >>> inp = df_prev.filter(df_prev["ssnamenr"] == "8467").collect()
+    >>> len_inp = len(inp[0]["cfid"])
+    >>> out = df_join.filter(df_prev["ssnamenr"] == "8467").collect()
+    >>> len_out = len(out[0]["cfid"])
+    >>> assert len_out == len_inp + 3, (len_out, len_inp)
+
+    >>> inp = df_prev.filter(df_prev["ssnamenr"] == "33803").collect()
+    >>> len_inp = len(inp[0]["cfid"])
+    >>> out = df_join.filter(df_prev["ssnamenr"] == "33803").collect()
+    >>> len_out = len(out[0]["cfid"])
+    >>> assert len_out == len_inp, (len_out, len_inp)
+    """
+    assert len([i for i in df_new.columns if i not in df_prev.columns]) == 0, (df_prev.columns, df_new.columns)
+
+    # join
+    df_join = df_prev.join(
+        df_new.withColumnsRenamed({
+            col: col + "_r" for col in df_new.columns if col != on
+        }),
+        on=on,
+        how="outer",
+    )
+
+    # concatenate
+    df_concatenated = df_join.withColumns({
+        col: F.when(F.col(col + "_r").isNull(), F.col(col)).otherwise(
+            F.concat(F.col(col), F.col(col + "_r"))
+        )
+        for col in df_new.columns
+        if col != on
+    })
+
+    return df_concatenated.select(df_new.columns)
+
+
+def aggregate_ztf_sso_data(year, month, prefix_path="archive/science", output_filename=None):
     """Aggregate ZTF SSO data in Fink
 
     Parameters
@@ -400,7 +471,12 @@ def aggregate_ztf_sso_data(year, month, output_filename=None):
 
     Examples
     --------
-    >>>
+    >>> path = "fink_utils/test_data/benoit_julien_2025/science"
+    >>> df_agg = aggregate_ztf_sso_data(year=2025, month=1, prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cfid"]) == 3, len(out[0]["cfid"])
     """
     spark = SparkSession.builder.getOrCreate()
     cols0 = ["candidate.ssnamenr"]
@@ -415,8 +491,8 @@ def aggregate_ztf_sso_data(year, month, output_filename=None):
 
     df = (
         spark.read.format("parquet")
-        .option("basePath", "archive/science")
-        .load("archive/science/year={}/month={}".format(year, month))
+        .option("basePath", prefix_path)
+        .load("{}/year={}/month={}".format(prefix_path, year, month))
     )
     df_agg = (
         df.select(cols0 + cols)
@@ -432,3 +508,11 @@ def aggregate_ztf_sso_data(year, month, output_filename=None):
         df_agg.write.parquet(output_filename)
 
     return df_agg
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+    from fink_utils import __file__
+
+    # Run the Spark test suite
+    spark_unit_tests(globals())
