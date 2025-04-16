@@ -14,7 +14,7 @@
 # limitations under the License.
 import numpy as np
 
-from fink_utils.test.tester import regular_unit_tests
+from fink_utils.tester import regular_unit_tests
 
 
 def is_source_behind(distnr: float, chinr: float = None, sharpnr: float = None) -> bool:

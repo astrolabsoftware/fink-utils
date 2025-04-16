@@ -17,7 +17,7 @@ import io
 from astropy.io import fits
 import numpy as np
 
-from fink_utils.test.tester import regular_unit_tests
+from fink_utils.tester import regular_unit_tests
 
 
 def unzip_cutout(stamp):

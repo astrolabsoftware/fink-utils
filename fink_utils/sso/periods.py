@@ -34,7 +34,7 @@ import nifty_ls  # noqa: F401
 
 import logging
 
-from fink_utils.test.tester import regular_unit_tests
+from fink_utils.tester import regular_unit_tests
 
 _LOG = logging.getLogger(__name__)
 

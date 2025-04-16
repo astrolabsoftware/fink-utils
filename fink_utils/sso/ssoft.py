@@ -12,7 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains definition for the SSO Fink Table"""
+"""Contains definition and functionalities for the SSO Fink Table"""
+
+from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
 
 COLUMNS = {
     "ssnamenr": {
@@ -376,3 +379,56 @@ COLUMNS_HG = {
         "description": "Uncertainty on the G phase parameter for the ZTF filter band r",
     },
 }
+
+
+def aggregate_ztf_sso_data(year, month, output_filename=None):
+    """Aggregate ZTF SSO data in Fink
+
+    Parameters
+    ----------
+    year: str
+        Year date in format YYYY.
+    month: str
+        Month date in format MM.
+    output_filename: str, optional
+        If given, save data on HDFS. Cannot overwrite. Default is None.
+
+    Returns
+    -------
+    df_grouped: Spark DataFrame
+        Spark DataFrame with aggregated SSO data.
+
+    Examples
+    --------
+    >>>
+    """
+    spark = SparkSession.builder.getOrCreate()
+    cols0 = ["candidate.ssnamenr"]
+    cols = [
+        "candidate.ra",
+        "candidate.dec",
+        "candidate.magpsf",
+        "candidate.sigmapsf",
+        "candidate.fid",
+        "candidate.jd",
+    ]
+
+    df = (
+        spark.read.format("parquet")
+        .option("basePath", "archive/science")
+        .load("archive/science/year={}/month={}".format(year, month))
+    )
+    df_agg = (
+        df.select(cols0 + cols)
+        .filter(F.col("roid") == 3)
+        .groupBy("ssnamenr")
+        .agg(*[
+            F.collect_list(col.split(".")[1]).alias("c" + col.split(".")[1])
+            for col in cols
+        ])
+    )
+
+    if output_filename is not None:
+        df_agg.write.parquet(output_filename)
+
+    return df_agg

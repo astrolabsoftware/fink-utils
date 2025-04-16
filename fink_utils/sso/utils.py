@@ -27,7 +27,7 @@ import astropy.units as u
 
 from scipy import signal
 
-from fink_utils.test.tester import regular_unit_tests
+from fink_utils.tester import regular_unit_tests
 
 
 def query_miriade(

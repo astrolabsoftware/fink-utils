@@ -24,8 +24,6 @@ import json
 
 from fink_utils.broker.avroUtils import readschemafromavrofile
 
-# from fink_utils.test.tester import spark_unit_tests
-
 
 def from_avro(dfcol: Column, jsonformatschema: str) -> Column:
     """Decode the Avro data contained in a DataFrame column into a struct.
