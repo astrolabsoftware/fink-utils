@@ -910,7 +910,7 @@ def fit_legacy_models(
         lower_bounds = np.concatenate((lower_bounds, bounds[0]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1]))
 
-    if not np.alltrue([i == i for i in magpsf_red]):
+    if not np.all([i == i for i in magpsf_red]):
         outdic = {"fit": 1, "status": -2}
         return outdic
 
