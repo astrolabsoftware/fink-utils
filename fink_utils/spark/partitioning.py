@@ -20,8 +20,6 @@ import numpy as np
 import pandas as pd
 from astropy.time import Time
 
-# from fink_utils.test.tester import spark_unit_tests_broker
-
 
 @pandas_udf(TimestampType(), PandasUDFType.SCALAR)
 def convert_to_millitime(jd: pd.Series, format=None, now=None):

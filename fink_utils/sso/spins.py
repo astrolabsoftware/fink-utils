@@ -17,7 +17,7 @@ from scipy.optimize import least_squares
 from scipy import linalg
 
 from fink_utils.sso.utils import estimate_axes_ratio
-from fink_utils.test.tester import regular_unit_tests
+from fink_utils.tester import regular_unit_tests
 
 
 def sort_quantity_by_filter(filter, quantity):
@@ -910,7 +910,7 @@ def fit_legacy_models(
         lower_bounds = np.concatenate((lower_bounds, bounds[0]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1]))
 
-    if not np.alltrue([i == i for i in magpsf_red]):
+    if not np.all([i == i for i in magpsf_red]):
         outdic = {"fit": 1, "status": -2}
         return outdic
 

@@ -12,7 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains definition for the SSO Fink Table"""
+"""Contains definition and functionalities for the SSO Fink Table"""
+
+import datetime
+from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
+
+from fink_utils.tester import spark_unit_tests
 
 COLUMNS = {
     "ssnamenr": {
@@ -376,3 +382,171 @@ COLUMNS_HG = {
         "description": "Uncertainty on the G phase parameter for the ZTF filter band r",
     },
 }
+
+
+def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=None):
+    """Join two DataFrame containing arrays
+
+    Notes
+    -----
+    We perform an outer join
+
+    Parameters
+    ----------
+    df_prev: Spark DataFrame
+        DataFrame containing previous lightcurves
+    df_new: Spark DataFrame
+        DataFrame containing new lightcurve portions to be added
+    on: str
+        Column name for the join. Must exist in both DataFrames
+    output_filename: str, optional
+        If given, save data on HDFS. Cannot overwrite. Default is None.
+
+    Returns
+    -------
+    out: Spark DataFrame
+        Concatenated DataFrame with full lightcurves
+
+    Examples
+    --------
+    >>> path = "fink_utils/test_data/benoit_julien_2025/science"
+    >>> df_new = aggregate_ztf_sso_data(year=2025, month=1, prefix_path=path)
+    >>> path = "fink_utils/test_data/agg_benoit_julien_2024"
+    >>> df_prev = spark.read.format("parquet").load(path)
+
+    >>> df_join = join_aggregated_sso_data(df_prev, df_new, on="ssnamenr")
+    >>> assert df_join.count() == 2
+
+    >>> inp = df_prev.filter(df_prev["ssnamenr"] == "8467").collect()
+    >>> len_inp = len(inp[0]["cfid"])
+    >>> out = df_join.filter(df_prev["ssnamenr"] == "8467").collect()
+    >>> len_out = len(out[0]["cfid"])
+    >>> assert len_out == len_inp + 3, (len_out, len_inp)
+
+    >>> inp = df_prev.filter(df_prev["ssnamenr"] == "33803").collect()
+    >>> len_inp = len(inp[0]["cfid"])
+    >>> out = df_join.filter(df_prev["ssnamenr"] == "33803").collect()
+    >>> len_out = len(out[0]["cfid"])
+    >>> assert len_out == len_inp, (len_out, len_inp)
+    """
+    assert len([i for i in df_new.columns if i not in df_prev.columns]) == 0, (
+        df_prev.columns,
+        df_new.columns,
+    )
+
+    # join
+    df_join = df_prev.join(
+        df_new.withColumnsRenamed({
+            col: col + "_r" for col in df_new.columns if col != on
+        }),
+        on=on,
+        how="outer",
+    )
+
+    # concatenate
+    df_concatenated = df_join.withColumns({
+        col: F.when(F.col(col + "_r").isNull(), F.col(col)).otherwise(
+            F.concat(F.col(col), F.col(col + "_r"))
+        )
+        for col in df_new.columns
+        if col != on
+    })
+
+    return df_concatenated.select(df_new.columns)
+
+
+def aggregate_ztf_sso_data(
+    year, month, prefix_path="archive/science", output_filename=None
+):
+    """Aggregate ZTF SSO data in Fink
+
+    Parameters
+    ----------
+    year: str
+        Year date in format YYYY.
+    month: str
+        Month date in format MM.
+    output_filename: str, optional
+        If given, save data on HDFS. Cannot overwrite. Default is None.
+
+    Returns
+    -------
+    df_grouped: Spark DataFrame
+        Spark DataFrame with aggregated SSO data.
+
+    Examples
+    --------
+    >>> path = "fink_utils/test_data/benoit_julien_2025/science"
+    >>> df_agg = aggregate_ztf_sso_data(year=2025, month=1, prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cfid"]) == 3, len(out[0]["cfid"])
+    """
+    spark = SparkSession.builder.getOrCreate()
+    cols0 = ["candidate.ssnamenr"]
+    cols = [
+        "candidate.ra",
+        "candidate.dec",
+        "candidate.magpsf",
+        "candidate.sigmapsf",
+        "candidate.fid",
+        "candidate.jd",
+    ]
+
+    df = (
+        spark.read.format("parquet")
+        .option("basePath", prefix_path)
+        .load("{}/year={}/month={}".format(prefix_path, year, month))
+    )
+    df_agg = (
+        df.select(cols0 + cols)
+        .filter(F.col("roid") == 3)
+        .groupBy("ssnamenr")
+        .agg(*[
+            F.collect_list(col.split(".")[1]).alias("c" + col.split(".")[1])
+            for col in cols
+        ])
+    )
+
+    if output_filename is not None:
+        df_agg.write.parquet(output_filename)
+
+    return df_agg
+
+
+def retrieve_last_date_of_previous_month(mydate):
+    """Given a date, retrieve the last date from last month
+
+    Parameters
+    ----------
+    mydate: datetime
+        Input date
+
+    Returns
+    -------
+    out: datetime
+        Last date from previous month according to `mydate`
+
+    Examples
+    --------
+    >>> mydate = datetime.date(year=2025, month=4, day=5)
+    >>> out = retrieve_last_date_of_previous_month(mydate)
+    >>> assert out.strftime("%m") == "03"
+    >>> assert out.day == 31
+
+    >>> mydate = datetime.date(year=2025, month=1, day=14)
+    >>> out = retrieve_last_date_of_previous_month(mydate)
+    >>> assert out.month == 12
+    >>> assert out.year == 2024
+    """
+    first = mydate.replace(day=1)
+    last_month = first - datetime.timedelta(days=1)
+    return last_month
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+
+    # Run the Spark test suite
+    spark_unit_tests(globals())

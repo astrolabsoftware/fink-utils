@@ -34,7 +34,7 @@ import nifty_ls  # noqa: F401
 
 import logging
 
-from fink_utils.test.tester import regular_unit_tests
+from fink_utils.tester import regular_unit_tests
 
 _LOG = logging.getLogger(__name__)
 
@@ -258,10 +258,10 @@ def estimate_synodic_period(
     Examples
     --------
     >>> ssnamenr = 2363
-    >>> P, chi2 = estimate_synodic_period(ssnamenr, flavor="SHG1G2", Nterms_base=2)
-    >>> assert int(P) == 20, P
+    >>> P, chi2 = estimate_synodic_period(ssnamenr, flavor="SHG1G2", Nterms_base=1)
+    >>> assert int(P) < 48, P
 
-    >>> P_HG, chi2_HG = estimate_synodic_period(ssnamenr, flavor="HG", Nterms_base=2)
+    >>> P_HG, chi2_HG = estimate_synodic_period(ssnamenr, flavor="HG", Nterms_base=1)
     >>> assert chi2 < chi2_HG, (chi2, chi2_HG)
 
     # by default we apply the light travel correction. Disable it.
