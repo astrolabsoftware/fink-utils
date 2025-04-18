@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains definition and functionalities for the SSO Fink Table"""
-
+import datetime
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 
@@ -512,6 +512,36 @@ def aggregate_ztf_sso_data(
         df_agg.write.parquet(output_filename)
 
     return df_agg
+
+
+def retrieve_last_date_of_previous_month(mydate):
+    """Given a date, retrieve the last date from last month
+
+    Parameters
+    ----------
+    mydate: datetime
+        Input date
+
+    Returns
+    -------
+    out: datetime
+        Last date from previous month according to `mydate`
+
+    Examples
+    --------
+    >>> mydate = datetime.date(year=2025, month=4, day=5)
+    >>> out = retrieve_last_date_of_previous_month(mydate)
+    >>> assert out.strftime("%m") == "03"
+    >>> assert out.day == 31
+
+    >>> mydate = datetime.date(year=2025, month=1, day=14)
+    >>> out = retrieve_last_date_of_previous_month(mydate)
+    >>> assert out.month == 12
+    >>> assert out.year == 2024
+    """
+    first = mydate.replace(day=1)
+    last_month = first - datetime.timedelta(days=1)
+    return last_month
 
 
 if __name__ == "__main__":
