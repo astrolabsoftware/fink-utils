@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains definition and functionalities for the SSO Fink Table"""
+
 import datetime
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
