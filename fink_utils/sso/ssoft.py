@@ -544,6 +544,7 @@ def retrieve_last_date_of_previous_month(mydate):
     last_month = first - datetime.timedelta(days=1)
     return last_month
 
+
 def retrieve_first_date_of_next_month(mydate):
     """Given a date, retrieve the first date from next month
 
@@ -570,6 +571,7 @@ def retrieve_first_date_of_next_month(mydate):
     >>> assert out.year == 2026
     """
     return (mydate.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+
 
 if __name__ == "__main__":
     """Execute the unit test suite"""

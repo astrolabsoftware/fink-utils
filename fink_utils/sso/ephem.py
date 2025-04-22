@@ -39,7 +39,7 @@ def expand_columns(df, col_to_expand="ephem"):
     Notes
     -----
     The operation will transform a dataframe with columns
-    ["toto", "container.col1", container.col2] to a dataframe with columns 
+    ["toto", "container.col1", container.col2] to a dataframe with columns
     ["toto", "col1", "col2"]
     Note that `col_to_expand` is dropped.
 
