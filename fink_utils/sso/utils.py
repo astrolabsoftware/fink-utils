@@ -31,7 +31,14 @@ from fink_utils.tester import regular_unit_tests
 
 
 def query_miriade(
-    ident, jd, observer="I41", rplane="1", tcoor=5, shift=15.0, timeout=30
+    ident,
+    jd,
+    observer="I41",
+    rplane="1",
+    tcoor=5,
+    shift=15.0,
+    timeout=30,
+    return_json=False,
 ):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -60,6 +67,9 @@ def query_miriade(
         Default is 15 seconds which is half of the exposure time for ZTF.
     timeout: int
         Timeout in seconds. Default is 30.
+    return_json: bool
+        If True, return the JSON payload. Otherwise, returns
+        a pandas DataFrame. Default is False.
 
     Returns
     -------
@@ -101,9 +111,14 @@ def query_miriade(
     try:
         r = requests.post(url, params=params, files=files, timeout=timeout)
     except requests.exceptions.ReadTimeout:
+        if return_json:
+            return {}
         return pd.DataFrame()
 
     j = r.json()
+
+    if return_json:
+        return j
 
     # Read JSON response
     try:
@@ -114,7 +129,7 @@ def query_miriade(
     return ephem
 
 
-def query_miriade_epehemcc(
+def query_miriade_ephemcc(
     ident,
     jd,
     observer="I41",
@@ -123,6 +138,7 @@ def query_miriade_epehemcc(
     shift=15.0,
     parameters=None,
     uid=None,
+    return_json=False,
 ):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -154,6 +170,9 @@ def query_miriade_epehemcc(
     uid: int, optional
         If specified, ID used to write files on disk. Must be unique for each object.
         Default is None, i.e. randomly sampled from U(0, 1e7)
+    return_json: bool
+        If True, return the JSON payload. Otherwise, returns
+        a pandas DataFrame. Default is False.
 
     Returns
     -------
@@ -197,12 +216,17 @@ def query_miriade_epehemcc(
 
         # clean date file
         os.remove(date_path)
-
+        if return_json:
+            return {}
         return pd.DataFrame()
 
     # read the data from disk and return
     with open(ephem_path, "r") as f:
         data = json.load(f)
+
+    if return_json:
+        return data
+
     ephem = pd.DataFrame(data["data"], columns=data["datacol"].keys())
 
     # clean tmp files
@@ -283,7 +307,7 @@ def get_miriade_data(
                 timeout=timeout,
             )
         elif method == "ephemcc":
-            eph = query_miriade_epehemcc(
+            eph = query_miriade_ephemcc(
                 str(ssnamenr),
                 pdf_sub["i:jd"],
                 observer=observer,
@@ -317,7 +341,7 @@ def get_miriade_data(
                         timeout=timeout,
                     )
                 elif method == "ephemcc":
-                    eph_ec = query_miriade_epehemcc(
+                    eph_ec = query_miriade_ephemcc(
                         str(ssnamenr),
                         pdf_sub["i:jd"],
                         observer=observer,
