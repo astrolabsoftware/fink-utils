@@ -34,7 +34,22 @@ def sanitize_name(col):
 
 
 def expand_columns(df, col_to_expand="ephem"):
-    """ """
+    """Expand a MapType column into individual columns
+
+    Notes
+    -----
+    The operation will transform a dataframe with columns
+    ["toto", "{}.col1", {}.col2] to a dataframe with columns ["toto", "col1", "col2"]
+    Note that `col_to_expand` is dropped.
+
+
+    Parameters
+    ----------
+    df: Spark DataFrame
+        Spark DataFrame with the map column
+    col_to_expand: str
+        Name of the column to expand
+    """
     if col_to_expand not in df.columns:
         print(
             "{} not found in the DataFrame columns. Have you computed ephemerides?".format(
@@ -124,8 +139,6 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
     >>> out_1 = df_join_ephem.select(["Elong"]).collect()
     >>> out_2 = df_join_ephem_bis.select(["Elong"]).collect()
     >>> assert out_1 == out_2, (out_1, out_2)
-
-
     """
     method_ = method.to_numpy()[0]
     out = []
