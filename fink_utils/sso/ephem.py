@@ -39,9 +39,9 @@ def expand_columns(df, col_to_expand="ephem"):
     Notes
     -----
     The operation will transform a dataframe with columns
-    ["toto", "{}.col1", {}.col2] to a dataframe with columns ["toto", "col1", "col2"]
+    ["toto", "container.col1", container.col2] to a dataframe with columns 
+    ["toto", "col1", "col2"]
     Note that `col_to_expand` is dropped.
-
 
     Parameters
     ----------
@@ -49,6 +49,21 @@ def expand_columns(df, col_to_expand="ephem"):
         Spark DataFrame with the map column
     col_to_expand: str
         Name of the column to expand
+
+    Returns
+    -------
+    out: Spark DataFrame
+        The expanded input DataFrame
+
+    Examples
+    --------
+    >>> pdf = pd.DataFrame({"a": [{"Dobs": 1, "Elong": 2}, {"Dobs": 10, "Elong": 20}]})
+    >>> df = spark.createDataFrame(pdf)
+    >>> assert "a" in df.columns, df.columns
+    >>> assert "Dobs" not in df.columns, df.columns
+    >>> df = expand_columns(df, col_to_expand="a")
+    >>> assert "Dobs" in df.columns, df.columns
+    >>> assert "a" not in df.columns, df.columns
     """
     if col_to_expand not in df.columns:
         print(
