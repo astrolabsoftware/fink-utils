@@ -42,6 +42,12 @@ def path_exist(path: str) -> bool:
 
     path_glob = jvm.org.apache.hadoop.fs.Path(path)
     status_list = fs.globStatus(path_glob)
+
+    if status_list is None:
+        return False
+
+    # Not clear what is the type of status_list
+    # in general as it is a Java object
     if len(list(status_list)) > 0:
         return True
     else:
