@@ -410,6 +410,7 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
     Examples
     --------
     Dummy example
+    >>> import pandas as pd
     >>> df1 = spark.createDataFrame(pd.DataFrame({"a": [1, 2, 3], "b": [[1,2], [3,4], [5, 6]]}))
     >>> df2 = spark.createDataFrame(pd.DataFrame({"a": [1, 3, 4], "b": [[10,20], [30,40], [50, 60]]}))
     >>> df_join = join_aggregated_sso_data(df1, df2, on="a")
