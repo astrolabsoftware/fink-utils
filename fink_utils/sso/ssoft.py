@@ -423,6 +423,7 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
     |  3|[5, 6, 30, 40]|
     |  4|      [50, 60]|
     +---+--------------+
+    <BLANKLINE>
 
     SSO example
     >>> path = "fink_utils/test_data/benoit_julien_2025/science"
