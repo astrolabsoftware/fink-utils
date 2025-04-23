@@ -409,6 +409,21 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
 
     Examples
     --------
+    Dummy example
+    >>> df1 = spark.createDataFrame(pd.DataFrame({"a": [1, 2, 3], "b": [[1,2], [3,4], [5, 6]]}))
+    >>> df2 = spark.createDataFrame(pd.DataFrame({"a": [1, 3, 4], "b": [[10,20], [30,40], [50, 60]]}))
+    >>> df_join = join_aggregated_sso_data(df1, df2, on="a")
+    >>> df_join.show()
+    +---+--------------+
+    |  a|             b|
+    +---+--------------+
+    |  1|[1, 2, 10, 20]|
+    |  2|        [3, 4]|
+    |  3|[5, 6, 30, 40]|
+    |  4|      [50, 60]|
+    +---+--------------+
+
+    SSO example
     >>> path = "fink_utils/test_data/benoit_julien_2025/science"
     >>> df_new = aggregate_ztf_sso_data(year=2025, month=1, prefix_path=path)
     >>> path = "fink_utils/test_data/agg_benoit_julien_2024"
@@ -446,7 +461,9 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
     # concatenate
     df_concatenated = df_join.withColumns({
         col: F.when(F.col(col + "_r").isNull(), F.col(col)).otherwise(
-            F.concat(F.col(col), F.col(col + "_r"))
+            F.when(F.col(col).isNull(), F.col(col + "_r")).otherwise(
+                F.concat(F.col(col), F.col(col + "_r"))
+            )
         )
         for col in df_new.columns
         if col != on
