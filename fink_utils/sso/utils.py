@@ -26,10 +26,12 @@ import astropy.constants as const
 import astropy.units as u
 
 from scipy import signal
+from line_profiler import profile
 
 from fink_utils.tester import regular_unit_tests
 
 
+@profile
 def query_miriade(
     ident,
     jd,
@@ -129,6 +131,7 @@ def query_miriade(
     return ephem
 
 
+@profile
 def query_miriade_ephemcc(
     ident,
     jd,
@@ -236,6 +239,7 @@ def query_miriade_ephemcc(
     return ephem
 
 
+@profile
 def get_miriade_data(
     pdf,
     sso_colname="i:ssnamenr",
