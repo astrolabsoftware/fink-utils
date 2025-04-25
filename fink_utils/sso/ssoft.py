@@ -475,7 +475,7 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
 
 
 def aggregate_ztf_sso_data(
-    year, month, prefix_path="archive/science", output_filename=None
+    year, month=None, prefix_path="archive/science", output_filename=None
 ):
     """Aggregate ZTF SSO data in Fink
 
@@ -483,8 +483,11 @@ def aggregate_ztf_sso_data(
     ----------
     year: str
         Year date in format YYYY.
-    month: str
-        Month date in format MM.
+    month: str, optional
+        Month date in format MM. Default is None, in 
+        which case `year` only will be considered.
+    prefix_path: str, optional
+        Prefix path on HDFS. Default is archive/science
     output_filename: str, optional
         If given, save data on HDFS. Cannot overwrite. Default is None.
 
@@ -496,7 +499,16 @@ def aggregate_ztf_sso_data(
     Examples
     --------
     >>> path = "fink_utils/test_data/benoit_julien_2025/science"
+
+    Check monthly aggregation
     >>> df_agg = aggregate_ztf_sso_data(year=2025, month=1, prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cfid"]) == 3, len(out[0]["cfid"])
+
+    Check yearly aggregation
+    >>> df_agg = aggregate_ztf_sso_data(year=2025, prefix_path=path)
     >>> assert df_agg.count() == 1, df_agg.count()
 
     >>> out = df_agg.collect()
@@ -513,10 +525,15 @@ def aggregate_ztf_sso_data(
         "candidate.jd",
     ]
 
+    if month is not None:
+        path = "{}/year={}/month={}".format(prefix_path, year, month)
+    else:
+        path = "{}/year={}".format(prefix_path, year)
+
     df = (
         spark.read.format("parquet")
         .option("basePath", prefix_path)
-        .load("{}/year={}/month={}".format(prefix_path, year, month))
+        .load(path)
     )
     df_agg = (
         df.select(cols0 + cols)
