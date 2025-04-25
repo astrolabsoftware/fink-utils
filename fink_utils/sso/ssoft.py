@@ -18,6 +18,8 @@ import datetime
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 
+from astropy.time import Time
+
 from fink_utils.tester import spark_unit_tests
 
 COLUMNS = {
@@ -475,7 +477,11 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
 
 
 def aggregate_ztf_sso_data(
-    year, month=None, stop_previous_month=False, prefix_path="archive/science", output_filename=None
+    year,
+    month=None,
+    stop_previous_month=False,
+    prefix_path="archive/science",
+    output_filename=None,
 ):
     """Aggregate ZTF SSO data in Fink
 
@@ -484,11 +490,11 @@ def aggregate_ztf_sso_data(
     year: str
         Year date in format YYYY.
     month: str, optional
-        Month date in format MM. Default is None, in 
+        Month date in format MM. Default is None, in
         which case `year` only will be considered.
     stop_previous_month: bool, optional
         If True, load data only until previous month.
-        To use only with month=None, to reconstruct 
+        To use only with month=None, to reconstruct
         data from the current year.
     prefix_path: str, optional
         Prefix path on HDFS. Default is archive/science
@@ -534,11 +540,7 @@ def aggregate_ztf_sso_data(
     else:
         path = "{}/year={}".format(prefix_path, year)
 
-    df = (
-        spark.read.format("parquet")
-        .option("basePath", prefix_path)
-        .load(path)
-    )
+    df = spark.read.format("parquet").option("basePath", prefix_path).load(path)
 
     if month is None and stop_previous_month:
         prevdate = retrieve_last_date_of_previous_month(datetime.datetime.today())
