@@ -1,4 +1,4 @@
-# Copyright 2022-2024 AstroLab Software
+# Copyright 2022-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
+import pandas as pd
+
 from scipy.optimize import least_squares
 from scipy import linalg
+
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.tester import regular_unit_tests
@@ -1205,6 +1210,137 @@ def fit_spin(
         outdic["a_c"] = a_c
 
     return outdic
+
+
+def extract_obliquity(sso_name, alpha0, delta0):
+    """Extract obliquity using spin values, and the BFT information
+
+    Parameters
+    ----------
+    sso_name: np.array or pd.Series of str
+        SSO names according to quaero (see `rockify`)
+    alpha0: np.array or pd.Series of double
+        RA of the pole [degree]
+    delta0: np.array or pd.Series of double
+        DEC of the pole [degree]
+
+    Returns
+    -------
+    obliquity: np.array of double
+        Obliquity for each object [degree]
+    """
+    import rocks
+
+    cols = [
+        "sso_name",
+        "orbital_elements.node_longitude.value",
+        "orbital_elements.inclination.value",
+    ]
+    pdf_bft = rocks.load_bft(columns=cols)
+
+    sub = pdf_bft[cols]
+
+    pdf = pd.DataFrame({"sso_name": sso_name, "alpha0": alpha0, "delta0": delta0})
+
+    pdf = pdf.merge(sub[cols], left_on="sso_name", right_on="sso_name", how="left")
+
+    # Orbit
+    lon_orbit = (pdf["orbital_elements.node_longitude.value"] - 90).to_numpy()
+    lat_orbit = (90.0 - pdf["orbital_elements.inclination.value"]).to_numpy()
+
+    # Spin -- convert to EC
+    ra = np.nan_to_num(pdf.alpha0.to_numpy()) * u.degree
+    dec = np.nan_to_num(pdf.delta0.to_numpy()) * u.degree
+
+    # Trick to put the object "far enough"
+    coords_spin = SkyCoord(ra=ra, dec=dec, distance=200 * u.parsec, frame="hcrs")
+
+    # in radian
+    lon_spin = coords_spin.heliocentricmeanecliptic.lon.value
+    lat_spin = coords_spin.heliocentricmeanecliptic.lat.value
+
+    obliquity = np.degrees(
+        angular_separation(
+            np.radians(lon_spin),
+            np.radians(lat_spin),
+            np.radians(lon_orbit),
+            np.radians(lat_orbit),
+        )
+    )
+
+    return obliquity
+
+
+def angular_separation(lon1, lat1, lon2, lat2):
+    """Angular separation between two points on a sphere.
+
+    Notes
+    -----
+    Stolen from astropy -- for version <5
+
+    Parameters
+    ----------
+    lon1, lat1, lon2, lat2 : `~astropy.coordinates.Angle`, `~astropy.units.Quantity` or float
+        Longitude and latitude of the two points. Quantities should be in
+        angular units; floats in radians.
+
+    Returns
+    -------
+    angular separation : `~astropy.units.Quantity` ['angle'] or float
+        Type depends on input; ``Quantity`` in angular units, or float in
+        radians.
+
+    Notes
+    -----
+    The angular separation is calculated using the Vincenty formula [1]_,
+    which is slightly more complex and computationally expensive than
+    some alternatives, but is stable at at all distances, including the
+    poles and antipodes.
+
+    .. [1] https://en.wikipedia.org/wiki/Great-circle_distance
+    """
+    sdlon = np.sin(lon2 - lon1)
+    cdlon = np.cos(lon2 - lon1)
+    slat1 = np.sin(lat1)
+    slat2 = np.sin(lat2)
+    clat1 = np.cos(lat1)
+    clat2 = np.cos(lat2)
+
+    num1 = clat2 * sdlon
+    num2 = clat1 * slat2 - slat1 * clat2 * cdlon
+    denominator = slat1 * slat2 + clat1 * clat2 * cdlon
+
+    return np.arctan2(np.hypot(num1, num2), denominator)
+
+
+def angle_between_vectors(v1, v2):
+    """Compute the angle between two 3D vectors.
+
+    Parameters
+    ----------
+    v1 : list or np.ndarray
+        The first 3D vector.
+    v2 : list or np.ndarray
+        The second 3D vector.
+
+    Returns
+    -------
+    float
+        The angle between the two vectors in radians.
+    """
+    v1 = np.array(v1)
+    v2 = np.array(v2)
+
+    dot_product = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+
+    cos_theta = dot_product / (norm_v1 * norm_v2)
+
+    # Clip to handle numerical issues
+    angle = np.arccos(np.clip(cos_theta, -1.0, 1.0))
+
+    return angle
 
 
 if __name__ == "__main__":
