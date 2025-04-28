@@ -1,4 +1,4 @@
-# Copyright 2024 AstroLab Software
+# Copyright 2024-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ import pyspark.sql.functions as F
 
 from astropy.time import Time
 
+from fink_utils.sso.utils import retrieve_last_date_of_previous_month
 from fink_utils.tester import spark_unit_tests
 
 COLUMNS = {
@@ -563,64 +564,6 @@ def aggregate_ztf_sso_data(
         df_agg.write.parquet(output_filename)
 
     return df_agg
-
-
-def retrieve_last_date_of_previous_month(mydate):
-    """Given a date, retrieve the last date from last month
-
-    Parameters
-    ----------
-    mydate: datetime
-        Input date
-
-    Returns
-    -------
-    out: datetime
-        Last date from previous month according to `mydate`
-
-    Examples
-    --------
-    >>> mydate = datetime.date(year=2025, month=4, day=5)
-    >>> out = retrieve_last_date_of_previous_month(mydate)
-    >>> assert out.strftime("%m") == "03"
-    >>> assert out.day == 31
-
-    >>> mydate = datetime.date(year=2025, month=1, day=14)
-    >>> out = retrieve_last_date_of_previous_month(mydate)
-    >>> assert out.month == 12
-    >>> assert out.year == 2024
-    """
-    first = mydate.replace(day=1)
-    last_month = first - datetime.timedelta(days=1)
-    return last_month
-
-
-def retrieve_first_date_of_next_month(mydate):
-    """Given a date, retrieve the first date from next month
-
-    Parameters
-    ----------
-    mydate: datetime
-        Input date
-
-    Returns
-    -------
-    out: datetime
-        Last date from previous month according to `mydate`
-
-    Examples
-    --------
-    >>> mydate = datetime.date(year=2025, month=4, day=5)
-    >>> out = retrieve_first_date_of_next_month(mydate)
-    >>> assert out.strftime("%m") == "05"
-    >>> assert out.day == 1
-
-    >>> mydate = datetime.date(year=2025, month=12, day=14)
-    >>> out = retrieve_first_date_of_next_month(mydate)
-    >>> assert out.month == 1
-    >>> assert out.year == 2026
-    """
-    return (mydate.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
 
 
 if __name__ == "__main__":

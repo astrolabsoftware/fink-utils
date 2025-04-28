@@ -16,16 +16,19 @@
 
 import pandas as pd
 
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import MapType, StringType, FloatType, ArrayType
 
-from fink_utils.sso.utils import query_miriade_ephemcc
-from fink_utils.sso.utils import query_miriade
+from fink_utils.sso.miriade import query_miriade_ephemcc
+from fink_utils.sso.miriade import query_miriade
 
 from fink_utils.tester import spark_unit_tests
 
 
-COLUMNS = ["Dobs", "Dhelio", "SDSS:g", "SDSS:r", "Phase", "Elong."]
+COLUMNS = ["Dobs", "Dhelio", "Phase", "Elong.", "RA", "DEC"]
 
 
 def sanitize_name(col):
@@ -135,8 +138,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
     ...         F.expr("uuid()"),
     ...         F.lit("rest")))
     >>> df_new_ephem = expand_columns(df_new_ephem)
-    >>> out = df_new_ephem.select(["cjd", "SDSS:g"]).collect()
-    >>> assert len(out[0]["cjd"]) == len(out[0]["SDSS:g"])
+    >>> out = df_new_ephem.select(["cjd", "RA"]).collect()
+    >>> assert len(out[0]["cjd"]) == len(out[0]["RA"])
 
     Checking rolling add
     >>> from fink_utils.sso.ssoft import join_aggregated_sso_data
@@ -190,9 +193,16 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
             )
         if ephems.get("data", None) is not None:
             # Remove any "." in name
-            out.append({
+            ephems_corr = {
                 sanitize_name(k): [dic[k] for dic in ephems["data"]] for k in COLUMNS
-            })
+            }
+
+            # In-place transformation of RA/DEC coordinates
+            sc = SkyCoord(ephems_corr["RA"], ephems_corr["DEC"], unit=(u.deg, u.deg))
+            ephems_corr["RA"] = sc.ra.value * 15
+            ephems_corr["DEC"] = sc.dec.value
+
+            out.append(ephems_corr)
         else:
             # Not sure about that
             out.append({})

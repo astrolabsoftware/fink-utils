@@ -1,4 +1,4 @@
-# Copyright 2022-2024 AstroLab Software
+# Copyright 2022-2025 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,381 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import requests
-import subprocess
-import json
-import os
+"""Collection of utilities for SSO in Fink"""
+
+import datetime
+import re
 
 import pandas as pd
 import numpy as np
 
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
 import astropy.constants as const
-import astropy.units as u
 
 from scipy import signal
-from line_profiler import profile
 
 from fink_utils.tester import regular_unit_tests
-
-
-@profile
-def query_miriade(
-    ident,
-    jd,
-    observer="I41",
-    rplane="1",
-    tcoor=5,
-    shift=15.0,
-    timeout=30,
-    return_json=False,
-):
-    """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
-
-    Original function by M. Mahlke, adapted for Fink usage.
-
-    Limitations:
-        - Color ephemerides are returned only for asteroids
-        - Temporary designations (C/... or YYYY...) do not have ephemerides available
-
-    Parameters
-    ----------
-    ident: int, float, str
-        asteroid or comet identifier
-    jd: array
-        dates to query
-    observer: str
-        IAU Obs code - default to ZTF: https://minorplanetcenter.net//iau/lists/ObsCodesF.html
-    rplane: str
-        Reference plane: equator ('1'), ecliptic ('2').
-        If rplane = '2', then tcoor is automatically set to 1 (spherical)
-    tcoor: int
-        See https://ssp.imcce.fr/webservices/miriade/api/ephemcc/
-        Default is 5 (dedicated to observation)
-    shift: float
-        Time shift to center exposure times, in second.
-        Default is 15 seconds which is half of the exposure time for ZTF.
-    timeout: int
-        Timeout in seconds. Default is 30.
-    return_json: bool
-        If True, return the JSON payload. Otherwise, returns
-        a pandas DataFrame. Default is False.
-
-    Returns
-    -------
-    pd.DataFrame
-        Input dataframe with ephemerides columns
-        appended False if query failed somehow
-    """
-    # Miriade URL
-    url = "https://ssp.imcce.fr/webservices/miriade/api/ephemcc.php"
-
-    if rplane == "2":
-        tcoor = "1"
-
-    # Query parameters
-    if ident.endswith("P") or ident.startswith("C/"):
-        otype = "c"
-    else:
-        otype = "a"
-    params = {
-        "-name": f"{otype}:{ident}",
-        "-mime": "json",
-        "-rplane": rplane,
-        "-tcoor": tcoor,
-        "-output": "--jd,--colors(SDSS:r,SDSS:g)",
-        "-observer": observer,
-        "-tscale": "UTC",
-    }
-
-    # Pass sorted list of epochs to speed up query
-    shift_hour = shift / 24.0 / 3600.0
-    files = {
-        "epochs": (
-            "epochs",
-            "\n".join(["{:.6f}".format(epoch + shift_hour) for epoch in jd]),
-        )
-    }
-
-    # Execute query
-    try:
-        r = requests.post(url, params=params, files=files, timeout=timeout)
-    except requests.exceptions.ReadTimeout:
-        if return_json:
-            return {}
-        return pd.DataFrame()
-
-    j = r.json()
-
-    if return_json:
-        return j
-
-    # Read JSON response
-    try:
-        ephem = pd.DataFrame.from_dict(j["data"])
-    except KeyError:
-        return pd.DataFrame()
-
-    return ephem
-
-
-@profile
-def query_miriade_ephemcc(
-    ident,
-    jd,
-    observer="I41",
-    rplane="1",
-    tcoor=5,
-    shift=15.0,
-    parameters=None,
-    uid=None,
-    return_json=False,
-):
-    """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
-
-    This uses local installation of ephemcc instead of the REST API.
-
-    Limitations:
-        - Color ephemerides are returned only for asteroids
-        - Temporary designations (C/... or YYYY...) do not have ephemerides available
-
-    Parameters
-    ----------
-    ident: int, float, str
-        asteroid or comet identifier
-    jd: array
-        dates to query
-    observer: str
-        IAU Obs code - default to ZTF: https://minorplanetcenter.net//iau/lists/ObsCodesF.html
-    rplane: str
-        Reference plane: equator ('1'), ecliptic ('2').
-        If rplane = '2', then tcoor is automatically set to 1 (spherical)
-    tcoor: int
-        See https://ssp.imcce.fr/webservices/miriade/api/ephemcc/
-        Default is 5 (dedicated to observation)
-    shift: float
-        Time shift to center exposure times, in second.
-        Default is 15 seconds which is half of the exposure time for ZTF.
-    parameters: dict
-        runner_path, userconf, iofile, outdir
-    uid: int, optional
-        If specified, ID used to write files on disk. Must be unique for each object.
-        Default is None, i.e. randomly sampled from U(0, 1e7)
-    return_json: bool
-        If True, return the JSON payload. Otherwise, returns
-        a pandas DataFrame. Default is False.
-
-    Returns
-    -------
-    pd.DataFrame
-        Input dataframe with ephemerides columns
-        appended False if query failed somehow
-
-    """
-    # write tmp files on disk
-    if uid is None:
-        uid = np.random.randint(0, 1e7)
-    date_path = "{}/dates_{}.txt".format(parameters["outdir"], uid)
-    ephem_path = "{}/ephem_{}.json".format(parameters["outdir"], uid)
-
-    pdf = pd.DataFrame(jd)
-
-    shift_hour = shift / 24.0 / 3600.0
-    pdf.apply(lambda epoch: Time(epoch + shift_hour, format="jd").iso).to_csv(
-        date_path, index=False, header=False
-    )
-
-    # launch the processing
-    cmd = [
-        parameters["runner_path"],
-        str(ident),
-        str(rplane),
-        str(tcoor),
-        observer,
-        "UTC",
-        parameters["userconf"],
-        parameters["iofile"],
-        parameters["outdir"],
-        str(uid),
-    ]
-
-    # subprocess.run(cmd, capture_output=True)
-    out = subprocess.run(cmd)
-
-    if out.returncode != 0:
-        print("Error code {}".format(out.returncode))
-
-        # clean date file
-        os.remove(date_path)
-        if return_json:
-            return {}
-        return pd.DataFrame()
-
-    # read the data from disk and return
-    with open(ephem_path, "r") as f:
-        data = json.load(f)
-
-    if return_json:
-        return data
-
-    ephem = pd.DataFrame(data["data"], columns=data["datacol"].keys())
-
-    # clean tmp files
-    os.remove(ephem_path)
-    os.remove(date_path)
-
-    return ephem
-
-
-@profile
-def get_miriade_data(
-    pdf,
-    sso_colname="i:ssnamenr",
-    observer="I41",
-    rplane="1",
-    tcoor=5,
-    withecl=True,
-    method="rest",
-    parameters=None,
-    timeout=30,
-    shift=15.0,
-    uid=None,
-):
-    """Add ephemerides information from Miriade to a Pandas DataFrame with SSO lightcurve
-
-    Parameters
-    ----------
-    pdf: pd.DataFrame
-        Pandas DataFrame containing Fink alert data for a (or several) SSO
-    sso_colname: str, optional
-        Name of the column containing the SSO name to use when querying
-        the miriade service. Beware that `ssnamenr` from ZTF is not very
-        accurate, and it is better to use quaero before. Default is `i:ssnamenr`
-    observer: str
-        IAU Obs code - default to ZTF
-        https://minorplanetcenter.net//iau/lists/ObsCodesF.html
-    rplane: str
-        Reference plane: equator ('1', default), ecliptic ('2').
-        If rplane = '2', then tcoor is automatically set to 1 (spherical)
-    tcoor: int
-        See https://ssp.imcce.fr/webservices/miriade/api/ephemcc/
-        Default is 5 (dedicated to observation)
-    withecl: bool
-        If True, query for also for ecliptic Longitude & Latitude (extra call to miriade).
-        Default is True.
-    method: str
-        Use the REST API (`rest`), or a local installation of miriade (`ephemcc`)
-    parameters: dict, optional
-        If method == `ephemcc`, specify the mapping of extra parameters here. Default is {}.
-    timeout: int, optional
-        Timeout in seconds when using the REST API. Default is 30.
-    uid: int, optional
-        If specified, ID used to write files on disk. Must be unique for each object.
-        Default is None, i.e. randomly sampled from U(0, 1e7). Only used for method == `ephemcc`.
-
-    Returns
-    -------
-    out: pd.DataFrame
-        DataFrame of the same length, but with new columns from the ephemerides service.
-    """
-    if parameters is None:
-        parameters = {}
-
-    ssnamenrs = np.unique(pdf[sso_colname].values)
-
-    infos = []
-    for ssnamenr in ssnamenrs:
-        mask = pdf[sso_colname] == ssnamenr
-        pdf_sub = pdf[mask]
-
-        if method == "rest":
-            eph = query_miriade(
-                str(ssnamenr),
-                pdf_sub["i:jd"],
-                observer=observer,
-                rplane=rplane,
-                tcoor=tcoor,
-                shift=shift,
-                timeout=timeout,
-            )
-        elif method == "ephemcc":
-            eph = query_miriade_ephemcc(
-                str(ssnamenr),
-                pdf_sub["i:jd"],
-                observer=observer,
-                rplane=rplane,
-                tcoor=tcoor,
-                shift=shift,
-                parameters=parameters,
-                uid=uid,
-            )
-        else:
-            raise AssertionError(
-                "Method must be `rest` or `ephemcc`. {} not supported".format(method)
-            )
-
-        if not eph.empty:
-            sc = SkyCoord(eph["RA"], eph["DEC"], unit=(u.deg, u.deg))
-
-            eph = eph.drop(columns=["RA", "DEC"])
-            eph["RA"] = sc.ra.value * 15
-            eph["Dec"] = sc.dec.value
-
-            if withecl:
-                # Add Ecliptic coordinates
-                if method == "rest":
-                    eph_ec = query_miriade(
-                        str(ssnamenr),
-                        pdf_sub["i:jd"],
-                        observer=observer,
-                        rplane="2",
-                        shift=shift,
-                        timeout=timeout,
-                    )
-                elif method == "ephemcc":
-                    eph_ec = query_miriade_ephemcc(
-                        str(ssnamenr),
-                        pdf_sub["i:jd"],
-                        observer=observer,
-                        rplane="2",
-                        shift=shift,
-                        parameters=parameters,
-                        uid=uid,
-                    )
-                else:
-                    raise AssertionError(
-                        "Method must be `rest` or `ephemcc`. {} not supported".format(
-                            method
-                        )
-                    )
-
-                sc = SkyCoord(
-                    eph_ec["Longitude"], eph_ec["Latitude"], unit=(u.deg, u.deg)
-                )
-                eph["Longitude"] = sc.ra.value
-                eph["Latitude"] = sc.dec.value
-
-            # Merge fink & Eph
-            info = pd.concat([eph.reset_index(), pdf_sub.reset_index()], axis=1)
-
-            # index has been duplicated obviously
-            info = info.loc[:, ~info.columns.duplicated()]
-
-            # Compute magnitude reduced to unit distance
-            info["i:magpsf_red"] = info["i:magpsf"] - 5 * np.log10(
-                info["Dobs"] * info["Dhelio"]
-            )
-            infos.append(info)
-        else:
-            infos.append(pdf_sub)
-
-    if len(infos) > 1:
-        info_out = pd.concat(infos)
-    else:
-        info_out = infos[0]
-
-    return info_out
 
 
 def is_peak(x, y, xpeak, band=50):
@@ -517,6 +155,234 @@ def estimate_axes_ratio(residuals, R):
         a_c = a_b
 
     return a_b, a_c
+
+
+def remove_leading_zeros(val):
+    """Iteratively remove leading zeros from a string
+
+    Parameters
+    ----------
+    val: str
+        A string
+
+    Returns
+    -------
+    The input string with leading zeros removed
+
+    Examples
+    --------
+    >>> string = '0abcd'
+    >>> remove_leading_zeros(string)
+    'abcd'
+
+    >>> string = '000000a0bcd'
+    >>> remove_leading_zeros(string)
+    'a0bcd'
+
+    >>> string = 'toto'
+    >>> remove_leading_zeros(string)
+    'toto'
+    """
+    if val.startswith("0"):
+        return remove_leading_zeros(val[1:])
+    else:
+        return val
+
+
+def process_regex(regex, data):
+    """Extract parameters from a regex given the data
+
+    Parameters
+    ----------
+    regex: str
+        Regular expression to use
+    data: str
+        Data entered by the user
+
+    Returns
+    -------
+    parameters: dict or None
+        Parameters (key: value) extracted from the data
+    """
+    template = re.compile(regex)
+    m = template.match(data)
+    if m is None:
+        return None
+
+    parameters = m.groupdict()
+    return parameters
+
+
+def extract_array_from_series(col, index, elementtype):
+    """Extract array element from a series of arrays.
+
+    Parameters
+    ----------
+    col: pd.Series
+        Pandas Series
+    index: int
+        Index of the element in the Series
+    elementtype: type
+        Type of the elements in the array
+
+    Returns
+    -------
+    out: np.array
+        Array with elements `elementtype`.
+    """
+    return col.to_numpy()[index].astype(elementtype)
+
+
+def correct_ztf_mpc_names(ssnamenr):
+    """Remove trailing 0 at the end of SSO names from ZTF
+
+    e.g. 2010XY03 should read 2010XY3
+
+    Parameters
+    ----------
+    ssnamenr: np.array
+        Array with SSO names from ZTF
+
+    Returns
+    -------
+    out: np.array
+        Array with corrected names from ZTF
+
+    Examples
+    --------
+    >>> ssnamenr = np.array(['2010XY03', '2023AB0', '2023XY00', '345', '2023UY12'])
+    >>> ssnamenr_alt = correct_ztf_mpc_names(ssnamenr)
+
+    # the first ones changed
+    >>> assert ssnamenr_alt[0] == '2010XY3'
+    >>> assert ssnamenr_alt[1] == '2023AB'
+    >>> assert ssnamenr_alt[2] == '2023XY'
+
+    >>> assert np.all(ssnamenr_alt[3:] == ssnamenr[3:])
+    """
+    # remove numbered
+    regex = r"^\d+$"  # noqa: W605
+    template = re.compile(regex)
+    unnumbered = np.array([template.findall(str(x)) == [] for x in ssnamenr])
+
+    # Extract names
+    regex = r"(?P<year>\d{4})(?P<letter>\w{2})(?P<end>\d+)$"  # noqa: W605
+    processed = [process_regex(regex, x) for x in ssnamenr[unnumbered]]
+
+    def f(x, y):
+        """Correct for trailing 0 in SSO names
+
+        Parameters
+        ----------
+        x: dict, or None
+            Data extracted from the regex
+        y: str
+            Corresponding ssnamenr
+
+        Returns
+        -------
+        out: str
+            Name corrected for trailing 0 at the end (e.g. 2010XY03 should read 2010XY3)
+        """
+        if x is None:
+            return y
+        else:
+            return "{}{}{}".format(
+                x["year"], x["letter"], remove_leading_zeros(x["end"])
+            )
+
+    corrected = np.array([f(x, y) for x, y in zip(processed, ssnamenr[unnumbered])])
+
+    ssnamenr[unnumbered] = corrected
+
+    return ssnamenr
+
+
+def rockify(ssnamenr: pd.Series):
+    """Extract names and numbers from ssnamenr
+
+    Parameters
+    ----------
+    ssnamenr: pd.Series of str
+        SSO names as given in ZTF alert packets
+
+    Returns
+    -------
+    sso_name: np.array of str
+        SSO names according to quaero
+    sso_number: np.array of int
+        SSO numbers according to quaero
+    """
+    import rocks
+
+    # prune names
+    ssnamenr_alt = correct_ztf_mpc_names(ssnamenr.to_numpy())
+
+    # rockify
+    names_numbers = rocks.identify(ssnamenr_alt)
+
+    sso_name = np.transpose(names_numbers)[0]
+    sso_number = np.transpose(names_numbers)[1]
+
+    return sso_name, sso_number
+
+
+def retrieve_last_date_of_previous_month(mydate):
+    """Given a date, retrieve the last date from last month
+
+    Parameters
+    ----------
+    mydate: datetime
+        Input date
+
+    Returns
+    -------
+    out: datetime
+        Last date from previous month according to `mydate`
+
+    Examples
+    --------
+    >>> mydate = datetime.date(year=2025, month=4, day=5)
+    >>> out = retrieve_last_date_of_previous_month(mydate)
+    >>> assert out.strftime("%m") == "03"
+    >>> assert out.day == 31
+
+    >>> mydate = datetime.date(year=2025, month=1, day=14)
+    >>> out = retrieve_last_date_of_previous_month(mydate)
+    >>> assert out.month == 12
+    >>> assert out.year == 2024
+    """
+    first = mydate.replace(day=1)
+    last_month = first - datetime.timedelta(days=1)
+    return last_month
+
+
+def retrieve_first_date_of_next_month(mydate):
+    """Given a date, retrieve the first date from next month
+
+    Parameters
+    ----------
+    mydate: datetime
+        Input date
+
+    Returns
+    -------
+    out: datetime
+        Last date from previous month according to `mydate`
+
+    Examples
+    --------
+    >>> mydate = datetime.date(year=2025, month=4, day=5)
+    >>> out = retrieve_first_date_of_next_month(mydate)
+    >>> assert out.strftime("%m") == "05"
+    >>> assert out.day == 1
+
+    >>> mydate = datetime.date(year=2025, month=12, day=14)
+    >>> out = retrieve_first_date_of_next_month(mydate)
+    >>> assert out.month == 1
+    >>> assert out.year == 2026
+    """
+    return (mydate.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
 
 
 if __name__ == "__main__":
