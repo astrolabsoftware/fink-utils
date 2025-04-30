@@ -48,6 +48,7 @@ COLUMNS = [
 
 
 def safe_insert(dic, k):
+    """Safely return value if the key exists"""
     if k in dic:
         return dic[k]
     else:
