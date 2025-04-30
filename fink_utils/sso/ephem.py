@@ -27,8 +27,32 @@ from fink_utils.sso.miriade import query_miriade
 
 from fink_utils.tester import spark_unit_tests
 
+import logging
 
-COLUMNS = ["Dobs", "Dhelio", "Phase", "Elong.", "RA", "DEC"]
+_LOG = logging.getLogger(__name__)
+
+COLUMNS = [
+    "Dobs",
+    "Dhelio",
+    "Phase",
+    "Elong.",
+    "RA",
+    "DEC",
+    "px",
+    "py",
+    "pz",
+    "vx",
+    "vy",
+    "vz",
+]
+
+
+def safe_insert(dic, k):
+    """Safely return value if the key exists"""
+    if k in dic:
+        return dic[k]
+    else:
+        return None
 
 
 def sanitize_name(col):
@@ -69,7 +93,7 @@ def expand_columns(df, col_to_expand="ephem"):
     >>> assert "a" not in df.columns, df.columns
     """
     if col_to_expand not in df.columns:
-        print(
+        _LOG.warning(
             "{} not found in the DataFrame columns. Have you computed ephemerides?".format(
                 col_to_expand
             )
@@ -194,7 +218,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
         if ephems.get("data", None) is not None:
             # Remove any "." in name
             ephems_corr = {
-                sanitize_name(k): [dic[k] for dic in ephems["data"]] for k in COLUMNS
+                sanitize_name(k): [safe_insert(dic, k) for dic in ephems["data"]]
+                for k in COLUMNS
             }
 
             # In-place transformation of RA/DEC coordinates
