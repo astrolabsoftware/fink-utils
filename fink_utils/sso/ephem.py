@@ -28,7 +28,20 @@ from fink_utils.sso.miriade import query_miriade
 from fink_utils.tester import spark_unit_tests
 
 
-COLUMNS = ["Dobs", "Dhelio", "Phase", "Elong.", "RA", "DEC", "px", "py", "pz", "vx", "vy", "vz"]
+COLUMNS = [
+    "Dobs",
+    "Dhelio",
+    "Phase",
+    "Elong.",
+    "RA",
+    "DEC",
+    "px",
+    "py",
+    "pz",
+    "vx",
+    "vy",
+    "vz",
+]
 
 
 def sanitize_name(col):

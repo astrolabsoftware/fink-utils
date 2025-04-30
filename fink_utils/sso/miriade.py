@@ -41,18 +41,15 @@ def get_sso_data(ssnamenr):
         SSO name
     """
     r = requests.post(
-        'https://api.fink-portal.org/api/v1/sso',
-        json={
-            'n_or_d': ssnamenr,
-            'withEphem': True,
-            'output-format': 'json'
-        }
+        "https://api.fink-portal.org/api/v1/sso",
+        json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
     )
 
     if r.status_code != 200:
         raise AssertionError((r.content, ssnamenr))
     pdf = pd.read_json(io.BytesIO(r.content))
     return pdf
+
 
 @profile
 def query_miriade(
@@ -422,7 +419,6 @@ def get_miriade_data(
 
 if __name__ == "__main__":
     """Execute the unit test suite"""
-
 
     # Run the Spark test suite
     regular_unit_tests(globals())
