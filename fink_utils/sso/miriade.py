@@ -18,6 +18,7 @@ import requests
 import subprocess
 import json
 import os
+import io
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -30,6 +31,28 @@ from line_profiler import profile
 
 from fink_utils.tester import regular_unit_tests
 
+
+def get_sso_data(ssnamenr):
+    """Wrapper for tests
+
+    Parameters
+    ----------
+    ssnamenr: str
+        SSO name
+    """
+    r = requests.post(
+        'https://api.fink-portal.org/api/v1/sso',
+        json={
+            'n_or_d': ssnamenr,
+            'withEphem': True,
+            'output-format': 'json'
+        }
+    )
+
+    if r.status_code != 200:
+        raise AssertionError((r.content, ssnamenr))
+    pdf = pd.read_json(io.BytesIO(r.content))
+    return pdf
 
 @profile
 def query_miriade(
@@ -289,6 +312,14 @@ def get_miriade_data(
     -------
     out: pd.DataFrame
         DataFrame of the same length, but with new columns from the ephemerides service.
+
+    Examples
+    --------
+    >>> ssnamenrs = ["33803"]
+    >>> for ssnamenr in ssnamenrs:
+    ...     pdf = get_sso_data(ssnamenr)
+    ...     pdfEphem = get_miriade_data(pdf, withecl=False)
+    ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
     """
     if parameters is None:
         parameters = {}
@@ -391,6 +422,7 @@ def get_miriade_data(
 
 if __name__ == "__main__":
     """Execute the unit test suite"""
+
 
     # Run the Spark test suite
     regular_unit_tests(globals())
