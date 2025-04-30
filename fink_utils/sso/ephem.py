@@ -46,11 +46,13 @@ COLUMNS = [
     "vz",
 ]
 
+
 def safe_insert(dic, k):
     if k in dic:
         return dic[k]
     else:
         return None
+
 
 def sanitize_name(col):
     """Remove trailing '.' from names"""
@@ -218,7 +220,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
         if ephems.get("data", None) is not None:
             # Remove any "." in name
             ephems_corr = {
-                sanitize_name(k): [safe_insert(dic, k) for dic in ephems["data"]] for k in COLUMNS
+                sanitize_name(k): [safe_insert(dic, k) for dic in ephems["data"]]
+                for k in COLUMNS
             }
 
             # In-place transformation of RA/DEC coordinates
