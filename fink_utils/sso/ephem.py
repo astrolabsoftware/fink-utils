@@ -99,9 +99,6 @@ def expand_columns(df, col_to_expand="ephem"):
         )
         return df
     for col in COLUMNS:
-        if col not in df.columns:
-            _LOG.warning("{} not found in DataFrame".format(col))
-            continue
         df = df.withColumn(
             sanitize_name(col), df["{}.{}".format(col_to_expand, sanitize_name(col))]
         )
