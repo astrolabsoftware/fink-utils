@@ -81,6 +81,10 @@ def return_list_of_eg_host(full_simbad_conversion=False) -> list:
         "ClG",
         "SuperClG",
         "Void",
+        "LINER",
+        "Possible_ClG",
+        "Possible_SClG",
+        "GravLens_Candidate",
     ]
 
     cds = [
