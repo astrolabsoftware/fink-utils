@@ -22,6 +22,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 
 from fink_utils.sso.utils import estimate_axes_ratio
+from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
 
 
@@ -341,6 +342,51 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     func2 = -2.5 * np.log10(func2)
 
     return func1 + func2
+
+
+def sfhg1g2_multiple(phas, g1, g2, *args):
+    """HG1G2 model in the case of simultaneous fit
+
+    Parameters
+    ----------
+    phas: np.array
+        (N, M_o) array of phase angles. N is the number
+        of opposition, M_o is the number of observations
+        per opposition. Phase is radians.
+    g1: float
+        G1 parameter (no unit)
+    g2: float
+        G2 parameter (no unit)
+    args: float
+        List of Hs, one per opposition.
+
+    Returns
+    -------
+    out: np.array
+        Magnitude as predicted by `func_hg1g2`.
+    """
+    fl = []
+    for alpha, h in zip(phas, args[0][:]):
+        fl.append(func_hg1g2(alpha, h, g1, g2))
+    return np.concatenate(fl)
+
+
+def sfhg1g2_error_fun(params, phas, mags):
+    """Difference between sfHG1G2 predictions and observations
+
+    Parameters
+    ----------
+    params: list
+        [G1, G2, *H_i], where H_i are the Hs, one per opposition
+    phas: np.array
+        (N, M_o) array of phase angles. N is the number
+        of opposition, M_o is the number of observations
+        per opposition. Must be sorted by time. Phase is radians.
+    mags: np.array
+        Reduced magnitude, that is m_obs - 5 * np.log10('Dobs' * 'Dhelio')
+        Sorted by time.
+    """
+    return sfhg1g2_multiple(phas, params[0], params[1], params[2:]) - mags
 
 
 def color_correction_to_V():  # noqa: N802
@@ -864,12 +910,7 @@ def fit_legacy_models(
 
     Returns
     -------
-    popt: list
-        Estimated parameters for `func`
-    perr: list
-        Error estimates on popt elements
-    chi2_red: float
-        Reduced chi2
+    outdic: dict
     """
     if p0 is None:
         p0 = [15, 0.15, 0.15]
@@ -992,6 +1033,129 @@ def fit_legacy_models(
         outdic["err_" + params[i]] = perr[i]
 
     return outdic
+
+
+def fit_sfhg1g2(
+    ssnamenr,
+    magpsf_red,
+    sigmapsf,
+    jds,
+    phase,
+    filters,
+):
+    """Fit for phase curve parameters for sfHG1G2
+
+    Notes
+    -----
+    Unlike other models, it returns less information, and
+    only per-band.
+
+    Parameters
+    ----------
+    ssnamenr: str
+        SSO name/number
+    magpsf_red: array
+        Reduced magnitude, that is m_obs - 5 * np.log10('Dobs' * 'Dhelio')
+    sigmapsf: array
+        Error estimates on magpsf_red
+    jds: array
+        Julian Dates
+    phase: array
+        Phase angle [rad]
+    filters: array
+        Filter name for each measurement
+
+    Returns
+    -------
+    outdic: dict
+        Dictionary containing reduced chi2, and estimated parameters and
+        error on each parameters.
+    """
+    # exit if NaN values
+    if not np.all([i == i for i in magpsf_red]):
+        outdic = {"fit": 1, "status": -2}
+        return outdic
+
+    pdf = pd.DataFrame({
+        "i:magpsf_red": magpsf_red,
+        "i:sigmapsf": sigmapsf,
+        "Phase": phase,
+        "i:jd": jds,
+        "i:fid": filters,
+    })
+    pdf = pdf.sort_values("i:jd")
+
+    # Get oppositions
+    pdf[["elong", "elongFlag"]] = get_opposition(pdf["i:jd"].to_numpy(), ssnamenr)
+
+    # loop over filters
+    ufilters = np.unique(pdf["i:fid"].to_numpy())
+    outdics = {}
+    for filt in ufilters:
+        outdic = {}
+
+        # Select data for a filter
+        sub = pdf[pdf["i:fid"] == filt].copy()
+
+        # Compute apparitions
+        splitted = split_dataframe_per_apparition(sub, "elongFlag", "i:jd")
+        napparition = len(splitted)
+
+        # H for all apparitions plus G1, G2
+        params_ = ["G1", "G2", *["H{}".format(i) for i in range(napparition)]]
+        params = [i + "_{}".format(str(filt)) for i in params_]
+
+        # Split phase
+        phase_list = [df["Phase"].to_numpy().tolist() for df in splitted]
+
+        # Fit
+        res_lsq = least_squares(
+            sfhg1g2_error_fun,
+            x0=[0.15, 0.15] + [15] * napparition,
+            bounds=(
+                [0, 0] + [-3] * napparition,
+                [1, 1] + [30] * napparition,
+            ),
+            loss="huber",
+            method="trf",
+            args=[
+                phase_list,
+                sub["i:magpsf_red"].to_numpy().tolist(),
+            ],
+            xtol=1e-20,
+            gtol=1e-17,
+        )
+
+        # Result
+        popt = res_lsq.x
+
+        # estimate covariance matrix using the jacobian
+        try:
+            cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
+            chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
+            cov *= chi2dof
+
+            # 1sigma uncertainty on fitted parameters
+            perr = np.sqrt(np.diag(cov))
+        except np.linalg.LinAlgError:
+            # raised if jacobian is degenerated
+            outdic = {"fit": 4, "status": res_lsq.status}
+            return outdic
+
+        chisq = np.sum((res_lsq.fun / sub["i:sigmapsf"]) ** 2)
+        chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
+        outdic["chi2red_{}".format(filt)] = chisq_red
+        outdic["rms_{}".format(filt)] = np.sqrt(np.mean(res_lsq.fun**2))
+        outdic["n_obs_{}".format(filt)] = len(sub)
+        outdic["n_app_{}".format(filt)] = napparition
+
+        for i in range(len(params)):
+            outdic[params[i]] = popt[i]
+            outdic["err_" + params[i]] = perr[i]
+
+        outdics.update(outdic)
+
+    return outdics
 
 
 def fit_spin(
