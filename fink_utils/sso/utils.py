@@ -413,7 +413,7 @@ def split_dataframe_per_apparition(df, column_name, time_column):
 
     Examples
     --------
-    >>> pdf = pd.DataFrame({"elongFlag": ["/L", "/L", "/T"], "jd": [1, 2, 2000]})
+    >>> pdf = pd.DataFrame({"elongFlag": ["/L", "/L", "/T", "/T"], "jd": [1, 2, 2000, 4000]})
     >>> splitted = split_dataframe_per_apparition(pdf, "elongFlag", "jd")
     >>> len(splitted)
     2
