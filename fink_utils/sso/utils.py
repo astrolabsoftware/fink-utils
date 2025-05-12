@@ -21,6 +21,9 @@ import pandas as pd
 import numpy as np
 
 import astropy.constants as const
+from astropy.time import Time
+from astroquery.jplhorizons import Horizons
+
 
 from scipy import signal
 
@@ -383,6 +386,153 @@ def retrieve_first_date_of_next_month(mydate):
     >>> assert out.year == 2026
     """
     return (mydate.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+
+
+def split_dataframe_per_apparition(df, column_name, time_column):
+    """Split a dataframe per apparition
+
+    Notes
+    -----
+    Function from M. Colazo
+
+    Parameters
+    ----------
+    df: Pandas DataFrame
+        Input DataFrame
+    column_name: str
+        Name of column containing information on oppositions.
+        This information comes from horizons.
+    time_column: str
+        Name of the column containing times, in JD.
+
+    Returns
+    -------
+    out: list of DataFrames
+        Initial DataFrame splitted. Each DataFrame
+        contains data for a given opposition.
+
+    Examples
+    --------
+    >>> pdf = pd.DataFrame({"elongFlag": ["/L", "/L", "/T", "/T"], "jd": [1, 2, 2000, 4000]})
+    >>> splitted = split_dataframe_per_apparition(pdf, "elongFlag", "jd")
+    >>> len(splitted)
+    2
+    """
+    df_list = []
+    temp_df = None
+    prev_value = None
+    prev_time = None
+
+    for _, row in df.iterrows():
+        current_value = row[column_name]
+        current_time = row[time_column]
+
+        if current_value.startswith("/L") and (
+            prev_value is None or prev_value.startswith("/T")
+        ):
+            if temp_df is not None and not temp_df.empty:
+                df_list.append(temp_df)
+            temp_df = pd.DataFrame(columns=df.columns)
+        elif current_value.startswith("/T") and (
+            prev_value is None or prev_value.startswith("/L")
+        ):
+            if temp_df is None:
+                temp_df = pd.DataFrame(columns=df.columns)
+        elif current_value.startswith("/T") and prev_value.startswith("/T"):
+            current_time = row[
+                time_column
+            ]  # Extract the Julian date from the current row.
+            if prev_time is not None and (current_time - prev_time) > 182.5:
+                # If the difference is greater than 6 months, a new apparition begins.
+                df_list.append(temp_df)
+                temp_df = pd.DataFrame(columns=df.columns)
+            if temp_df is None:
+                temp_df = pd.DataFrame(columns=df.columns)
+
+        if temp_df is not None:
+            temp_df = pd.concat([temp_df, row.to_frame().T], ignore_index=True)
+
+        # Update previous values
+        prev_value = current_value
+        prev_time = current_time
+
+    if temp_df is not None and not temp_df.empty:
+        df_list.append(temp_df)
+
+    return df_list
+
+
+def get_opposition(jds, ssnamenr, location="I41"):
+    """Get vector of opposition information
+
+    Notes
+    -----
+    Function from M. Colazo
+
+    Parameters
+    ----------
+    jds: np.array
+        Array of JD values (float).
+        Must be UTC, and sorted.
+
+    Returns
+    -------
+    elong: np.array of float
+        Elongation angle in degree
+    elongFlag: np.array of str
+        Elongation flag (/T or /L)
+
+    Examples
+    --------
+    # >>> import io
+    # >>> import requests
+    # >>> import pandas as pd
+
+    # >>> r = requests.post(
+    # ...     'https://api.fink-portal.org/api/v1/sso',
+    # ...     json={
+    # ...         'n_or_d': "8467",
+    # ...         'withEphem': True,
+    # ...         'output-format': 'json'
+    # ...     }
+    # ... )
+    # >>> pdf = pd.read_json(io.BytesIO(r.content))
+
+    # # estimate number of oppositions
+    # >>> pdf = pdf.sort_values("i:jd")
+    # >>> pdf[["elong", "elongFlag"]] = get_opposition(pdf["i:jd"].to_numpy(), "8467")
+    """
+    # Get min and max TDB Julian dates
+    jd_min, jd_max = min(jds), max(jds)
+
+    # Convert to calendar date format (YYYY-MM-DD)
+    date_min = Time(jd_min, format="jd", scale="utc").iso[:10]
+    date_max = Time(jd_max, format="jd", scale="utc").iso[:10]
+
+    # Query Horizons using the converted time range
+    obj = Horizons(
+        id=ssnamenr,
+        location=location,
+        epochs={"start": date_min, "stop": date_max, "step": "1d"},
+        id_type="smallbody",
+    )
+    eph = obj.ephemerides()
+
+    # Convert ephemeris data to Pandas DataFrame
+    eph_df = eph.to_pandas()
+
+    pdf = pd.DataFrame({"jds": jds})
+
+    # Merge on the closest Julian date
+    pdf = pd.merge_asof(
+        pdf.sort_values("jds"),
+        eph_df[["datetime_jd", "elongFlag", "elong"]].sort_values("datetime_jd"),
+        left_on="jds",
+        right_on="datetime_jd",
+        direction="nearest",
+    )
+
+    return pdf[["elong", "elongFlag"]].to_numpy()
 
 
 if __name__ == "__main__":
