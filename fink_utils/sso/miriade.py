@@ -266,7 +266,7 @@ def get_miriade_data(
     observer="I41",
     rplane="1",
     tcoor=5,
-    withecl=True,
+    withecl=False,
     method="rest",
     parameters=None,
     timeout=30,
