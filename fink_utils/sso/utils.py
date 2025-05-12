@@ -484,23 +484,23 @@ def get_opposition(jds, ssnamenr, location="I41"):
 
     Examples
     --------
-    >>> import io
-    >>> import requests
-    >>> import pandas as pd
+    # >>> import io
+    # >>> import requests
+    # >>> import pandas as pd
 
-    >>> r = requests.post(
-    ...     'https://api.fink-portal.org/api/v1/sso',
-    ...     json={
-    ...         'n_or_d': "8467",
-    ...         'withEphem': True,
-    ...         'output-format': 'json'
-    ...     }
-    ... )
-    >>> pdf = pd.read_json(io.BytesIO(r.content))
+    # >>> r = requests.post(
+    # ...     'https://api.fink-portal.org/api/v1/sso',
+    # ...     json={
+    # ...         'n_or_d': "8467",
+    # ...         'withEphem': True,
+    # ...         'output-format': 'json'
+    # ...     }
+    # ... )
+    # >>> pdf = pd.read_json(io.BytesIO(r.content))
 
-    # estimate number of oppositions
-    >>> pdf = pdf.sort_values("i:jd")
-    >>> pdf[["elong", "elongFlag"]] = get_opposition(pdf["i:jd"].to_numpy(), "8467")
+    # # estimate number of oppositions
+    # >>> pdf = pdf.sort_values("i:jd")
+    # >>> pdf[["elong", "elongFlag"]] = get_opposition(pdf["i:jd"].to_numpy(), "8467")
     """
     # Get min and max TDB Julian dates
     jd_min, jd_max = min(jds), max(jds)
