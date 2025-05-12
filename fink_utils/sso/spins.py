@@ -674,6 +674,7 @@ def estimate_sso_params(
     normalise_to_V=False,
     p0=None,
     bounds=None,
+    ssnamenr=None,
 ):
     """Fit for phase curve parameters
 
@@ -738,6 +739,9 @@ def estimate_sso_params(
             - HG: (H, G)
         Note that even if there is several bands `b`, we take the same
         bounds for all H's and G's.
+    ssnamenr: str, optional
+        SSO name/number. Only required for sfHG1G2 model, when
+        querying Horizons.
 
     Returns
     -------
@@ -868,9 +872,18 @@ def estimate_sso_params(
         outdic = fit_legacy_models(
             ydata, sigmapsf, phase, filters, model, p0=p0, bounds=bounds
         )
+    elif model == "sfHG1G2":
+        outdic = fit_sfhg1g2(
+            ssnamenr,
+            ydata,
+            sigmapsf,
+            jd,
+            phase,
+            filters,
+        )
     else:
         raise AssertionError(
-            "model {} is not understood. Please choose among: SSHG1G2, SHG1G2, HG1G2, HG12, HG".format(
+            "model {} is not understood. Please choose among: SSHG1G2, SHG1G2, sfHG1G2, HG1G2, HG12, HG".format(
                 model
             )
         )
