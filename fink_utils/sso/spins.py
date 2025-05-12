@@ -344,7 +344,7 @@ def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     return func1 + func2
 
 
-def sfhg1g2_multiple(phas, g1, g2, *args):
+def func_sfhg1g2(phas, g1, g2, *args):
     """HG1G2 model in the case of simultaneous fit
 
     Parameters
@@ -386,7 +386,7 @@ def sfhg1g2_error_fun(params, phas, mags):
         Reduced magnitude, that is m_obs - 5 * np.log10('Dobs' * 'Dhelio')
         Sorted by time.
     """
-    return sfhg1g2_multiple(phas, params[0], params[1], params[2:]) - mags
+    return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
 
 
 def color_correction_to_V():  # noqa: N802
@@ -1167,6 +1167,9 @@ def fit_sfhg1g2(
             outdic["err_" + params[i]] = perr[i]
 
         outdics.update(outdic)
+
+    # only if both bands converged
+    outdics["fit"] = 0
 
     return outdics
 
