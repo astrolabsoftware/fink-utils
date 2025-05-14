@@ -108,7 +108,7 @@ def expand_columns(df, col_to_expand="ephem"):
 
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
-def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
+def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, method):
     """Extract ephemerides for ZTF from Miriade
 
     Parameters
@@ -117,6 +117,11 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
         ZTF ssnamenr
     cjd: pd.Series of list of floats
         List of JD values
+    observer: pd.Series of str
+        IAU code for the observer. ZTF is I41.
+    shift: pd.Series of float
+        Shift for the JD values, in seconds.
+        Only required for ZTF (15 seconds).
     uid: pd.Series of int
         Unique ID for each object
     method: pd.Series of str
@@ -141,6 +146,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
     ...     extract_ztf_ephemerides_from_miriade(
     ...         "ssnamenr",
     ...         "cjd",
+    ...         F.lit("I41"),
+    ...         F.lit(15.0),
     ...         F.expr("uuid()"),
     ...         F.lit("rest")))
 
@@ -159,6 +166,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
     ...     extract_ztf_ephemerides_from_miriade(
     ...         "ssnamenr",
     ...         "cjd",
+    ...         F.lit("I41"),
+    ...         F.lit(15.0),
     ...         F.expr("uuid()"),
     ...         F.lit("rest")))
     >>> df_new_ephem = expand_columns(df_new_ephem)
@@ -173,6 +182,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
     ...     extract_ztf_ephemerides_from_miriade(
     ...         "ssnamenr",
     ...         "cjd",
+    ...         F.lit("I41"),
+    ...         F.lit(15.0),
     ...         F.expr("uuid()"),
     ...         F.lit("rest")))
     >>> df_join_ephem = expand_columns(df_join_ephem)
@@ -196,10 +207,10 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
             ephems = query_miriade_ephemcc(
                 ssname,
                 cjd.to_numpy()[index],
-                observer="I41",
+                observer=observer.to_numpy()[index],
                 rplane="1",
                 tcoor=5,
-                shift=15.0,
+                shift=shift.to_numpy()[index],
                 parameters=parameters,
                 uid=uid.to_numpy()[index],
                 return_json=True,
@@ -208,10 +219,10 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, uid, method):
             ephems = query_miriade(
                 ssname,
                 cjd.to_numpy()[index],
-                observer="I41",
+                observer=observer.to_numpy()[index],
                 rplane="1",
                 tcoor=5,
-                shift=15.0,
+                shift=shift.to_numpy()[index],
                 timeout=30,
                 return_json=True,
             )
