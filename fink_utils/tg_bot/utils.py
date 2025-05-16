@@ -21,6 +21,7 @@ import requests
 import pandas as pd
 import numpy as np
 import gzip
+import re
 from astropy.io import fits
 
 import matplotlib.pyplot as plt
@@ -29,6 +30,20 @@ import matplotlib.pyplot as plt
 from fink_utils.data.utils import extract_field
 
 COLORS_ZTF = {1: "#15284F", 2: "#F5622E"}
+
+
+def escape(text):
+    """Escapes the text as needed for MarkdownV2 parse_mode
+
+    Parameters
+    ----------
+    text : Text to escape
+
+    Returns
+    -------
+        result : str
+    """
+    return  re.sub(r'[_*[\]()~>#\+\-=|{}.!]', lambda x: '\\' + x.group(), text)
 
 
 def status_check(res, header, sleep=8, timeout=25):
@@ -86,7 +101,7 @@ def send_simple_text_tg(text, channel_id, timeout=25):
         status_check(res, header=channel_id)
 
 
-def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
+def msg_handler_tg(tg_data, channel_id, init_msg=None, timeout=25, sleep_seconds=10, parse_mode="markdown"):
     """Send `tg_data` to a telegram channel
 
     Notes
@@ -100,14 +115,19 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
         Content of the tuple:
             text_data : str
                 Notification text
-            cutout : BytesIO stream
-                cutout image in png format
+            cutout : BytesIO stream or str
+                cutout image in png format, image url, or a list of these
             curve : BytesIO stream
                 light curve picture
     channel_id: string
         Channel id in Telegram
     init_msg: str
         Initial message
+    timeout: int
+        Timeout when sending message. Default is 25 seconds.
+    sleep_seconds: int
+        How many seconds to sleep between two messages to avoid
+        code 429 from the Telegram API. Default is 10 seconds.
 
     Returns
     -------
@@ -117,21 +137,40 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
     url += os.environ["FINK_TG_TOKEN"]
     method = url + "/sendMediaGroup"
 
-    if init_msg != "":
-        send_simple_text_tg(init_msg, channel_id, timeout=25)
+    files = {}
+    media = []
+
+    def add(data, text=None, parse_mode=parse_mode):
+        # TODO: handle text-only messages?
+        item = {
+            "type": "photo",
+        }
+
+        if isinstance(data, str):
+            item["media"] = data
+        elif data is not None:
+            fname = "file{}".format(len(files))
+            files[fname] = data
+            item["media"] = "attach://{}".format(fname)
+
+        if text is not None:
+            item["caption"] = text
+            item["parse_mode"] = parse_mode
+
+        media.append(item)
+
+    if init_msg:
+        send_simple_text_tg(init_msg, channel_id, timeout=timeout)
     for text_data, cutout, curve in tg_data:
-        files = {"first": curve}
-        media = [
-            {
-                "type": "photo",
-                "media": "attach://first",
-                "caption": text_data,
-                "parse_mode": "markdown",
-            }
-        ]
-        if cutout is not None:
-            files.update({"second": cutout})
-            media.append({"type": "photo", "media": "attach://second"})
+        if curve is not None:
+            add(curve, text_data)
+
+        if isinstance(cutout, list):
+            for c in cutout:
+                add(c)
+        else:
+            add(cutout)
+
         res = requests.post(
             method,
             params={"chat_id": channel_id, "media": str(media).replace("'", '"')},
@@ -139,7 +178,7 @@ def msg_handler_tg(tg_data, channel_id, init_msg, timeout=25):
             timeout=timeout,
         )
         status_check(res, header=channel_id)
-        time.sleep(10)
+        time.sleep(sleep_seconds)
 
 
 def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seconds=10):
