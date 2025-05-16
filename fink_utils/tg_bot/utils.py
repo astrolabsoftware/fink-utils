@@ -43,7 +43,7 @@ def escape(text):
     -------
         result : str
     """
-    return  re.sub(r'[_*[\]()~>#\+\-=|{}.!]', lambda x: '\\' + x.group(), text)
+    return re.sub(r"[_*[\]()~>#\+\-=|{}.!]", lambda x: "\\" + x.group(), text)
 
 
 def status_check(res, header, sleep=8, timeout=25):
@@ -101,7 +101,14 @@ def send_simple_text_tg(text, channel_id, timeout=25):
         status_check(res, header=channel_id)
 
 
-def msg_handler_tg(tg_data, channel_id, init_msg=None, timeout=25, sleep_seconds=10, parse_mode="markdown"):
+def msg_handler_tg(
+    tg_data,
+    channel_id,
+    init_msg=None,
+    timeout=25,
+    sleep_seconds=10,
+    parse_mode="markdown",
+):
     """Send `tg_data` to a telegram channel
 
     Notes
