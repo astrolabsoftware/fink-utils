@@ -144,9 +144,6 @@ def msg_handler_tg(
     url += os.environ["FINK_TG_TOKEN"]
     method = url + "/sendMediaGroup"
 
-    files = {}
-    media = []
-
     def add(data, text=None, parse_mode=parse_mode):
         # TODO: handle text-only messages?
         item = {
@@ -169,6 +166,9 @@ def msg_handler_tg(
     if init_msg:
         send_simple_text_tg(init_msg, channel_id, timeout=timeout)
     for text_data, cutout, curve in tg_data:
+        files = {}
+        media = []
+
         if curve is not None:
             add(curve, text_data)
 
