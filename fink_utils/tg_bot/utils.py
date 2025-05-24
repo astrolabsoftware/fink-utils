@@ -175,7 +175,7 @@ def msg_handler_tg(
         if isinstance(cutout, list):
             for c in cutout:
                 add(c)
-        else:
+        elif isinstance(cutout, io.BytesIO):
             add(cutout)
 
         res = requests.post(
@@ -262,6 +262,8 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
     ztf_id : str, optional
         unique identifier for this object. Only
         used for origin=API.
+    kind: str, optional
+        Science, Difference, or Template
     origin: str, optional
         Choose between `alert`[default], or API.
 
@@ -269,6 +271,18 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
     -------
     out : BytesIO stream
         cutout image in png format
+
+    Examples
+    --------
+    From API
+    >>> out = get_cutout(ztf_id="ZTF23aapvluy", origin="API", kind="Science")
+    >>> assert isinstance(out, io.BytesIO)
+
+    From cutout
+    >>> pdf = pd.read_parquet("../test_data/online/science/day=04/alert_samples.parquet")
+    >>> cutout = pdf["cutoutTemplate"].apply(lambda x: x["stampData"]).to_numpy()[0]
+    >>> out = get_cutout(cutout, kind="Science")
+    >>> assert isinstance(out, io.BytesIO)
     """
     if origin == "API":
         assert ztf_id is not None
@@ -279,7 +293,9 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
         )
         if not status_check(r, header=ztf_id):
             return io.BytesIO()
-        data = np.log(np.array(r.json()["b:cutoutScience_stampData"], dtype=float))
+        data = np.log(
+            np.array(r.json()["b:cutout{}_stampData".format(kind)], dtype=float)
+        )
         plt.axis("off")
         plt.imshow(data, cmap="PuBu_r")
         buf = io.BytesIO()
