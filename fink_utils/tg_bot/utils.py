@@ -175,7 +175,7 @@ def msg_handler_tg(
         if isinstance(cutout, list):
             for c in cutout:
                 add(c)
-        elif isinstance(cutout, io.BytesIO):
+        elif cutout is not None:
             add(cutout)
 
         res = requests.post(
