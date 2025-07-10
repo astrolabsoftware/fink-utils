@@ -389,6 +389,204 @@ def sfhg1g2_error_fun(params, phas, mags):
     return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
 
 
+def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+    """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
+
+    Parameters
+    ----------
+    pha: array-like [6, N]
+        List containing [phase angle in radians, RA in radians, Dec in radians, time (jd), RA sun in radians, DEC sun in radians ]
+    h: float
+        Absolute magnitude in mag
+    G1: float
+        G1 parameter (no unit)
+    G2: float
+        G2 parameter (no unit)
+    alpha0: float
+        RA of the spin (radian)
+    delta0: float
+        Dec of the spin (radian)
+    period: float
+        Sidereal rotation period (days)
+    a_b: float
+        Equatorial axes ratio
+    a_c: float
+        Polar axes ratio
+    phi0: float
+        Initial rotation phase at reference time t0 (radian)
+    t0: float
+        Reference time (jd)
+
+    Notes
+    -----
+    Input times must be corrected from the light travel time,
+    that is jd_lt = jd - d_obs / c_speed
+
+    Returns
+    -------
+    out: array of floats
+        H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
+    """
+    ph = pha[0]
+    ra = pha[1]
+    dec = pha[2]
+    ep = pha[3]
+    ra_s = pha[4]
+    dec_s = pha[5]
+
+    # TBD: For the time being, we fix the reference time
+    # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
+    # Kinda middle of ZTF
+    # TODO: take the middle jd?
+    t0 = 2459580.5
+
+    # Standard HG1G2 part: h + f(alpha, G1, G2)
+    func1 = func_hg1g2(ph, h, g1, g2)
+
+    # Rotation
+    W = rotation_phase(ep, phi0, 2 * np.pi / period, t0)
+
+    # Sub-Earth (e.TQe):
+    # Spin part
+    cos_aspect = cos_aspect_angle(ra, dec, alpha0, delta0)
+    cos_aspect_2 = cos_aspect**2
+    sin_aspect_2 = 1 - cos_aspect_2
+
+    # Sidereal
+    rot_phase = subobserver_longitude(ra, dec, alpha0, delta0, W)
+
+    # https://www.sciencedirect.com/science/article/pii/0019103588901261
+    eQe = (
+        sin_aspect_2 * (np.cos(rot_phase) ** 2 + (a_b**2) * np.sin(rot_phase) ** 2)
+        + cos_aspect_2 * a_c**2
+    )
+
+    # Sub-Solar (s.TQs):
+
+    cos_aspect_s = cos_aspect_angle(ra_s, dec_s, alpha0, delta0)
+    cos_aspect_s_2 = cos_aspect_s**2
+    sin_aspect_s_2 = 1 - cos_aspect_s_2
+
+    # Sidereal
+    rot_phase_s = subobserver_longitude(ra_s, dec_s, alpha0, delta0, W)
+
+    sQs = (
+        sin_aspect_s_2
+        * (np.cos(rot_phase_s) ** 2 + (a_b**2) * np.sin(rot_phase_s) ** 2)
+        + cos_aspect_s_2 * a_c**2
+    )
+
+    # Cross-term (e.TQs):
+
+    # sin(Lamda), sin(Lamda_sun):
+    sin_aspect = np.sqrt(sin_aspect_2)
+    sin_aspect_s = np.sqrt(sin_aspect_s_2)
+
+    eQs = (
+        sin_aspect * np.cos(rot_phase) * sin_aspect_s * np.cos(rot_phase_s)
+        + sin_aspect * np.sin(rot_phase) * sin_aspect_s * np.sin(rot_phase_s) * (a_b**2)
+        + cos_aspect * cos_aspect_s * a_c**2
+    )
+
+    # Full spin-shape term:
+    I_tot = (np.sqrt(eQe) + eQs / np.sqrt(sQs)) / 2
+    I_tot = -2.5 * np.log10(I_tot)
+
+    return func1 + I_tot
+
+
+def illum_and_shadowed_areas(coords, alpha0, delta0, period, a_b, a_c, phi0):
+    """Return the full projected asteroid area and the terminator-defined ellipse area
+
+    Parameters
+    ----------
+    coords: array-like [6]
+        List containing [SEP_RA  in radians, SEP_Dec in radians, time (jd),
+                         SSP_RA sun in radians, SSP_DEC sun in radians
+    alpha0: float
+        RA of the spin (radian)
+    delta0: float
+        Dec of the spin (radian)
+    period: float
+        Sidereal rotation period (days)
+    a_b: float
+        Equatorial axes ratio
+    a_c: float
+        Polar axes ratio
+    phi0: float
+        Initial rotation phase at reference time t0 (radian)
+
+    Notes
+    -----
+    Input times must be corrected from the light travel time,
+    that is jd_lt = jd - d_obs / c_speed
+
+    Returns
+    -------
+    E1: array of floats
+    E2: array of floats
+    """
+    ra = coords[0]
+    dec = coords[1]
+    ep = coords[2]
+    ra_s = coords[3]
+    dec_s = coords[4]
+
+    # TBD: For the time being, we fix the reference time
+    # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
+    # Kinda middle of ZTF
+    # TODO: take the middle jd?
+    t0 = 2459580.5
+
+    # Rotation
+    W = rotation_phase(ep, phi0, 2 * np.pi / period, t0)
+
+    # Sub-Earth (e.TQe):
+    # Spin part
+    cos_aspect = cos_aspect_angle(ra, dec, alpha0, delta0)
+    cos_aspect_2 = cos_aspect**2
+    sin_aspect_2 = 1 - cos_aspect_2
+
+    # Sidereal
+    rot_phase = subobserver_longitude(ra, dec, alpha0, delta0, W)
+
+    # https://www.sciencedirect.com/science/article/pii/0019103588901261
+    eQe = (
+        sin_aspect_2 * (np.cos(rot_phase) ** 2 + (a_b**2) * np.sin(rot_phase) ** 2)
+        + cos_aspect_2 * a_c**2
+    )
+
+    # Sub-Solar (s.TQs):
+    cos_aspect_s = cos_aspect_angle(ra_s, dec_s, alpha0, delta0)
+    cos_aspect_s_2 = cos_aspect_s**2
+    sin_aspect_s_2 = 1 - cos_aspect_s_2
+
+    # Sidereal
+    rot_phase_s = subobserver_longitude(ra_s, dec_s, alpha0, delta0, W)
+
+    sQs = (
+        sin_aspect_s_2
+        * (np.cos(rot_phase_s) ** 2 + (a_b**2) * np.sin(rot_phase_s) ** 2)
+        + cos_aspect_s_2 * a_c**2
+    )
+
+    # Cross-term (e.TQs):
+    # sin(Lamda), sin(Lamda_sun):
+    sin_aspect = np.sqrt(sin_aspect_2)
+    sin_aspect_s = np.sqrt(sin_aspect_s_2)
+
+    eQs = (
+        sin_aspect * np.cos(rot_phase) * sin_aspect_s * np.cos(rot_phase_s)
+        + sin_aspect * np.sin(rot_phase) * sin_aspect_s * np.sin(rot_phase_s) * (a_b**2)
+        + cos_aspect * cos_aspect_s * a_c**2
+    )
+
+    E1 = eQe
+    E2 = eQs / np.sqrt(sQs)
+
+    return E1, E2
+
+
 def color_correction_to_V():  # noqa: N802
     """Color correction from band to V
 
@@ -584,7 +782,18 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
     return np.ravel(eqs)
 
 
-def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
+def build_eqs_for_spin_shape(
+    x,
+    filters,
+    ph,
+    ra,
+    dec,
+    jd,
+    rhs,
+    terminator=False,
+    ra_s=None,
+    dec_s=None,
+):
     """Build the system of equations to solve using the HG1G2 + spin model
 
     Parameters
@@ -603,7 +812,12 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
         Array of size N containing the (time travel corrected) time of the measurements (jd)
     rhs: np.array
         Array of size N containing the actual measurements (magnitude)
-
+    terminator: bool
+        Include correction for the non-illuminated part
+    ra_s: optional, np.array
+        Array of size N containing the solar RA (radian), required if terminator=True
+    dec_s: optional, np.array
+        Array of size N containing the solar DEC (radian), required if terminator=True
     Returns
     -------
     out: np.array
@@ -622,8 +836,8 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
         h_r, g_1_r, g_2_r
     ]
     ```
-
     """
+
     alpha, delta, period, a_b, a_c, phi0 = x[0:6]
     filternames = np.unique(filters)
 
@@ -633,31 +847,64 @@ def build_eqs_for_spin_shape(x, filters, ph, ra, dec, jd, rhs):
 
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
-    for index, filtername in enumerate(filternames):
-        mask = filters == filtername
+    if not terminator:
+        for index, filtername in enumerate(filternames):
+            mask = filters == filtername
 
-        myfunc = (
-            func_sshg1g2(
-                np.vstack([
-                    ph[mask].tolist(),
-                    ra[mask].tolist(),
-                    dec[mask].tolist(),
-                    jd[mask].tolist(),
-                ]),
-                params_per_band[index][0],
-                params_per_band[index][1],
-                params_per_band[index][2],
-                alpha,
-                delta,
-                period,
-                a_b,
-                a_c,
-                phi0,
+            myfunc = (
+                func_sshg1g2(
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                        ]
+                    ),
+                    params_per_band[index][0],
+                    params_per_band[index][1],
+                    params_per_band[index][2],
+                    alpha,
+                    delta,
+                    period,
+                    a_b,
+                    a_c,
+                    phi0,
+                )
+                - rhs[mask]
             )
-            - rhs[mask]
-        )
 
-        eqs = np.concatenate((eqs, myfunc))
+            eqs = np.concatenate((eqs, myfunc))
+    else:
+        for index, filtername in enumerate(filternames):
+            mask = filters == filtername
+
+            myfunc = (
+                func_sshg1g2_terminator(
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                            ra_s[mask].tolist(),
+                            dec_s[mask].tolist(),
+                        ]
+                    ),
+                    params_per_band[index][0],
+                    params_per_band[index][1],
+                    params_per_band[index][2],
+                    alpha,
+                    delta,
+                    period,
+                    a_b,
+                    a_c,
+                    phi0,
+                )
+                - rhs[mask]
+            )
+
+            eqs = np.concatenate((eqs, myfunc))
 
     return np.ravel(eqs)
 
@@ -675,6 +922,9 @@ def estimate_sso_params(
     p0=None,
     bounds=None,
     ssnamenr=None,
+    terminator=False,
+    ra_s=None,
+    dec_s=None,
 ):
     """Fit for phase curve parameters
 
@@ -742,6 +992,12 @@ def estimate_sso_params(
     ssnamenr: str, optional
         SSO name/number. Only required for sfHG1G2 model, when
         querying Horizons.
+    terminator: bool
+        Include correction for the non-illuminated part
+    ra_s: optional, np.array
+        Array of size N containing the solar RA (radian), required if terminator=True
+    dec_s: optional, np.array
+        Array of size N containing the solar DEC (radian), required if terminator=True
 
     Returns
     -------
@@ -867,6 +1123,9 @@ def estimate_sso_params(
             p0=p0,
             bounds=bounds,
             model=model,
+            terminator=terminator,
+            ra_s=ra_s,
+            dec_s=dec_s,
         )
     elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
@@ -1089,13 +1348,15 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame({
-        "i:magpsf_red": magpsf_red,
-        "i:sigmapsf": sigmapsf,
-        "Phase": phase,
-        "i:jd": jds,
-        "i:fid": filters,
-    })
+    pdf = pd.DataFrame(
+        {
+            "i:magpsf_red": magpsf_red,
+            "i:sigmapsf": sigmapsf,
+            "Phase": phase,
+            "i:jd": jds,
+            "i:fid": filters,
+        }
+    )
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
@@ -1181,6 +1442,9 @@ def fit_spin(
     ra,
     dec,
     filters,
+    terminator=False,
+    ra_s=None,
+    dec_s=None,
     jd=None,
     p0=None,
     bounds=None,
@@ -1224,6 +1488,12 @@ def fit_spin(
         Declination [rad]
     filters: array
         Filter name for each measurement
+    terminator: bool
+        Include correction for the non-illuminated part
+    ra_s: optional, np.array
+        Array of size N containing the solar RA (radian), required if terminator=True
+    dec_s: optional, np.array
+        Array of size N containing the solar DEC (radian), required if terminator=True
     jd: optional, array
         Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
     p0: list
@@ -1292,7 +1562,20 @@ def fit_spin(
             args = (filters, phase, ra, dec, magpsf_red)
         elif model == "SSHG1G2":
             func = build_eqs_for_spin_shape
-            args = (filters, phase, ra, dec, jd, magpsf_red)
+            if not terminator:
+                args = (filters, phase, ra, dec, jd, magpsf_red)
+            else:
+                args = (
+                    filters,
+                    phase,
+                    ra,
+                    dec,
+                    jd,
+                    magpsf_red,
+                    terminator,
+                    ra_s,
+                    dec_s,
+                )
 
         res_lsq = least_squares(
             func,
