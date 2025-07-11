@@ -426,6 +426,7 @@ def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, ph
     -------
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
+        Similar to the ssHG1G2 model, but including the correction for the non-illuminated part of the asteroid
     """
     ph = pha[0]
     ra = pha[1]
@@ -500,7 +501,7 @@ def illum_and_shadowed_areas(coords, alpha0, delta0, period, a_b, a_c, phi0):
 
     Parameters
     ----------
-    coords: array-like [6]
+    coords: array-like [5]
         List containing [SEP_RA  in radians, SEP_Dec in radians, time (jd),
                          SSP_RA sun in radians, SSP_DEC sun in radians
     alpha0: float
@@ -818,6 +819,7 @@ def build_eqs_for_spin_shape(
         Array of size N containing the solar RA (radian), required if terminator=True
     dec_s: optional, np.array
         Array of size N containing the solar DEC (radian), required if terminator=True
+
     Returns
     -------
     out: np.array
@@ -837,7 +839,6 @@ def build_eqs_for_spin_shape(
     ]
     ```
     """
-
     alpha, delta, period, a_b, a_c, phi0 = x[0:6]
     filternames = np.unique(filters)
 
