@@ -46,7 +46,7 @@ def escape(text):
     return re.sub(r"[_*[\]()~>#\+\-=|{}.!]", lambda x: "\\" + x.group(), text)
 
 
-def status_check(res, header, sleep=8, timeout=25):
+def status_check(res, header, sleep=8, timeout=25, token=None):
     """Checks whether the request was successful.
 
     In case of an error, sends information about the error to the @fink_test telegram channel
@@ -67,7 +67,7 @@ def status_check(res, header, sleep=8, timeout=25):
         Content: {}
         """.format(header, res.content)
         url = "https://api.telegram.org/bot"
-        url += os.environ["FINK_TG_TOKEN"]
+        url += token or os.environ["FINK_TG_TOKEN"]
         method = url + "/sendMessage"
         time.sleep(sleep)
         requests.post(
@@ -77,7 +77,7 @@ def status_check(res, header, sleep=8, timeout=25):
     return True
 
 
-def send_simple_text_tg(text, channel_id, timeout=25):
+def send_simple_text_tg(text, channel_id, timeout=25, token=None):
     """Send a text message to a telegram channel
 
     Parameters
@@ -90,7 +90,7 @@ def send_simple_text_tg(text, channel_id, timeout=25):
         Timeout, in seconds. Default is 25 seconds.
     """
     url = "https://api.telegram.org/bot"
-    url += os.environ["FINK_TG_TOKEN"]
+    url += token or os.environ["FINK_TG_TOKEN"]
 
     if text != "":
         res = requests.post(
@@ -108,6 +108,7 @@ def msg_handler_tg(
     timeout=25,
     sleep_seconds=10,
     parse_mode="markdown",
+    token=None,
 ):
     """Send `tg_data` to a telegram channel
 
@@ -141,7 +142,7 @@ def msg_handler_tg(
         None
     """
     url = "https://api.telegram.org/bot"
-    url += os.environ["FINK_TG_TOKEN"]
+    url += token or os.environ["FINK_TG_TOKEN"]
     method = url + "/sendMediaGroup"
 
     def add(data, text=None, parse_mode=parse_mode):
@@ -188,7 +189,7 @@ def msg_handler_tg(
         time.sleep(sleep_seconds)
 
 
-def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seconds=10):
+def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seconds=10, token=None):
     """Multi-cutout version of `msg_handler_tg`
 
     Notes
@@ -221,7 +222,7 @@ def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seco
         None
     """
     url = "https://api.telegram.org/bot"
-    url += os.environ["FINK_TG_TOKEN"]
+    url += token or os.environ["FINK_TG_TOKEN"]
     method = url + "/sendMediaGroup"
 
     if init_msg != "":
