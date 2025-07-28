@@ -392,6 +392,10 @@ def sfhg1g2_error_fun(params, phas, mags):
 def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     """Extension of the ssHG1G2 model with correction for the non-illuminated part
 
+    Notes
+    -----
+    Absolute magnitude is computed according to Ostro & Connelly (1984)
+
     Parameters
     ----------
     pha: array-like [6, N]
