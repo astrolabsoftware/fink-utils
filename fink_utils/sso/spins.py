@@ -390,7 +390,7 @@ def sfhg1g2_error_fun(params, phas, mags):
 
 
 def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
-    """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
+    """Extension of the ssHG1G2 model with correction for the non-illuminated part
 
     Parameters
     ----------
@@ -854,14 +854,12 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_sshg1g2(
-                    np.vstack(
-                        [
-                            ph[mask].tolist(),
-                            ra[mask].tolist(),
-                            dec[mask].tolist(),
-                            jd[mask].tolist(),
-                        ]
-                    ),
+                    np.vstack([
+                        ph[mask].tolist(),
+                        ra[mask].tolist(),
+                        dec[mask].tolist(),
+                        jd[mask].tolist(),
+                    ]),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -882,16 +880,14 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_sshg1g2_terminator(
-                    np.vstack(
-                        [
-                            ph[mask].tolist(),
-                            ra[mask].tolist(),
-                            dec[mask].tolist(),
-                            jd[mask].tolist(),
-                            ra_s[mask].tolist(),
-                            dec_s[mask].tolist(),
-                        ]
-                    ),
+                    np.vstack([
+                        ph[mask].tolist(),
+                        ra[mask].tolist(),
+                        dec[mask].tolist(),
+                        jd[mask].tolist(),
+                        ra_s[mask].tolist(),
+                        dec_s[mask].tolist(),
+                    ]),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1349,15 +1345,13 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame(
-        {
-            "i:magpsf_red": magpsf_red,
-            "i:sigmapsf": sigmapsf,
-            "Phase": phase,
-            "i:jd": jds,
-            "i:fid": filters,
-        }
-    )
+    pdf = pd.DataFrame({
+        "i:magpsf_red": magpsf_red,
+        "i:sigmapsf": sigmapsf,
+        "Phase": phase,
+        "i:jd": jds,
+        "i:fid": filters,
+    })
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
