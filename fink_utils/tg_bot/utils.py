@@ -189,7 +189,9 @@ def msg_handler_tg(
         time.sleep(sleep_seconds)
 
 
-def msg_handler_tg_cutouts(tg_data, channel_id, init_msg, timeout=25, sleep_seconds=10, token=None):
+def msg_handler_tg_cutouts(
+    tg_data, channel_id, init_msg, timeout=25, sleep_seconds=10, token=None
+):
     """Multi-cutout version of `msg_handler_tg`
 
     Notes
