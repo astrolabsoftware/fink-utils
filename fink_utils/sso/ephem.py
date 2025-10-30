@@ -200,8 +200,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
             # Hardcoded!
             parameters = {
                 "outdir": "/tmp/ramdisk/spins",
-                "runner_path": "/tmp/fink_run_ephemcc4.sh",
-                "userconf": "/tmp/.eproc-4.3",
+                "runner_path": "/tmp/fink_run_ephemcc4.4.sh",
+                "userconf": "/tmp/.eproc-4.4",
                 "iofile": "/tmp/default-ephemcc-observation.xml",
             }
             ephems = query_miriade_ephemcc(
