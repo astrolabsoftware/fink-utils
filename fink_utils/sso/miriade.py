@@ -115,7 +115,7 @@ def query_miriade(
         "-mime": "json",
         "-rplane": rplane,
         "-tcoor": tcoor,
-        "-output": "--jd,--colors(SDSS:r,SDSS:g)",
+        "-output": "--jd,--colors(SDSS:r,SDSS:g),--iofile(default-ephemcc-observation.xml)",
         "-observer": observer,
         "-tscale": "UTC",
     }
@@ -355,12 +355,6 @@ def get_miriade_data(
             )
 
         if not eph.empty:
-            sc = SkyCoord(eph["RA"], eph["DEC"], unit=(u.deg, u.deg))
-
-            eph = eph.drop(columns=["RA", "DEC"])
-            eph["RA"] = sc.ra.value * 15
-            eph["DEC"] = sc.dec.value
-
             if withecl:
                 # Add Ecliptic coordinates
                 if method == "rest":
