@@ -16,8 +16,6 @@
 
 import pandas as pd
 
-from astropy.coordinates import SkyCoord
-import astropy.units as u
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import MapType, StringType, FloatType, ArrayType
@@ -232,11 +230,6 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
                 sanitize_name(k): [safe_insert(dic, k) for dic in ephems["data"]]
                 for k in COLUMNS
             }
-
-            # In-place transformation of RA/DEC coordinates
-            sc = SkyCoord(ephems_corr["RA"], ephems_corr["DEC"], unit=(u.deg, u.deg))
-            ephems_corr["RA"] = sc.ra.value * 15
-            ephems_corr["DEC"] = sc.dec.value
 
             out.append(ephems_corr)
         else:
