@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="fink-utils",
+    name="fink_utils",
     version=__version__,
     author="JulienPeloton",
     author_email="peloton@lal.in2p3.fr",
