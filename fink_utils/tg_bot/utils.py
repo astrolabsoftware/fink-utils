@@ -413,6 +413,9 @@ def get_curve(
         # Format output in a DataFrame
         pdf = pd.read_json(io.BytesIO(r.content))
 
+        if pdf.empty:
+            return None
+
         plt.figure(figsize=(12, 4))
 
         for filt in pdf["i:fid"].unique():
