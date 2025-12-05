@@ -17,7 +17,7 @@
 from fink_utils.sso.spins import (
     estimate_sso_params,
     func_socca,
-    func_hg1g2_with_spin,
+    func_shg1g2,
     func_hg1g2,
     func_hg12,
     func_hg,
@@ -158,7 +158,7 @@ def compute_residuals(
                 np.deg2rad(ra[cond]),
                 np.deg2rad(dec[cond]),
             ]
-            preds = func_hg1g2_with_spin(
+            preds = func_shg1g2(
                 pha,
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G1_{}".format(filtnum)],
