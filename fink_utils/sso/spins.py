@@ -154,7 +154,7 @@ def func_hg1g2(ph, h, g1, g2):
     return h + func1
 
 
-def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
+def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
     Parameters
@@ -273,7 +273,7 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
     return W - np.arctan2(x, y)
 
 
-def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
 
     Parameters
@@ -389,8 +389,8 @@ def sfhg1g2_error_fun(params, phas, mags):
     return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
 
 
-def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
-    """Extension of the ssHG1G2 model with correction for the non-illuminated part
+def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+    """Extension of the SOCCA model with correction for the non-illuminated part
 
     Notes
     -----
@@ -430,7 +430,7 @@ def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, ph
     -------
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
-        Similar to the ssHG1G2 model, but including the correction for the non-illuminated part of the asteroid
+        Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
     ph = pha[0]
     ra = pha[1]
@@ -770,7 +770,7 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
         mask = filters == filtername
 
         myfunc = (
-            func_hg1g2_with_spin(
+            func_shg1g2(
                 np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
                 params_per_band[index][0],
                 params_per_band[index][1],
@@ -857,7 +857,7 @@ def build_eqs_for_spin_shape(
             mask = filters == filtername
 
             myfunc = (
-                func_sshg1g2(
+                func_socca(
                     np.vstack([
                         ph[mask].tolist(),
                         ra[mask].tolist(),
@@ -883,7 +883,7 @@ def build_eqs_for_spin_shape(
             mask = filters == filtername
 
             myfunc = (
-                func_sshg1g2_terminator(
+                func_socca_terminator(
                     np.vstack([
                         ph[mask].tolist(),
                         ra[mask].tolist(),
@@ -1068,7 +1068,7 @@ def estimate_sso_params(
     ...    normalise_to_V=False)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
-    >>> sshg1g2 = estimate_sso_params(
+    >>> socca = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
     ...    pdf['i:sigmapsf'].values,
     ...    np.deg2rad(pdf['Phase'].values),
@@ -1078,7 +1078,7 @@ def estimate_sso_params(
     ...    pdf['i:jd'].values,
     ...    model='SOCCA',
     ...    normalise_to_V=False)
-    >>> assert len(sshg1g2) == 45, "Found {} parameters: {}".format(len(sshg1g2), sshg1g2)
+    >>> assert len(socca) == 45, "Found {} parameters: {}".format(len(socca), socca)
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
@@ -1179,7 +1179,7 @@ def fit_legacy_models(
             - func_hg
     bounds: tuple of lists
         Parameters boundaries for `func` ([all_mins], [all_maxs]).
-        Defaults are given for `func_hg1g2_with_spin`: (H, G1, G2, R, alpha0, delta0).
+        Defaults are given for `func_shg1g2`: (H, G1, G2, R, alpha0, delta0).
 
     Returns
     -------
@@ -1499,7 +1499,7 @@ def fit_spin(
         Initial guess for parameters. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
     bounds: tuple of lists
-        Parameters boundaries for `func_hg1g2_with_spin` ([all_mins], [all_maxs]).
+        Parameters boundaries for `func_shg1g2` ([all_mins], [all_maxs]).
         Lists should be ordered as: (H, G1, G2, R, alpha, delta). Note that even if
         there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
 

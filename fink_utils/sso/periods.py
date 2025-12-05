@@ -16,7 +16,7 @@
 
 from fink_utils.sso.spins import (
     estimate_sso_params,
-    func_sshg1g2,
+    func_socca,
     func_hg1g2_with_spin,
     func_hg1g2,
     func_hg12,
@@ -110,17 +110,17 @@ def compute_residuals(
     filters: array of int
         Filter ID for each observation
     flavor: str
-        Model flavor: SHG1G2, HG1G2, HG12, or HG
+        Model flavor: SOCCA, SHG1G2, HG1G2, HG12, or HG
     phyparam: dict
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
     ra: array of float, optional
-        Array of RA angles, in degree. Only used for flavor in ["SHG1G2", "SSHG1G2"]
+        Array of RA angles, in degree. Only used for flavor in ["SHG1G2", "SOCCA"]
     dec: array of float, optional
-        Array of Dec angles, in degree. Only used for flavor in ["SHG1G2", "SSHG1G2"]
+        Array of Dec angles, in degree. Only used for flavor in ["SHG1G2", "SOCCA"]
     times: array of float, optional
         Array of times, in JD with light travel correction applied.
-        Only used for flavor="SSHG1G2"
+        Only used for flavor="SOCCA"
 
     Returns
     -------
@@ -133,14 +133,14 @@ def compute_residuals(
         #    continue
         cond = filters == filtnum
 
-        if flavor == "SSHG1G2":
+        if flavor == "SOCCA":
             pha = [
                 np.deg2rad(phase[cond]),
                 np.deg2rad(ra[cond]),
                 np.deg2rad(dec[cond]),
                 times[cond],
             ]
-            preds = func_sshg1g2(
+            preds = func_socca(
                 pha,
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G1_{}".format(filtnum)],
