@@ -154,7 +154,7 @@ def func_hg1g2(ph, h, g1, g2):
     return h + func1
 
 
-def func_hg1g2_with_spin(pha, h, g1, g2, R, alpha0, delta0):
+def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
     Parameters
@@ -273,7 +273,7 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
     return W - np.arctan2(x, y)
 
 
-def func_sshg1g2(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
 
     Parameters
@@ -389,8 +389,8 @@ def sfhg1g2_error_fun(params, phas, mags):
     return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
 
 
-def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
-    """Extension of the ssHG1G2 model with correction for the non-illuminated part
+def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+    """Extension of the SOCCA model with correction for the non-illuminated part
 
     Notes
     -----
@@ -430,7 +430,7 @@ def func_sshg1g2_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, ph
     -------
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
-        Similar to the ssHG1G2 model, but including the correction for the non-illuminated part of the asteroid
+        Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
     ph = pha[0]
     ra = pha[1]
@@ -770,7 +770,7 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
         mask = filters == filtername
 
         myfunc = (
-            func_hg1g2_with_spin(
+            func_shg1g2(
                 np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
                 params_per_band[index][0],
                 params_per_band[index][1],
@@ -857,7 +857,7 @@ def build_eqs_for_spin_shape(
             mask = filters == filtername
 
             myfunc = (
-                func_sshg1g2(
+                func_socca(
                     np.vstack([
                         ph[mask].tolist(),
                         ra[mask].tolist(),
@@ -883,7 +883,7 @@ def build_eqs_for_spin_shape(
             mask = filters == filtername
 
             myfunc = (
-                func_sshg1g2_terminator(
+                func_socca_terminator(
                     np.vstack([
                         ph[mask].tolist(),
                         ra[mask].tolist(),
@@ -966,10 +966,10 @@ def estimate_sso_params(
     dec: optional, array
         Declination [rad]. Required for SHG1G2 model.
     jd: options, array
-        Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
+        Observing time (JD), corrected for the light travel. Required for SOCCA model.
     model: str
         Parametric function. Currently supported:
-            - SSHG1G2
+            - SOCCA
             - SHG1G2 (default)
             - HG1G2
             - HG12
@@ -983,7 +983,7 @@ def estimate_sso_params(
     bounds: tuple of lists
         Parameters boundaries ([all_mins], [all_maxs]).
         Lists should be ordered as:
-            - SSHG1G2: (H, G1, G2, alpha, delta, period, a_b, a_c, phi0)
+            - SOCCA: (H, G1, G2, alpha, delta, period, a_b, a_c, phi0)
             - SHG1G2 (default): (H, G1, G2, R, alpha, delta)
             - HG1G2: (H, G1, G2)
             - HG12: (H, G12)
@@ -1068,7 +1068,7 @@ def estimate_sso_params(
     ...    normalise_to_V=False)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
-    >>> sshg1g2 = estimate_sso_params(
+    >>> socca = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
     ...    pdf['i:sigmapsf'].values,
     ...    np.deg2rad(pdf['Phase'].values),
@@ -1076,9 +1076,9 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:ra'].values),
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    pdf['i:jd'].values,
-    ...    model='SSHG1G2',
+    ...    model='SOCCA',
     ...    normalise_to_V=False)
-    >>> assert len(sshg1g2) == 45, "Found {} parameters: {}".format(len(sshg1g2), sshg1g2)
+    >>> assert len(socca) == 45, "Found {} parameters: {}".format(len(socca), socca)
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
@@ -1103,7 +1103,7 @@ def estimate_sso_params(
     ...    model='toto',
     ...    normalise_to_V=True) # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
-    AssertionError: model toto is not understood. Please choose among: SSHG1G2, SHG1G2, HG1G2, HG12, HG
+    AssertionError: model toto is not understood. Please choose among: SOCCA, SHG1G2, HG1G2, HG12, HG
     """
     if normalise_to_V:
         color = compute_color_correction(filters)
@@ -1112,7 +1112,7 @@ def estimate_sso_params(
     else:
         ydata = magpsf_red
 
-    if model in ["SSHG1G2", "SHG1G2"]:
+    if model in ["SOCCA", "SHG1G2"]:
         outdic = fit_spin(
             ydata,
             sigmapsf,
@@ -1143,7 +1143,7 @@ def estimate_sso_params(
         )
     else:
         raise AssertionError(
-            "model {} is not understood. Please choose among: SSHG1G2, SHG1G2, sfHG1G2, HG1G2, HG12, HG".format(
+            "model {} is not understood. Please choose among: SOCCA, SHG1G2, sfHG1G2, HG1G2, HG12, HG".format(
                 model
             )
         )
@@ -1179,7 +1179,7 @@ def fit_legacy_models(
             - func_hg
     bounds: tuple of lists
         Parameters boundaries for `func` ([all_mins], [all_maxs]).
-        Defaults are given for `func_hg1g2_with_spin`: (H, G1, G2, R, alpha0, delta0).
+        Defaults are given for `func_shg1g2`: (H, G1, G2, R, alpha0, delta0).
 
     Returns
     -------
@@ -1452,7 +1452,7 @@ def fit_spin(
     """Fit for phase curve parameters
 
     SHG1G2: (H^b, G_1^b, G_2^b, alpha, delta, R)
-    SSHG1G2: (H^b, G_1^b, G_2^b, alpha, delta, period, a_b, a_c, phi0, t0)
+    SOCCA: (H^b, G_1^b, G_2^b, alpha, delta, period, a_b, a_c, phi0, t0)
 
     Code for quality `fit`:
     0: success
@@ -1494,12 +1494,12 @@ def fit_spin(
     dec_s: optional, np.array
         Array of size N containing the solar DEC (radian), required if terminator=True
     jd: optional, array
-        Observing time (JD), corrected for the light travel. Required for SSHG1G2 model.
+        Observing time (JD), corrected for the light travel. Required for SOCCA model.
     p0: list
         Initial guess for parameters. Note that even if
         there is several bands `b`, we take the same initial guess for all (H^b, G1^b, G2^b).
     bounds: tuple of lists
-        Parameters boundaries for `func_hg1g2_with_spin` ([all_mins], [all_maxs]).
+        Parameters boundaries for `func_shg1g2` ([all_mins], [all_maxs]).
         Lists should be ordered as: (H, G1, G2, R, alpha, delta). Note that even if
         there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
 
@@ -1509,12 +1509,12 @@ def fit_spin(
         Dictionary containing reduced chi2, and estimated parameters and
         error on each parameters.
     """
-    assert model in ["SHG1G2", "SSHG1G2"], model
+    assert model in ["SHG1G2", "SOCCA"], model
 
     if p0 is None:
         if model == "SHG1G2":
             p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
-        elif model == "SSHG1G2":
+        elif model == "SOCCA":
             p0 = [15.0, 0.15, 0.15, np.pi, 0.0, 1, 1.05, 1.05, 0.0]
 
     if bounds is None:
@@ -1523,7 +1523,7 @@ def fit_spin(
                 [-3, 0, 0, 3e-1, 0, -np.pi / 2],
                 [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
             )
-        elif model == "SSHG1G2":
+        elif model == "SOCCA":
             bounds = (
                 [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
                 [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
@@ -1532,7 +1532,7 @@ def fit_spin(
     ufilters = np.unique(filters)
     if model == "SHG1G2":
         params = ["R", "alpha0", "delta0"]
-    elif model == "SSHG1G2":
+    elif model == "SOCCA":
         params = ["alpha0", "delta0", "period", "a_b", "a_c", "phi0"]
 
     phase_params = ["H", "G1", "G2"]
@@ -1559,7 +1559,7 @@ def fit_spin(
         if model == "SHG1G2":
             func = build_eqs_for_spins
             args = (filters, phase, ra, dec, magpsf_red)
-        elif model == "SSHG1G2":
+        elif model == "SOCCA":
             func = build_eqs_for_spin_shape
             if not terminator:
                 args = (filters, phase, ra, dec, jd, magpsf_red)
@@ -1618,9 +1618,9 @@ def fit_spin(
     )
     outdic = {
         "chi2red": chisq_red,
-        "min_cos_lambda": np.min(np.abs(geo)),
-        "mean_cos_lambda": np.mean(np.abs(geo)),
-        "max_cos_lambda": np.max(np.abs(geo)),
+        "min_cos_lambda": np.min(geo),
+        "mean_cos_lambda": np.mean(geo),
+        "max_cos_lambda": np.max(geo),
         "status": res_lsq.status,
         "fit": 0,
     }
