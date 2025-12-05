@@ -1618,9 +1618,9 @@ def fit_spin(
     )
     outdic = {
         "chi2red": chisq_red,
-        "min_cos_lambda": np.min(np.abs(geo)),
-        "mean_cos_lambda": np.mean(np.abs(geo)),
-        "max_cos_lambda": np.max(np.abs(geo)),
+        "min_cos_lambda": np.min(geo),
+        "mean_cos_lambda": np.mean(geo),
+        "max_cos_lambda": np.max(geo),
         "status": res_lsq.status,
         "fit": 0,
     }

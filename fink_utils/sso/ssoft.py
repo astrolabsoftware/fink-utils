@@ -156,7 +156,7 @@ COLUMNS = {
     "version": {"type": "str", "description": "Version of the SSOFT YYYY.MM"},
 }
 
-COLUMNS_SSHG1G2 = {
+COLUMNS_SOCCA = {
     "G1_1": {
         "type": "double",
         "description": "G1 phase parameter for the ZTF filter band g",
