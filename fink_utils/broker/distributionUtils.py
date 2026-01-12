@@ -475,7 +475,8 @@ def write_to_kafka(
 
     # Send schema
     disquery = (
-        df_kafka.writeStream.format("kafka")
+        df_kafka.writeStream
+        .format("kafka")
         .option("kafka.bootstrap.servers", kafka_bootstrap_servers)
         .option("kafka.sasl.username", kafka_sasl_username)
         .option("kafka.sasl.password", kafka_sasl_password)
