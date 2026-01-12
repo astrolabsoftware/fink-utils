@@ -11,3 +11,7 @@ Collection of useful functionalities used across the Fink ecosystem:
 - [xmatch](fink_utils/xmatch): utilities for manipulating external databases and catalogs
 - [sso](fink_utils/sso): utilities for manipulating Solar System objects (HG, HG12, HG1G2, SHG1G2)
 - [HBase](fink_utils/hbase): utilities for manipulating data stored in HBase
+
+## Using fink-utils
+
+`fink-utils` is rarely used outside the Fink context, but in case you need to install it, you will need its dependencies. They are all listed in the [fink-broker-images](https://github.com/astrolabsoftware/fink-broker-images/tree/main/containerfs) repository. 
