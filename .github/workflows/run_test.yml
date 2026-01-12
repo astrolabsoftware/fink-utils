@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container: ["julienpeloton/fink-ci-ztf:latest"]
+        container: ["gitlab-registry.in2p3.fr/astrolabsoftware/fink/fink-deps-sentinel-ztf:latest"]
 
     container:
       image: ${{ matrix.container }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up env (from container variables) [1/3]
       run: |
         echo "FINK_UTILS=$GITHUB_WORKSPACE" >> $GITHUB_ENV
