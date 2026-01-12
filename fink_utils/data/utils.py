@@ -65,6 +65,8 @@ def format_data_as_snana(
     fid: pd.Series
         Series containing filter band code (array of int/str). Each row contains
         all filter code values for one alert (sorted as jd).
+    candid: long int
+        Unique alert ID for ZTF alert. Plays the role of SNID.
     mask: pd.Series
         Series containing information on which alerts to keep (boolean).
     filter_conversion_dic: dict
