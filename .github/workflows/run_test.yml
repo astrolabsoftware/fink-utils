@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container: ["julienpeloton/fink-ci-ztf:latest"]
+        container: ["gitlab-registry.in2p3.fr/astrolabsoftware/fink/fink-deps-science-ztf:latest"]
 
     container:
       image: ${{ matrix.container }}
