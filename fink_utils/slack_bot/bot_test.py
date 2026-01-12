@@ -55,7 +55,7 @@ def unzip_img(stamp: bytes, title_name: str) -> io.BytesIO:
 def get_imgs():
     def request(kind):
         r = requests.post(
-            "https://api.fink-portal.org/api/v1/cutouts",
+            "https://api.ztf.fink-portal.org/api/v1/cutouts",
             json={
                 "objectId": "ZTF23abjzkmx",
                 "kind": kind,
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         TypeText.PLAIN_TXT,
         "fink-science-portal",
         "View on Fink :fink:",
-        "https://api.fink-portal.org/ZTF23abjzkmx",
+        "https://api.ztf.fink-portal.org/ZTF23abjzkmx",
         True,
     )
     msg.add_elements(fink_section)

@@ -290,7 +290,7 @@ def get_cutout(cutout=None, ztf_id=None, kind="Difference", origin="alert"):
     if origin == "API":
         assert ztf_id is not None
         r = requests.post(
-            "https://api.fink-portal.org/api/v1/cutouts",
+            "https://api.ztf.fink-portal.org/api/v1/cutouts",
             json={"objectId": ztf_id, "kind": kind, "output-format": "array"},
             timeout=25,
         )
@@ -400,7 +400,7 @@ def get_curve(
         assert objectId is not None
 
         r = requests.post(
-            "https://api.fink-portal.org/api/v1/objects",
+            "https://api.ztf.fink-portal.org/api/v1/objects",
             json={
                 "objectId": objectId,
                 "columns": "i:jd,i:fid,i:magpsf,i:sigmapsf,d:tag",

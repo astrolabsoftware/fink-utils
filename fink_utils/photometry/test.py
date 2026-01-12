@@ -28,7 +28,7 @@ from fink_utils.photometry.vect_conversion import vect_dc_mag
 @pytest.fixture
 def requests_alerts():
     r = requests.post(
-        "https://api.fink-portal.org/api/v1/latests",
+        "https://api.ztf.fink-portal.org/api/v1/latests",
         json={"class": "Seyfert_2", "n": "500", "columns": "i:objectId"},
     )
 
@@ -42,7 +42,7 @@ def requests_alerts():
     )
 
     r = requests.post(
-        "https://api.fink-portal.org/api/v1/objects",
+        "https://api.ztf.fink-portal.org/api/v1/objects",
         json={
             "objectId": request_object,
             "output-format": "json",

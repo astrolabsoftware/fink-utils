@@ -95,7 +95,7 @@ def get_num_opposition(elong, width=4):
     >>> import pandas as pd
 
     >>> r = requests.post(
-    ...     'https://api.fink-portal.org/api/v1/sso',
+    ...     'https://api.ztf.fink-portal.org/api/v1/sso',
     ...     json={
     ...         'n_or_d': '8467',
     ...         'withEphem': True,
@@ -489,7 +489,7 @@ def get_opposition(jds, ssnamenr, location="I41"):
     # >>> import pandas as pd
 
     # >>> r = requests.post(
-    # ...     'https://api.fink-portal.org/api/v1/sso',
+    # ...     'https://api.ztf.fink-portal.org/api/v1/sso',
     # ...     json={
     # ...         'n_or_d': "8467",
     # ...         'withEphem': True,

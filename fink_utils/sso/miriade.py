@@ -41,7 +41,7 @@ def get_sso_data(ssnamenr):
         SSO name
     """
     r = requests.post(
-        "https://api.fink-portal.org/api/v1/sso",
+        "https://api.ztf.fink-portal.org/api/v1/sso",
         json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
     )
 
