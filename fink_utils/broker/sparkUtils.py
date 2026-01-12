@@ -270,7 +270,8 @@ def connect_to_kafka(
             )
 
     df = (
-        df.option("subscribe", topic)
+        df
+        .option("subscribe", topic)
         .option("startingOffsets", startingoffsets)
         .option("failOnDataLoss", failondataloss)
         .load()
@@ -311,7 +312,8 @@ def connect_to_raw_database(basepath: str, path: str, latestfirst: bool) -> Data
     userschema = spark.read.parquet(basepath).schema
 
     df = (
-        spark.readStream.format("parquet")
+        spark.readStream
+        .format("parquet")
         .schema(userschema)
         .option("basePath", basepath)
         .option("path", path)

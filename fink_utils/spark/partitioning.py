@@ -133,7 +133,8 @@ def numPart(df, partition_size=128.0):  # noqa: N802
     spark = SparkSession.builder.getOrCreate()
 
     b = (
-        spark._jsparkSession.sessionState()
+        spark._jsparkSession
+        .sessionState()
         .executePlan(df._jdf.queryExecution().logical())
         .optimizedPlan()
         .stats()

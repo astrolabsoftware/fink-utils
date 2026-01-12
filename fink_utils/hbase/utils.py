@@ -98,7 +98,8 @@ def group_by_key(df: DataFrame, key: str, position: int, sep="_") -> DataFrame:
         position += 1
     # Groupby key
     df_grouped = (
-        df.select(F.element_at(F.split(df[key], "_"), position).alias("id"))
+        df
+        .select(F.element_at(F.split(df[key], "_"), position).alias("id"))
         .groupby("id")
         .count()
     )

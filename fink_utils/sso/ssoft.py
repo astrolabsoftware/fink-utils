@@ -551,7 +551,8 @@ def aggregate_ztf_sso_data(
         df = df.filter(df["candidate.jd"] <= jd0)
 
     df_agg = (
-        df.select(cols0 + cols)
+        df
+        .select(cols0 + cols)
         .filter(F.col("roid") == 3)
         .groupBy("ssnamenr")
         .agg(*[
