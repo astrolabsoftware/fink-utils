@@ -287,6 +287,78 @@ def return_flatten_names(
     return flatten_schema
 
 
+def retrieve_tag_from_string(str_func):
+    """Retrieve tag and description from a string function
+
+    Parameters
+    ----------
+    str_func: string
+        Filter name. It should be in the form
+        module.module.function (see example below).
+
+    Returns
+    -------
+    tag: str
+        The tag for the filter
+    description: str
+        The long description of the filter
+    """
+    filter_name = str_func[0].split(".")[-1]
+    module_name = str_func[0].split("." + filter_name)[0]
+    module = importlib.import_module(module_name)
+
+    tag = getattr(module, "TAG", None)
+    description = getattr(module, "DESCRIPTION", None)
+
+    return tag, description
+
+
+def expand_function_from_string(df, str_func):
+    """Return a function and its arguments from a string function
+
+    Parameters
+    ----------
+    df: DataFrame
+        Spark DataFrame with alert data
+    str_func: string
+        Filter name. It should be in the form
+        module.module.function (see example below).
+
+    Returns
+    -------
+    func: function
+        The function to apply
+    args: list of str
+        List of arguments as columns from the input dataframe
+    """
+    flatten_schema = return_flatten_names(df, pref="", flatten_schema=[])
+
+    # Load the filter
+    filter_name = str_func.split(".")[-1]
+    module_name = str_func.split("." + filter_name)[0]
+    module = importlib.import_module(module_name)
+    filter_func = getattr(module, filter_name, None)
+
+    # Note: to access input argument, we need f.func and not just f.
+    # This is because f has a decorator on it.
+    ninput = filter_func.func.__code__.co_argcount
+
+    # Note: This works only with `struct` fields - not `array`
+    argnames = filter_func.func.__code__.co_varnames[:ninput]
+    colnames = []
+    for argname in argnames:
+        colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
+        if len(colname) == 0:
+            raise AssertionError(
+                """
+                Column name {} is not a valid column of the DataFrame.
+                """.format(argname)
+            )
+        colnames.append(colname[0])
+
+    return filter_func, colnames
+
+
 def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataFrame:
     """Apply a user filter to keep only wanted alerts.
 
@@ -296,7 +368,7 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
         Spark DataFrame with alert data
     toapply: string
         Filter name to be applied. It should be in the form
-        module.module.routine (see example below).
+        module.module.function (see example below).
 
     Returns
     -------
@@ -342,38 +414,15 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
     >>> df = apply_user_defined_filter(
     ...   df, "unknownfunc") # doctest: +SKIP
     """
-    flatten_schema = return_flatten_names(df, pref="", flatten_schema=[])
-
-    # Load the filter
     filter_name = toapply.split(".")[-1]
-    module_name = toapply.split("." + filter_name)[0]
-    module = importlib.import_module(module_name)
-    filter_func = getattr(module, filter_name, None)
-
-    # Note: to access input argument, we need f.func and not just f.
-    # This is because f has a decorator on it.
-    ninput = filter_func.func.__code__.co_argcount
-
-    # Note: This works only with `struct` fields - not `array`
-    argnames = filter_func.func.__code__.co_varnames[:ninput]
-    colnames = []
-    for argname in argnames:
-        colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
-        if len(colname) == 0:
-            raise AssertionError(
-                """
-                Column name {} is not a valid column of the DataFrame.
-                """.format(argname)
-            )
-        colnames.append(colname[0])
+    filter_func, colnames = expand_function_from_string(df, toapply)
 
     if logger is not None:
-        logger.info(
-            "new filter/topic registered: {} from {}".format(filter_name, module_name)
-        )
+        logger.info("new filter/topic registered: {}".format(filter_name))
 
     return (
-        df.withColumn("toKeep", filter_func(*colnames))
+        df
+        .withColumn("toKeep", filter_func(*colnames))
         .filter("toKeep == true")
         .drop("toKeep")
     )
@@ -465,3 +514,88 @@ def check_status_last_prv_candidates(df, status="valid"):
         cond = ~magpsf.isNotNull()
 
     return df.withColumn(status, cond)
+
+
+class FinkUDF(object):
+    """Handle Fink filters"""
+
+    def __init__(self, f_pandas, return_type, tag, description=""):
+        """Wrapper around pandas_udf for Fink
+
+        Parameters
+        ----------
+        f_pandas: function
+            Python function working with Pandas Series
+        return_type: pyspark.sql.types
+            Pyspark built-in type
+        tag: str
+            Tag for the filter, to be inserted
+            in the database.
+        description: str, optional
+            Long description of what the filter is
+            doing, to be used in schemas.
+
+        Examples
+        --------
+        >>> def myfunction(a, b)
+        ...   return a > b
+        >>> pdf = pd.DataFrame({"a": [1, 2, 3], "b": [0, 20, 30]})
+
+        >>> mf = FinkUDF(myfunction, BooleanType(), "toto", "Here I am")
+
+        # Pandas use
+        >>> pdf["add"] = mf.for_pandas(pdf["a"], pdf["b"])
+
+        # Spark use
+        >>> spark = SparkSession.builder.getOrCreate()
+        >>> df = spark.createDataFrame(pdf)
+
+        # Either as filter
+        >>> df.filter(mf.for_spark(df["a"], df["b"])).show()
+
+        # or as new column
+        >>> df.withColumn("add", mf.for_spark(df["a"], df["b"]))
+        """
+        self.tag = tag
+        self.description = description
+        self.f_pandas = f_pandas
+        self.return_type = return_type
+
+    def for_pandas(self, *args):
+        """Call the user-defined function
+
+        Parameters
+        ----------
+        args: one or several pd.Series
+
+        Returns
+        -------
+        out: Any
+            The return type of the function
+        """
+        return self.f_pandas(*args)
+
+    def for_spark(self, *args_in):
+        """Call the user-defined function in Spark
+
+        Parameters
+        ----------
+        args_in: one or several pd.Series
+
+        Returns
+        -------
+        out: Any
+            The return type as defined by `return_type`
+        """
+
+        @pandas_udf(self.return_type)
+        def wrapper(*args):
+            """Call the user-defined function"""
+            # Assume args will be provided as columns
+            return self.f_pandas(*args)
+
+        return wrapper(*args_in)
+
+    def __str__(self):
+        """Return long description of the filter"""
+        return self.description
