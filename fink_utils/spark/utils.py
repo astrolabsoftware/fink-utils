@@ -316,6 +316,10 @@ def retrieve_tag_from_string(str_func):
 def expand_function_from_string(df, str_func):
     """Return a function and its arguments from a string function
 
+    Notes
+    -----
+    Works with standard functions, but also decorated functions.
+
     Parameters
     ----------
     df: DataFrame
@@ -339,12 +343,16 @@ def expand_function_from_string(df, str_func):
     module = importlib.import_module(module_name)
     filter_func = getattr(module, filter_name, None)
 
-    # Note: to access input argument, we need f.func and not just f.
-    # This is because f has a decorator on it.
-    ninput = filter_func.func.__code__.co_argcount
+    if hasattr(filter_func, "__code__"):
+        ninput = filter_func.__code__.co_argcount
+        # Note: This works only with `struct` fields - not `array`
+        argnames = filter_func.__code__.co_varnames[:ninput]
+    else:
+        # Assume decorated function (typically ZTF)
+        ninput = filter_func.func.__code__.co_argcount
+        # Note: This works only with `struct` fields - not `array`
+        argnames = filter_func.func.__code__.co_varnames[:ninput]
 
-    # Note: This works only with `struct` fields - not `array`
-    argnames = filter_func.func.__code__.co_varnames[:ninput]
     colnames = []
     for argname in argnames:
         colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
