@@ -343,15 +343,15 @@ def expand_function_from_string(df, str_func):
     module = importlib.import_module(module_name)
     filter_func = getattr(module, filter_name, None)
 
-    if hasattr(filter_func, "__code__"):
-        ninput = filter_func.__code__.co_argcount
-        # Note: This works only with `struct` fields - not `array`
-        argnames = filter_func.__code__.co_varnames[:ninput]
-    else:
+    if hasattr(filter_func, "func"):
         # Assume decorated function (typically ZTF)
         ninput = filter_func.func.__code__.co_argcount
         # Note: This works only with `struct` fields - not `array`
         argnames = filter_func.func.__code__.co_varnames[:ninput]
+    else:
+        ninput = filter_func.__code__.co_argcount
+        # Note: This works only with `struct` fields - not `array`
+        argnames = filter_func.__code__.co_varnames[:ninput]
 
     colnames = []
     for argname in argnames:
