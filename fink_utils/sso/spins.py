@@ -26,6 +26,22 @@ from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
 
 
+def sigmoid(x):
+    """
+    Compute the sigmoid function.
+    Maps any real number to the interval (0, 1).
+    """
+    return 1 / (1 + np.exp(-x))
+
+
+def logit(x):
+    """
+    Compute the logit (inverse sigmoid) function.
+    Maps a value in (0, 1) to the real line.
+    """
+    return np.log(x / (1 - x))
+
+
 def sort_quantity_by_filter(filter, quantity):
     """Sort a vector (quantity) by its corresponding filter under which it was measured
 
@@ -661,6 +677,239 @@ def compute_color_correction(filters: np.array) -> np.array:
     return color_sso
 
 
+def build_bounds(
+    bounds=None,
+    use_angles=True,
+    use_shape=True,
+    use_phase=True,
+    use_filter_dependent=True,
+):
+    """
+    Build lower and upper bounds for parameters with optional reparametrization.
+
+    Parameters that are reparametrized are set to (-inf, +inf), otherwise
+    default physical bounds are used.
+
+    Order of parameters:
+        H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0
+
+    Parameters
+    ----------
+    bounds : tuple of lists, optional
+        Physical bounds ((lower list, upper list)) for each parameter.
+    use_angles : bool
+        If True, set bounds for spin axis coords (alpha0, delta0) to (-inf, +inf).
+    use_shape : bool
+        If True, set bounds for shape parameters (a_b, a_c) to (-inf, +inf).
+    use_phase : bool
+        If True, set bounds for phi0 to (-inf, +inf).
+    use_filter_dependent : bool
+        If True, set bounds for filter dependent parameters (H, G1, G2) to (-inf, +inf).
+
+    Returns
+    -------
+    lower_bounds : np.ndarray
+        Lower bounds for all parameters.
+    upper_bounds : np.ndarray
+        Upper bounds for all parameters.
+    """
+    if bounds is None:
+        bounds = (
+            [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+            [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+        )
+        lower_bounds = np.array(bounds[0])
+        upper_bounds = np.array(bounds[1])
+    if not use_angles:
+        if use_filter_dependent:
+            lower_bounds[0:3] = -np.inf
+            upper_bounds[0:3] = np.inf
+
+        if use_shape:
+            lower_bounds[6:8] = -np.inf
+            upper_bounds[6:8] = np.inf
+
+        if use_phase:
+            lower_bounds[8] = -np.inf
+            upper_bounds[8] = np.inf
+
+    if use_angles:
+        bounds = (
+            [-3, 0, 0, 2.2 / 24.0, -np.inf, -np.inf, -np.inf, 1, 1, -np.pi / 2],
+            [30, 1, 1, 1000, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
+        )
+        lower_bounds = np.array(bounds[0])
+        upper_bounds = np.array(bounds[1])
+
+        if use_filter_dependent:
+            lower_bounds[0:3] = -np.inf
+            upper_bounds[0:3] = np.inf
+
+        if use_shape:
+            lower_bounds[7:9] = -np.inf
+            upper_bounds[7:9] = np.inf
+
+        if use_phase:
+            lower_bounds[9] = -np.inf
+            upper_bounds[9] = np.inf
+    return lower_bounds, upper_bounds
+
+
+def parameter_remapping(
+    x,
+    physical_to_latent=True,
+    use_angles=True,  # (alpha0, delta0) <-> (X,Y,Z)
+    use_shape=True,  # (a/b, a/c)
+    use_phase=True,  # phi0
+    use_filter_dependent=True,  # filter parameters
+):
+    """
+    Convert between physical and latent parameter representations.
+
+    Allows modular reparametrization of the follwoing blocks:
+    - Spin axis/period: (alpha0, delta0, period)
+    - Shape ratios: (a_b, a_c)
+    - Phase: phi0
+    - H, G1, G2
+
+    Parameters
+    ----------
+    x : array-like
+        Input parameter vector (alpha0, delta0, period, a/b, a/c, phi0, H, G1, G2 | period X, Y, Z, u_a/b, u_a/c, u_phi0, H, u_G1, u_G2).
+    physical_to_latent : bool, default=True
+        Direction of conversion. If True, maps physical -> latent
+        if False, maps latent -> physical.
+    use_angles : bool, default=True
+        Whether to reparametrize the angle block.
+    use_shape : bool, default=True
+        Whether to reparametrize the shape block.
+    use_phase : bool, default=True
+        Whether to reparametrize the initial phase.
+    use_filter_dependent : bool, default=True
+        Whether to reparametrize the filter dependent block.
+
+    Returns
+    -------
+    np.ndarray
+        Parameter vector in the target representation (physical or latent),
+        with blocks transformed according to the flags.
+    """
+    x = np.asarray(x)
+    idx = 0
+    out = []
+
+    if physical_to_latent:
+        # -------------------------
+        # Physical -> Latent
+        # -------------------------
+        if use_angles:
+            alpha0, delta0 = x[idx : idx + 2]
+            idx += 3
+
+            X = np.cos(delta0) * np.cos(alpha0)
+            Y = np.cos(delta0) * np.sin(alpha0)
+            Z = np.sin(delta0)
+
+            u_Period = x[2]
+            out.extend([u_Period])
+
+            out.extend([X, Y, Z])
+        else:
+            out.extend(x[idx : idx + 3])
+            idx += 3
+        if use_shape:
+            a_b, a_c = x[idx : idx + 2]
+            idx += 2
+
+            u_a_b = logit((a_b - 1) / 4)
+            u_a_c = logit((a_c - a_b) / (5 - a_b))
+
+            out.extend([u_a_b, u_a_c])
+        else:
+            out.extend(x[idx : idx + 2])
+            idx += 2
+
+        if use_phase:
+            phi0 = x[idx]
+            idx += 1
+
+            u_phi0 = logit((phi0 + np.pi / 2) / np.pi)
+            out.append(u_phi0)
+        else:
+            out.append(x[idx])
+            idx += 1
+
+        # Filter dependent
+        if use_filter_dependent:
+            filter_dependent = x[idx:]
+            u_filters = []
+            for i in range(0, len(filter_dependent), 3):
+                H, G1, G2 = filter_dependent[i : i + 3]
+                u_H = H
+                u_G1 = logit(G1)
+                u_G2 = logit(G2 / (1 - G1))
+                u_filters.extend([u_H, u_G1, u_G2])
+            out.extend(u_filters)
+        else:
+            out.extend(x[idx:])
+
+    else:
+        # -------------------------
+        # Latent -> Physical
+        # -------------------------
+        if use_angles:
+            idx = 1
+            X, Y, Z = x[idx : idx + 3]
+            idx += 3
+
+            delta0 = np.arcsin(Z)
+            alpha0 = np.arctan2(Y, X) % (2 * np.pi)
+
+            out.extend([alpha0, delta0])
+            out.extend([x[0]])  # uPeriod -> Period
+
+        else:
+            out.extend(x[idx : idx + 3])
+            idx += 3
+
+        if use_shape:
+            u_a_b, u_a_c = x[idx : idx + 2]
+            idx += 2
+
+            a_b = 4 * sigmoid(u_a_b) + 1
+            a_c = (5 - a_b) * sigmoid(u_a_c) + a_b
+
+            out.extend([a_b, a_c])
+        else:
+            out.extend(x[idx : idx + 2])
+            idx += 2
+
+        if use_phase:
+            u_phi0 = x[idx]
+            idx += 1
+
+            phi0 = np.pi * sigmoid(u_phi0) - np.pi / 2
+            out.append(phi0)
+        else:
+            out.append(x[idx])
+            idx += 1
+
+        if use_filter_dependent:
+            filter_dependent = x[idx:]
+            filters = []
+            for i in range(0, len(filter_dependent), 3):
+                u_H, u_G1, u_G2 = filter_dependent[i : i + 3]
+                H = u_H
+                G1 = sigmoid(u_G1)
+                G2 = (1 - G1) * sigmoid(u_G2)
+                filters.extend([H, G1, G2])
+            out.extend(filters)
+        else:
+            out.extend(x[idx:])
+
+    return np.array(out)
+
+
 def build_eqs(x, filters, ph, rhs, func=None):
     """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
@@ -798,6 +1047,8 @@ def build_eqs_for_spin_shape(
     terminator=False,
     ra_s=None,
     dec_s=None,
+    remap=False,
+    remap_kwargs=None,
 ):
     """Build the system of equations to solve using the HG1G2 + spin model
 
@@ -823,6 +1074,18 @@ def build_eqs_for_spin_shape(
         Array of size N containing the solar RA (radian), required if terminator=True
     dec_s: optional, np.array
         Array of size N containing the solar DEC (radian), required if terminator=True
+    remap: bool
+        Reparametrize model parameters from their physical domain to +- infinity.
+    remap_kwargs: dictionary
+        Dictionary of the following form:
+        {
+            'use_angles': True,
+            'use_filter_dependent': True,
+            'use_phase': True,
+            'use_shape': True
+        }
+        By switching each of the boolean values, each block of parameters can be
+        turned on-off for reparametrization.
 
     Returns
     -------
@@ -839,14 +1102,30 @@ def build_eqs_for_spin_shape(
     x = [
         alpha, delta, period, a_b, a_c, phi0,
         h_g, g_1_g, g_2_g,
-        h_r, g_1_r, g_2_r
+        h_r, g_1_r, g_2_r,
+        ...
+    ]
+
+    or in the case of reparametrization, starting with the latent filter independant parameters,
+    followed by latent filter-dependent parameters:
+    x = [
+        uPer, X, Y, Z, u_ab, u_ac, u_phi0,
+        u_H_g, u_G1_g, u_G2_g,
+        u_H_r, u_G1_r, u_G2_r,
+        ...
     ]
     ```
     """
-    alpha, delta, period, a_b, a_c, phi0 = x[0:6]
+    if remap:
+        x = parameter_remapping(
+            x, physical_to_latent=False, **remap_kwargs
+        )  # Latent to physical
+        alpha, delta, period, a_b, a_c, phi0 = x[:6]
+        params = x[6:]
+    else:
+        alpha, delta, period, a_b, a_c, phi0 = x[:6]
+        params = x[6:]
     filternames = np.unique(filters)
-
-    params = x[6:]
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
 
@@ -858,12 +1137,14 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]),
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                        ]
+                    ),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -884,14 +1165,16 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca_terminator(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                        ra_s[mask].tolist(),
-                        dec_s[mask].tolist(),
-                    ]),
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                            ra_s[mask].tolist(),
+                            dec_s[mask].tolist(),
+                        ]
+                    ),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -926,6 +1209,8 @@ def estimate_sso_params(
     terminator=False,
     ra_s=None,
     dec_s=None,
+    remap=False,
+    remap_kwargs=None,
 ):
     """Fit for phase curve parameters
 
@@ -999,7 +1284,18 @@ def estimate_sso_params(
         Array of size N containing the solar RA (radian), required if terminator=True
     dec_s: optional, np.array
         Array of size N containing the solar DEC (radian), required if terminator=True
-
+    remap: bool
+        Reparametrize model parameters from their physical domain to +- infinity.
+    remap_kwargs: dictionary
+        Dictionary of the following form:
+        {
+            'use_angles': True,
+            'use_filter_dependent': True,
+            'use_phase': True,
+            'use_shape': True
+        }
+        By switching each of the boolean values, each block of parameters can be
+        turned on-off for reparametrization.
     Returns
     -------
     outdic: dict
@@ -1113,6 +1409,10 @@ def estimate_sso_params(
         ydata = magpsf_red
 
     if model in ["SOCCA", "SHG1G2"]:
+        if model == "SHG1G2":
+            remap = (False,)
+            remap_kwargs = (None,)
+
         outdic = fit_spin(
             ydata,
             sigmapsf,
@@ -1127,6 +1427,8 @@ def estimate_sso_params(
             terminator=terminator,
             ra_s=ra_s,
             dec_s=dec_s,
+            remap=remap,
+            remap_kwargs=remap_kwargs,
         )
     elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
@@ -1349,13 +1651,15 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame({
-        "i:magpsf_red": magpsf_red,
-        "i:sigmapsf": sigmapsf,
-        "Phase": phase,
-        "i:jd": jds,
-        "i:fid": filters,
-    })
+    pdf = pd.DataFrame(
+        {
+            "i:magpsf_red": magpsf_red,
+            "i:sigmapsf": sigmapsf,
+            "Phase": phase,
+            "i:jd": jds,
+            "i:fid": filters,
+        }
+    )
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
@@ -1448,6 +1752,8 @@ def fit_spin(
     p0=None,
     bounds=None,
     model="SHG1G2",
+    remap=False,
+    remap_kwargs=None,
 ):
     """Fit for phase curve parameters
 
@@ -1502,6 +1808,18 @@ def fit_spin(
         Parameters boundaries for `func_shg1g2` ([all_mins], [all_maxs]).
         Lists should be ordered as: (H, G1, G2, R, alpha, delta). Note that even if
         there is several bands `b`, we take the same bounds for all (H^b, G1^b, G2^b).
+    remap: bool
+        Reparametrize model parameters from their physical domain to +- infinity.
+    remap_kwargs: dictionary
+        Dictionary of the following form:
+        {
+            'use_angles': True,
+            'use_filter_dependent': True,
+            'use_phase': True,
+            'use_shape': True
+        }
+        By switching each of the boolean values, each block of parameters can be
+        turned on-off for reparametrization.
 
     Returns
     -------
@@ -1516,7 +1834,7 @@ def fit_spin(
             p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
         elif model == "SOCCA":
             p0 = [15.0, 0.15, 0.15, np.pi, 0.0, 1, 1.05, 1.05, 0.0]
-
+            # FIXME p0 in remap
     if bounds is None:
         if model == "SHG1G2":
             bounds = (
@@ -1524,10 +1842,13 @@ def fit_spin(
                 [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
             )
         elif model == "SOCCA":
-            bounds = (
-                [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
-                [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
-            )
+            if remap:
+                bounds = build_bounds(**remap_kwargs)
+            else:
+                bounds = (
+                    [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                    [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+                )
 
     ufilters = np.unique(filters)
     if model == "SHG1G2":
@@ -1544,17 +1865,14 @@ def fit_spin(
     initial_guess = p0[3:]
     for _ in ufilters:
         initial_guess = np.concatenate((initial_guess, p0[:3]))
-
     lower_bounds = bounds[0][3:]
     upper_bounds = bounds[1][3:]
     for _ in ufilters:
         lower_bounds = np.concatenate((lower_bounds, bounds[0][:3]))
         upper_bounds = np.concatenate((upper_bounds, bounds[1][:3]))
-
     if not np.all([i == i for i in magpsf_red]):
         outdic = {"fit": 1, "status": -2}
         return outdic
-
     try:
         if model == "SHG1G2":
             func = build_eqs_for_spins
@@ -1562,7 +1880,18 @@ def fit_spin(
         elif model == "SOCCA":
             func = build_eqs_for_spin_shape
             if not terminator:
-                args = (filters, phase, ra, dec, jd, magpsf_red)
+                args = (
+                    filters,
+                    phase,
+                    ra,
+                    dec,
+                    jd,
+                    magpsf_red,
+                    False,
+                    None,
+                    None,
+                    remap,
+                )
             else:
                 args = (
                     filters,
@@ -1574,8 +1903,9 @@ def fit_spin(
                     terminator,
                     ra_s,
                     dec_s,
+                    remap,
+                    remap_kwargs,
                 )
-
         res_lsq = least_squares(
             func,
             x0=initial_guess,
@@ -1584,25 +1914,26 @@ def fit_spin(
             loss="soft_l1",
             args=args,
         )
-
-    except (RuntimeError, ValueError):
+    except (RuntimeError, ValueError) as e:
         outdic = {"fit": 3, "status": -2}
         return outdic
 
     popt = res_lsq.x
-
+    if model == "SOCCA":
+        if remap:
+            popt = parameter_remapping(popt, physical_to_latent=False, **remap_kwargs)
     # estimate covariance matrix using the jacobian
-    try:
-        cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
-        chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
-        cov *= chi2dof
+    # try:
+    #     cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
+    #     chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
+    #     cov *= chi2dof
 
-        # 1sigma uncertainty on fitted parameters
-        perr = np.sqrt(np.diag(cov))
-    except np.linalg.LinAlgError:
-        # raised if jacobian is degenerated
-        outdic = {"fit": 4, "status": res_lsq.status}
-        return outdic
+    #     # 1sigma uncertainty on fitted parameters
+    #     perr = np.sqrt(np.diag(cov))
+    # except np.linalg.LinAlgError:
+    #     # raised if jacobian is degenerated
+    #     outdic = {"fit": 4, "status": res_lsq.status}
+    #     return outdic
 
     # For the chi2, we use the error estimate from the data directly
     sorted_sigmapsf = sort_quantity_by_filter(filters, sigmapsf)
@@ -1660,10 +1991,10 @@ def fit_spin(
         if name in ["alpha0", "delta0"]:
             # convert in degrees
             outdic[params[i]] = np.degrees(popt[i])
-            outdic["err_" + params[i]] = np.degrees(perr[i])
+            # outdic["err_" + params[i]] = np.degrees(perr[i])
         else:
             outdic[params[i]] = popt[i]
-            outdic["err_" + params[i]] = perr[i]
+            # outdic["err_" + params[i]] = perr[i]
 
     if "R" in outdic:
         # SHG1G2
@@ -1709,28 +2040,30 @@ def extract_obliquity(sso_name, alpha0, delta0):
     # Orbit
     lon_orbit = (pdf["orbital_elements.node_longitude.value"] - 90).to_numpy()
     lat_orbit = (90.0 - pdf["orbital_elements.inclination.value"]).to_numpy()
+    try:
+        # Spin -- convert to EC
+        ra = pdf.alpha0.to_numpy() * u.degree
+        dec = pdf.delta0.to_numpy() * u.degree
 
-    # Spin -- convert to EC
-    ra = np.nan_to_num(pdf.alpha0.to_numpy()) * u.degree
-    dec = np.nan_to_num(pdf.delta0.to_numpy()) * u.degree
+        # Trick to put the object "far enough"
+        coords_spin = SkyCoord(ra=ra, dec=dec, distance=200 * u.parsec, frame="hcrs")
 
-    # Trick to put the object "far enough"
-    coords_spin = SkyCoord(ra=ra, dec=dec, distance=200 * u.parsec, frame="hcrs")
+        # in radian
+        lon_spin = coords_spin.heliocentricmeanecliptic.lon.value
+        lat_spin = coords_spin.heliocentricmeanecliptic.lat.value
 
-    # in radian
-    lon_spin = coords_spin.heliocentricmeanecliptic.lon.value
-    lat_spin = coords_spin.heliocentricmeanecliptic.lat.value
-
-    obliquity = np.degrees(
-        angular_separation(
-            np.radians(lon_spin),
-            np.radians(lat_spin),
-            np.radians(lon_orbit),
-            np.radians(lat_orbit),
+        obliquity = np.degrees(
+            angular_separation(
+                np.radians(lon_spin),
+                np.radians(lat_spin),
+                np.radians(lon_orbit),
+                np.radians(lat_orbit),
+            )
         )
-    )
 
-    return obliquity
+        return obliquity
+    except Exception:
+        return np.nan
 
 
 def angular_separation(lon1, lat1, lon2, lat2):
