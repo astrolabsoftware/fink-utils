@@ -755,6 +755,198 @@ def build_bounds(
     return lower_bounds, upper_bounds
 
 
+def prop_angle_error(X, Y, Z, err_X, err_Y, err_Z):
+    """
+    Propagate Cartesian coordinate uncertainties to angular uncertainties.
+
+    Computes the propagated errors on the angular spin axis coordinates
+    (alpha0, delta0) from uncertainties on their Cartesian components (X, Y, Z).
+
+    Parameters
+    ----------
+    X, Y, Z : float
+        Cartesian coordinates of the vector.
+    err_X, err_Y, err_Z : float
+        1-sigma uncertainties of X, Y and Z.
+
+    Returns
+    -------
+    err_alpha0 : float
+        Propagated 1-sigma uncertainty of alpha0.
+    err_delta0 : float or ndarray
+        Propagated 1-sigma uncertainty of delta0.
+    """
+    dfdx = -(X * Z) / (
+        np.sqrt(1 - Z**2 / (X**2 + Y**2 + Z**2)) * (X**2 + Y**2 + Z**2) ** (3 / 2)
+    )
+    dfdy = -(Y * Z) / (
+        np.sqrt(1 - Z**2 / (X**2 + Y**2 + Z**2)) * (X**2 + Y**2 + Z**2) ** (3 / 2)
+    )
+    dfdz = (
+        1 / np.sqrt(X**2 + Y**2 + Z**2) - Z**2 / (X**2 + Y**2 + Z**2) ** (3 / 2)
+    ) * (1 / np.sqrt(1 - Z**2 / (X**2 + Y**2 + Z**2)))
+
+    term1 = (dfdx * err_X) ** 2 + (dfdy * err_Y) ** 2 + (dfdz * err_Z) ** 2
+    term2 = 2 * (
+        dfdx * dfdy * err_X * err_Y
+        + dfdx * dfdz * err_X * err_Z
+        + dfdy * dfdz * err_Y * err_Z
+    )
+    err_delta0 = np.sqrt(term1 + term2)
+
+    err_alpha0 = np.sqrt(
+        (X / (X**2 + Y**2) * err_Y) ** 2
+        + (Y / (X**2 + Y**2) * err_X) ** 2
+        - (X * Y) / (X**2 + Y**2) ** 2 * err_Y * err_X
+    )
+    # print("errX: ", err_X)
+    # print("errY: ",err_Y)
+    # print("errZ: ",err_Z)
+
+    # print("X: ", X)
+    # print("Y: ",Y)
+    # print("Z: ",Z)
+
+    return err_alpha0, err_delta0
+
+
+def prop_phase_error(u_phi0, err_u_phi0):
+    """
+    Propagates the uncertainty on u_phi0 to the corresponding
+    uncertainty on the initial roation phase phi0.
+
+    Parameters
+    ----------
+    u_phi0 : float
+        Unconstrained initial phase
+    err_u_phi0 : float
+        1-sigma uncertainty on u_phi0
+
+    Returns
+    -------
+    err_phi0 : float
+        Propagated 1-sigma uncertainty on phi0.
+    """
+    err_phi0 = np.pi * sigmoid(u_phi0) * (1 - sigmoid(u_phi0)) * err_u_phi0
+    return err_phi0
+
+
+def propr_G1_err(u_G1, err_u_G1):
+    """
+    Propagate uncertainty from u_G1 to the G1 parameter.
+
+    Parameters
+    ----------
+    u_G1 : float
+        Unconstrained parameter mapped to G1.
+    err_u_G1 : float
+        1-sigma uncertainty on u_G1.
+
+    Returns
+    -------
+    err_G1 : float
+        Propagated 1-sigma uncertainty on G1.
+    """
+    err_G1 = sigmoid(u_G1) * (1 - sigmoid(u_G1)) * err_u_G1
+    return err_G1
+
+
+def prop_G2_err(G1, u_G2, err_u_G2, err_G1):
+    """
+    Propagate uncertainty to the G2 parameter.
+
+    Parameters
+    ----------
+    G1 : float
+        G1 phase parameter.
+    u_G2 : float
+        Unconstrained parameter mapped to G2.
+    err_u_G2 : float
+        1-sigma uncertainty on u_G2.
+    err_G1 : float
+        1-sigma uncertainty on G1.
+
+    Returns
+    -------
+    err_G2 : float
+        Propagated 1-sigma uncertainty on G2.
+    """
+    term1 = ((1 - G1) * sigmoid(u_G2) * (1 - sigmoid(u_G2)) * err_u_G2) ** 2
+    term2 = (sigmoid(u_G2) * err_G1) ** 2
+    term3 = -2 * (1 - G1) * (1 - sigmoid(u_G2)) * sigmoid(u_G2) ** 2 * err_G1 * err_u_G2
+    err_G2 = np.sqrt(term1 + term2 + term3)
+    return err_G2
+
+
+def propagate_errors(
+    popt,
+    perr,
+    use_angles=True,
+    use_shape=False,
+    use_phase=True,
+    use_filter_dependent=True,
+):
+    """
+    Propagate fitted parameter uncertainties to physical parameter uncertainties
+
+    Parameters
+    ----------
+    popt : array-like
+        Best-fit parameter values.
+    perr : array-like
+        1-sigma uncertainties on the fitted parameters.
+    use_angles : bool, optional
+        If True, propagate errors from Cartesian coordinates to angles.
+    use_shape : bool, optional
+        If True, include shape parameter error propagation.
+    use_phase : bool, optional
+        If True, propagate error on the phase parameter.
+    use_filter_dependent : bool, optional
+        If True, propagate errors on filter-dependent (H, G1, G2) parameters.
+
+    Returns
+    -------
+    out : list
+        Propagated 1-sigma uncertainties in the same order as the least square output parameters.:
+        [err_alpha0, err_delta0, err_period, err_a/b, err_a/c, err_phi0, err_H1, err_G1_1, err_G2_1, ...]
+    """
+    out = []
+    if use_angles:
+        err_P, err_X, err_Y, err_Z, err_ab, err_ac, err_phi0 = perr[:7]
+        err_f = perr[7:]
+        period, X, Y, Z, ab, ac, phi0 = popt[:7]
+        filt_dependent = popt[7:]
+    else:
+        err_alpha0, err_delta0, err_P, err_ab, err_ac, err_phi0 = perr[:6]
+        err_f = perr[6:]
+        alpha0, delta0, period, ab, ac, phi0 = popt[:6]
+        filt_dependent = popt[6:]
+
+    if use_angles:
+        err_alpha0, err_delta0 = prop_angle_error(X, Y, Z, err_X, err_Y, err_Z)
+        # print(err_alpha0)
+    out.extend([err_alpha0, err_delta0, err_P])
+    if use_shape:
+        pass
+    out.extend([err_ab, err_ac])
+    if use_phase:
+        err_phi0 = prop_phase_error(u_phi0=phi0, err_u_phi0=err_phi0)
+    out.extend([err_phi0])
+    if use_filter_dependent:
+        for i in range(0, len(err_f), 3):
+            err_H = err_f[i]
+            err_G1 = propr_G1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
+            G1 = sigmoid(filt_dependent[i + 1])
+            err_G2 = prop_G2_err(
+                G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2], err_G1=err_G1
+            )
+            out.extend([err_H, err_G1, err_G2])
+    else:
+        for i in range(0, len(err_f), 3):
+            out.extend([err_f[i], err_f[i + 1], err_f[i + 2]])
+    return out
+
+
 def parameter_remapping(
     x,
     physical_to_latent=True,
@@ -775,7 +967,7 @@ def parameter_remapping(
     Parameters
     ----------
     x : array-like
-        Input parameter vector (alpha0, delta0, period, a/b, a/c, phi0, H, G1, G2 | period X, Y, Z, u_a/b, u_a/c, u_phi0, H, u_G1, u_G2).
+        Input parameter vector (rho, alpha0, delta0, period, a/b, a/c, phi0, H, G1, G2 | period X, Y, Z, u_a/b, u_a/c, u_phi0, H, u_G1, u_G2).
     physical_to_latent : bool, default=True
         Direction of conversion. If True, maps physical -> latent
         if False, maps latent -> physical.
@@ -803,17 +995,15 @@ def parameter_remapping(
         # Physical -> Latent
         # -------------------------
         if use_angles:
-            alpha0, delta0 = x[idx : idx + 2]
-            idx += 3
+            rho, alpha0, delta0 = x[idx : idx + 3]
+            idx += 4
+            X = rho * np.cos(delta0) * np.cos(alpha0)
+            Y = rho * np.cos(delta0) * np.sin(alpha0)
+            Z = rho * np.sin(delta0)
 
-            X = np.cos(delta0) * np.cos(alpha0)
-            Y = np.cos(delta0) * np.sin(alpha0)
-            Z = np.sin(delta0)
+            u_Period = x[idx - 1]
 
-            u_Period = x[2]
-            out.extend([u_Period])
-
-            out.extend([X, Y, Z])
+            out.extend([u_Period, X, Y, Z])
         else:
             out.extend(x[idx : idx + 3])
             idx += 3
@@ -861,11 +1051,12 @@ def parameter_remapping(
             idx = 1
             X, Y, Z = x[idx : idx + 3]
             idx += 3
+            rho = np.sqrt(X**2 + Y**2 + Z**2)
 
-            delta0 = np.arcsin(Z)
+            delta0 = np.arcsin(Z / rho)
             alpha0 = np.arctan2(Y, X) % (2 * np.pi)
 
-            out.extend([alpha0, delta0])
+            out.extend([alpha0, delta0])  # FIXME
             out.extend([x[0]])  # uPeriod -> Period
 
         else:
@@ -1117,14 +1308,16 @@ def build_eqs_for_spin_shape(
     ```
     """
     if remap:
+        R = np.sqrt(x[1] ** 2 + x[2] ** 2 + x[3] ** 2)
+        x[1] = x[1] / R
+        x[2] = x[2] / R
+        x[3] = x[3] / R
+
         x = parameter_remapping(
             x, physical_to_latent=False, **remap_kwargs
         )  # Latent to physical
-        alpha, delta, period, a_b, a_c, phi0 = x[:6]
-        params = x[6:]
-    else:
-        alpha, delta, period, a_b, a_c, phi0 = x[:6]
-        params = x[6:]
+    alpha, delta, period, a_b, a_c, phi0 = x[:6]
+    params = x[6:]
     filternames = np.unique(filters)
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
@@ -1854,10 +2047,11 @@ def fit_spin(
     if model == "SHG1G2":
         params = ["R", "alpha0", "delta0"]
     elif model == "SOCCA":
+        # if remap_kwargs["use_angles"] == True:
+        #     params = ["period", "X", "Y", "Z", "a_b", "a_c", "phi0"]
+        # else:
         params = ["alpha0", "delta0", "period", "a_b", "a_c", "phi0"]
-
     phase_params = ["H", "G1", "G2"]
-
     for filt in ufilters:
         phase_params_with_filt = [i + "_{}".format(str(filt)) for i in phase_params]
         params = np.concatenate((params, phase_params_with_filt))
@@ -1918,10 +2112,11 @@ def fit_spin(
         outdic = {"fit": 3, "status": -2}
         return outdic
 
-    popt = res_lsq.x
+    popt = res_lsq.x  # this is popt_u (latent)
     if model == "SOCCA":
         if remap:
-            popt = parameter_remapping(popt, physical_to_latent=False, **remap_kwargs)
+            popt_u = np.copy(popt)
+            popt = parameter_remapping(popt_u, physical_to_latent=False, **remap_kwargs)
     # estimate covariance matrix using the jacobian
     try:
         cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
@@ -1930,6 +2125,9 @@ def fit_spin(
 
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
+        if model == "SOCCA":
+            if remap:
+                perr = propagate_errors(popt_u, perr, **remap_kwargs)
     except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
         outdic = {"fit": 4, "status": res_lsq.status}
@@ -1991,10 +2189,10 @@ def fit_spin(
         if name in ["alpha0", "delta0"]:
             # convert in degrees
             outdic[params[i]] = np.degrees(popt[i])
-            # outdic["err_" + params[i]] = np.degrees(perr[i])
+            outdic["err_" + params[i]] = np.degrees(perr[i])
         else:
             outdic[params[i]] = popt[i]
-            # outdic["err_" + params[i]] = perr[i]
+            outdic["err_" + params[i]] = perr[i]
 
     if "R" in outdic:
         # SHG1G2
