@@ -799,14 +799,6 @@ def prop_angle_error(X, Y, Z, err_X, err_Y, err_Z):
         + (Y / (X**2 + Y**2) * err_X) ** 2
         - (X * Y) / (X**2 + Y**2) ** 2 * err_Y * err_X
     )
-    print("errX: ", err_X)
-    print("errY: ", err_Y)
-    print("errZ: ", err_Z)
-
-    print("X: ", X)
-    print("Y: ", Y)
-    print("Z: ", Z)
-
     return err_alpha0, err_delta0
 
 
@@ -1109,7 +1101,6 @@ def parameter_remapping(
             X, Y, Z = x[idx : idx + 3]
             idx += 3
             rho = np.sqrt(X**2 + Y**2 + Z**2)
-            print("R:", rho)
             delta0 = np.arcsin(Z / rho)
             alpha0 = np.arctan2(Y, X) % (2 * np.pi)
 
@@ -1366,15 +1357,6 @@ def build_eqs_for_spin_shape(
     """
     x = x.copy()
     if remap:
-        # if remap_kwargs["use_angles"] == True:
-        #     R = np.sqrt(x[1] ** 2 + x[2] ** 2 + x[3] ** 2)
-        #     x[1] = x[1] / R
-        #     x[2] = x[2] / R
-        #     x[3] = x[3] / R
-        print("Inside build_eqs")
-        print(x[1])
-        print(x[2])
-        print(x[3])
         x = parameter_remapping(
             x, physical_to_latent=False, **remap_kwargs
         )  # Latent to physical
@@ -2197,7 +2179,6 @@ def fit_spin(
         # fitted vector
         v = np.array([X, Y, Z])
         C_xyz = cov[np.ix_([1, 2, 3], [1, 2, 3])]  # 3x3 covariance
-        print(C_xyz)
         # unit vector along v
         n = v / np.linalg.norm(v)
 
@@ -2206,7 +2187,7 @@ def fit_spin(
 
         # directional covariance
         C_dir = P @ C_xyz @ P.T
-        print(C_dir)
+
         # directional 1-sigma errors
         perr[1] = np.sqrt(C_dir[0, 0])
         perr[2] = np.sqrt(C_dir[1, 1])
