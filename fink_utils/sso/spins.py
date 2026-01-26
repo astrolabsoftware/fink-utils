@@ -799,13 +799,13 @@ def prop_angle_error(X, Y, Z, err_X, err_Y, err_Z):
         + (Y / (X**2 + Y**2) * err_X) ** 2
         - (X * Y) / (X**2 + Y**2) ** 2 * err_Y * err_X
     )
-    # print("errX: ", err_X)
-    # print("errY: ",err_Y)
-    # print("errZ: ",err_Z)
+    print("errX: ", err_X)
+    print("errY: ", err_Y)
+    print("errZ: ", err_Z)
 
-    # print("X: ", X)
-    # print("Y: ",Y)
-    # print("Z: ",Z)
+    print("X: ", X)
+    print("Y: ", Y)
+    print("Z: ", Z)
 
     return err_alpha0, err_delta0
 
@@ -878,6 +878,61 @@ def prop_G2_err(G1, u_G2, err_u_G2, err_G1):
     return err_G2
 
 
+def prop_ab_err(u_a_b, err_u_a_b):
+    """
+    Propagate uncertainty to the a/b shape parameter.
+
+    Parameters
+    ----------
+    a_b : float
+        a/b shape parameter.
+    u_a_b : float
+        Unconstrained parameter mapped to a/b.
+    Returns
+    -------
+    err_a_b : float
+        Propagated 1-sigma uncertainty on a/b.
+    """
+    err_a_b = 4 * sigmoid(u_a_b) * (1 - sigmoid(u_a_b)) * err_u_a_b
+
+    return err_a_b
+
+
+def prop_ac_err(a_b, u_a_c, err_u_a_c, err_a_b):
+    """
+    Propagate the 1-sigma uncertainty to the a/c shape parameter.
+
+    Parameters
+    ----------
+    a_b : float
+        Physical a/b shape parameter.
+    u_a_c : float
+        Unconstrained parameter mapped to a/c.
+    err_u_a_c : float
+        1-sigma uncertainty on u_a_c.
+    err_a_b : float
+        1-sigma uncertainty on a/b.
+
+    Returns
+    -------
+    err_a_c : float
+        Propagated 1-sigma uncertainty on a/c.
+    """
+    term1 = ((1 - sigmoid(u_a_c)) * err_a_b) ** 2
+    term2 = ((5 - a_b) * sigmoid(u_a_c) * (1 - sigmoid(u_a_c)) * err_u_a_c) ** 2
+    term3 = (
+        2
+        * (1 - sigmoid(u_a_c))
+        * (5 - a_b)
+        * sigmoid(u_a_c)
+        * (1 - sigmoid(u_a_c))
+        * err_u_a_c
+        * err_a_b
+    )
+    err_a_c = np.sqrt(term1 + term2 + term3)
+    return err_a_c
+
+
 def propagate_errors(
     popt,
     perr,
@@ -924,10 +979,12 @@ def propagate_errors(
 
     if use_angles:
         err_alpha0, err_delta0 = prop_angle_error(X, Y, Z, err_X, err_Y, err_Z)
-        # print(err_alpha0)
     out.extend([err_alpha0, err_delta0, err_P])
     if use_shape:
-        pass
+        err_ab_u = float(err_ab)
+        err_ab = prop_ab_err(u_a_b=ab, err_u_a_b=err_ab)
+        ab = 4 * sigmoid(ab) + 1
+        err_ac = prop_ac_err(a_b=ab, u_a_c=ac, err_u_a_c=err_ac, err_a_b=err_ab_u)
     out.extend([err_ab, err_ac])
     if use_phase:
         err_phi0 = prop_phase_error(u_phi0=phi0, err_u_phi0=err_phi0)
@@ -1052,7 +1109,7 @@ def parameter_remapping(
             X, Y, Z = x[idx : idx + 3]
             idx += 3
             rho = np.sqrt(X**2 + Y**2 + Z**2)
-
+            print("R:", rho)
             delta0 = np.arcsin(Z / rho)
             alpha0 = np.arctan2(Y, X) % (2 * np.pi)
 
@@ -1307,12 +1364,17 @@ def build_eqs_for_spin_shape(
     ]
     ```
     """
+    x = x.copy()
     if remap:
-        R = np.sqrt(x[1] ** 2 + x[2] ** 2 + x[3] ** 2)
-        x[1] = x[1] / R
-        x[2] = x[2] / R
-        x[3] = x[3] / R
-
+        # if remap_kwargs["use_angles"] == True:
+        #     R = np.sqrt(x[1] ** 2 + x[2] ** 2 + x[3] ** 2)
+        #     x[1] = x[1] / R
+        #     x[2] = x[2] / R
+        #     x[3] = x[3] / R
+        print("Inside build_eqs")
+        print(x[1])
+        print(x[2])
+        print(x[3])
         x = parameter_remapping(
             x, physical_to_latent=False, **remap_kwargs
         )  # Latent to physical
@@ -1603,7 +1665,7 @@ def estimate_sso_params(
 
     if model in ["SOCCA", "SHG1G2"]:
         if model == "SHG1G2":
-            remap = (False,)
+            remap = False
             remap_kwargs = (None,)
 
         outdic = fit_spin(
@@ -2113,6 +2175,12 @@ def fit_spin(
         return outdic
 
     popt = res_lsq.x  # this is popt_u (latent)
+    # if remap:
+    #     if remap_kwargs["use_angles"] == True:
+    #         R = np.sqrt(popt[1] ** 2 + popt[2] ** 2 + popt[3] ** 2)
+    #         popt[1] = popt[1] / R
+    #         popt[2] = popt[2] / R
+    #         popt[3] = popt[3] / R
     if model == "SOCCA":
         if remap:
             popt_u = np.copy(popt)
@@ -2122,9 +2190,28 @@ def fit_spin(
         cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
         chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
         cov *= chi2dof
-
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
+
+        X, Y, Z = res_lsq.x[1], res_lsq.x[2], res_lsq.x[3]
+        # fitted vector
+        v = np.array([X, Y, Z])
+        C_xyz = cov[np.ix_([1, 2, 3], [1, 2, 3])]  # 3x3 covariance
+        print(C_xyz)
+        # unit vector along v
+        n = v / np.linalg.norm(v)
+
+        # projection matrix onto tangent plane
+        P = np.eye(3) - np.outer(n, n)
+
+        # directional covariance
+        C_dir = P @ C_xyz @ P.T
+        print(C_dir)
+        # directional 1-sigma errors
+        perr[1] = np.sqrt(C_dir[0, 0])
+        perr[2] = np.sqrt(C_dir[1, 1])
+        perr[3] = np.sqrt(C_dir[2, 2])
+
         if model == "SOCCA":
             if remap:
                 perr = propagate_errors(popt_u, perr, **remap_kwargs)
