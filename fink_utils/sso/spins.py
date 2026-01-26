@@ -2157,12 +2157,7 @@ def fit_spin(
         return outdic
 
     popt = res_lsq.x  # this is popt_u (latent)
-    # if remap:
-    #     if remap_kwargs["use_angles"] == True:
-    #         R = np.sqrt(popt[1] ** 2 + popt[2] ** 2 + popt[3] ** 2)
-    #         popt[1] = popt[1] / R
-    #         popt[2] = popt[2] / R
-    #         popt[3] = popt[3] / R
+
     if model == "SOCCA":
         if remap:
             popt_u = np.copy(popt)
@@ -2186,7 +2181,7 @@ def fit_spin(
         P = np.eye(3) - np.outer(n, n)
 
         # directional covariance
-        C_dir = P @ C_xyz @ P.T
+        C_dir = P @ C_xyz @ P
 
         # directional 1-sigma errors
         perr[1] = np.sqrt(C_dir[0, 0])
