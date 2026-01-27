@@ -2152,7 +2152,7 @@ def fit_spin(
             loss="soft_l1",
             args=args,
         )
-    except (RuntimeError, ValueError) as e:
+    except (RuntimeError, ValueError):
         outdic = {"fit": 3, "status": -2}
         return outdic
 
@@ -2164,7 +2164,7 @@ def fit_spin(
             popt = parameter_remapping(popt_u, physical_to_latent=False, **remap_kwargs)
     # estimate covariance matrix using the jacobian
     try:
-        cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
+        cov = linalg.pinv(res_lsq.jac.T @ res_lsq.jac)
         chi2dof = np.sum(res_lsq.fun**2) / (res_lsq.fun.size - res_lsq.x.size)
         cov *= chi2dof
         # 1sigma uncertainty on fitted parameters
