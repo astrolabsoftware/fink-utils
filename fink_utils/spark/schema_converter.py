@@ -52,7 +52,9 @@ def _parse_map(data: Dict[Any, Any]) -> Dict[Any, Any]:
     value_type = data["valueType"]
     # Check if the value type is a struct
     if isinstance(value_type, dict) and value_type.get("type") == "struct":
-        out["values"] = _parse_struct(value_type)  # Recursively parse struct
+        out["values"] = _parse_struct(
+            value_type, from_map=True
+        )  # Recursively parse struct
     else:
         out["values"] = value_type  # Handle other simple types
 
@@ -61,7 +63,9 @@ def _parse_map(data: Dict[Any, Any]) -> Dict[Any, Any]:
     return out
 
 
-def _parse_struct(data: Dict[Any, Any], name: str = "") -> Dict[Any, Any]:
+def _parse_struct(
+    data: Dict[Any, Any], name: str = "", from_map: bool = False
+) -> Dict[Any, Any]:
     """Convert struct below
 
     {
@@ -137,7 +141,10 @@ def _parse_struct(data: Dict[Any, Any], name: str = "") -> Dict[Any, Any]:
     avroRecord: Dict[Any, Any] = dict()
     avroRecord["type"] = "record"
     if name:
-        avroRecord["name"] = "topLevelRecord." + name
+        if from_map:
+            avroRecord["name"] = "topLevelRecord.value." + name
+        else:
+            avroRecord["name"] = "topLevelRecord." + name
     else:
         avroRecord["name"] = "topLevelRecord"
     if data["type"] not in ["struct"]:
