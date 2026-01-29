@@ -146,7 +146,12 @@ def _parse_struct(
         else:
             avroRecord["name"] = "topLevelRecord." + name
     else:
-        avroRecord["name"] = "topLevelRecord"
+        if from_map:
+            avroRecord["name"] = "topLevelRecord"
+        else:
+            # FIXME: this might be unsafe if there are
+            # more than 1 map with no name...
+            avroRecord["name"] = "topLevelRecord.value"
     if data["type"] not in ["struct"]:
         raise ValueError("Expected ['struct'] type, is ", data["type"])
     avroRecord["fields"] = []
