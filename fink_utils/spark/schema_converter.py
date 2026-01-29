@@ -48,12 +48,16 @@ def _parse_array(data: Dict[Any, Any], name: str) -> Dict[Any, Any]:
 def _parse_map(data: Dict[Any, Any]) -> Dict[Any, Any]:
     out: Dict[Any, Any] = dict()
     out["type"] = "map"
-    values = data["valueType"]
-    out["values"] = "map"
-    if data["valueContainsNull"]:
-        out["values"] = [values, "null"]
+
+    value_type = data["valueType"]
+    # Check if the value type is a struct
+    if isinstance(value_type, dict) and value_type.get("type") == "struct":
+        out["values"] = _parse_struct(value_type)  # Recursively parse struct
     else:
-        out["values"] = values
+        out["values"] = value_type  # Handle other simple types
+
+    if data.get("valueContainsNull"):
+        out["values"] = [out["values"], "null"]  # Allow nulls in values
     return out
 
 
