@@ -25,6 +25,11 @@ from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
 
+# FIXME
+# import warnings
+
+# warnings.filterwarnings("error", category=RuntimeWarning)
+# FIXME
 
 def sigmoid(x):
     """
