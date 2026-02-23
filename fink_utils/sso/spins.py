@@ -1034,9 +1034,9 @@ def propagate_errors(
         for i in range(0, len(err_f), 3):
             err_H = err_f[i]
             err_G1 = prop_G1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
-            G1 = sigmoid(filt_dependent[i + 1])
+            G1 = sc_sigmoid(filt_dependent[i + 1])
             err_G2 = prop_G2_err(
-                G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2], err_G1=err_G1
+                G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2]
             )
             out.extend([err_H, err_G1, err_G2])
     else:
