@@ -25,11 +25,6 @@ from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
 
-# FIXME
-# import warnings
-
-# warnings.filterwarnings("error", category=RuntimeWarning)
-# FIXME
 
 def sigmoid(x):
     """
@@ -37,6 +32,14 @@ def sigmoid(x):
     Maps any real number to the interval (0, 1).
     """
     return 1 / (1 + np.exp(-x))
+
+
+def sc_sigmoid(x, C=-0.429, R=1.429 + np.abs(-0.429), k=1, I=0):
+    """
+    Compute the scaled sigmoid function.
+    Maps any real number to the interval (C, R-|C|).
+    """
+    return C + R / (1 + np.exp(-k * (x - I)))
 
 
 def logit(x):
@@ -47,8 +50,51 @@ def logit(x):
     return np.log(x / (1 - x))
 
 
+def sc_logit(y, C=-0.429, R=1.429 + np.abs(-0.429)):
+    """
+    Compute the scaled logit (inverse scaled sigmoid) function.
+    Maps a value in (C, R-|C|) to the real line.
+    """
+    p = (y - C) / R
+    return np.log(p / (1 - p))
+
+
+GMIN = -0.429
+GMAX = 1.429
+
+a1, b1 = -3.9038, -0.2445
+a2, b2 = -0.9635, 1.0157
+a3, b3 = -0.5330, 0.0085
+
+
+def compute_LU_bounds(g1):
+    """
+    Compute allowed interval for G2 given G1
+
+    Parameters
+    ----------
+    g1: np.array
+        G1 phase parameter values
+
+    Returns
+    -------
+    L: np.array
+        Lower bounds of G2
+    U: np.array
+        Upper bounds of G2
+    """
+    lower1 = a1 * g1 + b1
+    lower2 = a3 * g1 + b3
+
+    L = np.maximum(np.maximum(GMIN, lower1), lower2)
+    U = np.minimum(GMAX, a2 * g1 + b2)
+
+    return L, U
+
+
 def sort_quantity_by_filter(filter, quantity):
-    """Sort a vector (quantity) by its corresponding filter under which it was measured
+    """
+    Sort a vector (quantity) by its corresponding filter under which it was measured
 
     Parameters
     ----------
@@ -720,8 +766,8 @@ def build_bounds(
     """
     if bounds is None:
         bounds = (
-            [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
-            [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+            [-3, GMIN, GMIN, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+            [30, GMAX, GMAX, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
         )
         lower_bounds = np.array(bounds[0])
         upper_bounds = np.array(bounds[1])
@@ -740,8 +786,8 @@ def build_bounds(
 
     if use_angles:
         bounds = (
-            [-3, 0, 0, 2.2 / 24.0, -np.inf, -np.inf, -np.inf, 1, 1, -np.pi / 2],
-            [30, 1, 1, 1000, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
+            [-3, GMIN, GMIN, 2.2 / 24.0, -np.inf, -np.inf, -np.inf, 1, 1, -np.pi / 2],
+            [30, GMAX, GMAX, 1000, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
         )
         lower_bounds = np.array(bounds[0])
         upper_bounds = np.array(bounds[1])
@@ -828,7 +874,7 @@ def prop_phase_error(u_phi0, err_u_phi0):
     return err_phi0
 
 
-def propr_G1_err(u_G1, err_u_G1):
+def prop_G1_err(u_G1, err_u_G1, R=1.429 + np.abs(-0.429)):
     """
     Propagate uncertainty from u_G1 to the G1 parameter.
 
@@ -844,11 +890,11 @@ def propr_G1_err(u_G1, err_u_G1):
     err_G1 : float
         Propagated 1-sigma uncertainty on G1.
     """
-    err_G1 = sigmoid(u_G1) * (1 - sigmoid(u_G1)) * err_u_G1
+    err_G1 = R * np.exp(-u_G1) / (np.exp(-u_G1) + 1) ** 2 * err_u_G1
     return err_G1
 
 
-def prop_G2_err(G1, u_G2, err_u_G2, err_G1):
+def prop_G2_err(G1, u_G2, err_u_G2):
     """
     Propagate uncertainty to the G2 parameter.
 
@@ -868,10 +914,8 @@ def prop_G2_err(G1, u_G2, err_u_G2, err_G1):
     err_G2 : float
         Propagated 1-sigma uncertainty on G2.
     """
-    term1 = ((1 - G1) * sigmoid(u_G2) * (1 - sigmoid(u_G2)) * err_u_G2) ** 2
-    term2 = (sigmoid(u_G2) * err_G1) ** 2
-    term3 = -2 * (1 - G1) * (1 - sigmoid(u_G2)) * sigmoid(u_G2) ** 2 * err_G1 * err_u_G2
-    err_G2 = np.sqrt(term1 + term2 + term3)
+    U, L = compute_LU_bounds(G1)
+    err_G2 = (U - L) * (1 - sigmoid(u_G2) * sigmoid(u_G2)) * err_u_G2
     return err_G2
 
 
@@ -989,7 +1033,7 @@ def propagate_errors(
     if use_filter_dependent:
         for i in range(0, len(err_f), 3):
             err_H = err_f[i]
-            err_G1 = propr_G1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
+            err_G1 = prop_G1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
             G1 = sigmoid(filt_dependent[i + 1])
             err_G2 = prop_G2_err(
                 G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2], err_G1=err_G1
@@ -1090,8 +1134,9 @@ def parameter_remapping(
             for i in range(0, len(filter_dependent), 3):
                 H, G1, G2 = filter_dependent[i : i + 3]
                 u_H = H
-                u_G1 = logit(G1)
-                u_G2 = logit(G2 / (1 - G1))
+                u_G1 = sc_logit(G1)
+                L, U = compute_LU_bounds(G1)
+                u_G2 = logit((G2 - L) / (U - L))
                 u_filters.extend([u_H, u_G1, u_G2])
             out.extend(u_filters)
         else:
@@ -1144,8 +1189,9 @@ def parameter_remapping(
             for i in range(0, len(filter_dependent), 3):
                 u_H, u_G1, u_G2 = filter_dependent[i : i + 3]
                 H = u_H
-                G1 = sigmoid(u_G1)
-                G2 = (1 - G1) * sigmoid(u_G2)
+                G1 = sc_sigmoid(u_G1)
+                L, U = compute_LU_bounds(G1)
+                G2 = L + (U - L) * sigmoid(u_G2)
                 filters.extend([H, G1, G2])
             out.extend(filters)
         else:
@@ -1732,7 +1778,7 @@ def fit_legacy_models(
     if p0 is None:
         p0 = [15, 0.15, 0.15]
     if bounds is None:
-        bounds = ([-3, 0, 0], [30, 1, 1])
+        bounds = ([-3, GMIN, GMAX], [30, GMIN, GMAX])
 
     if model == "HG1G2":
         func = func_hg1g2
@@ -2080,16 +2126,16 @@ def fit_spin(
     if bounds is None:
         if model == "SHG1G2":
             bounds = (
-                [-3, 0, 0, 3e-1, 0, -np.pi / 2],
-                [30, 1, 1, 1, 2 * np.pi, np.pi / 2],
+                [-3, GMIN, GMIN, 3e-1, 0, -np.pi / 2],
+                [30, GMAX, GMAX, 1, 2 * np.pi, np.pi / 2],
             )
         elif model == "SOCCA":
             if remap:
                 bounds = build_bounds(**remap_kwargs)
             else:
                 bounds = (
-                    [-3, 0, 0, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
-                    [30, 1, 1, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+                    [-3, GMIN, GMIN, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
+                    [30, GMAX, GMAX, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
                 )
 
     ufilters = np.unique(filters)
