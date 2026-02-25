@@ -915,7 +915,7 @@ def prop_G2_err(G1, u_G2, err_u_G2):
         Propagated 1-sigma uncertainty on G2.
     """
     U, L = compute_LU_bounds(G1)
-    err_G2 = (U - L) * (1 - sigmoid(u_G2) * sigmoid(u_G2)) * err_u_G2
+    err_G2 = (U - L) * (1 - sigmoid(u_G2)) * sigmoid(u_G2) * err_u_G2
     return err_G2
 
 
