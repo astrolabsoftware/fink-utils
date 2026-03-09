@@ -34,7 +34,17 @@ def _is_nullable(field: Dict[Any, Any], avro_type: Any) -> Any:
 def _parse_array(data: Dict[Any, Any], name: str) -> Dict[Any, Any]:
     out: Dict[Any, Any] = dict()
     out["type"] = "array"
-    if data["elementType"]["type"] == "struct":
+    if isinstance(data["elementType"], str):
+        # Single array
+        if data["containsNull"]:
+            out["items"] = [data["elementType"], "null"]
+        else:
+            out["items"] = data["elementType"]
+    elif (
+        isinstance(data["elementType"], dict)
+        and data["elementType"]["type"] == "struct"
+    ):
+        # Array of structs
         items = _parse_struct(data["elementType"], name)
         if data["containsNull"]:
             out["items"] = [items, "null"]
