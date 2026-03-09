@@ -40,7 +40,10 @@ def _parse_array(data: Dict[Any, Any], name: str) -> Dict[Any, Any]:
             out["items"] = [data["elementType"], "null"]
         else:
             out["items"] = data["elementType"]
-    elif isinstance(data["elementType"], dict) and data["elementType"]["type"] == "struct":
+    elif (
+        isinstance(data["elementType"], dict)
+        and data["elementType"]["type"] == "struct"
+    ):
         # Array of structs
         items = _parse_struct(data["elementType"], name)
         if data["containsNull"]:
