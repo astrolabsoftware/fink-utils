@@ -64,30 +64,18 @@ GMAX = 1.429
 
 a1, b1 = -3.9038, -0.2445
 a2, b2 = -0.9635, 1.0157
-a3, b3 = -0.5330, 0.0027
+a4 = -0.4
 
 
 def compute_LU_bounds(g1):
     """
-    Compute allowed interval for G2 given G1
-
-    Parameters
-    ----------
-    g1: np.array
-        G1 phase parameter values
-
-    Returns
-    -------
-    L: np.array
-        Lower bounds of G2
-    U: np.array
-        Upper bounds of G2
+    Compute allowed interval for G2 given G1.
     """
     lower1 = a1 * g1 + b1
-    lower2 = a3 * g1 + b3
+    lower2 = a4 * g1
 
-    L = np.maximum(np.maximum(GMIN, lower1), lower2)
-    U = np.minimum(GMAX, a2 * g1 + b2)
+    L = np.maximum(lower1, lower2)
+    U = a2 * g1 + b2
 
     return L, U
 
@@ -2203,7 +2191,8 @@ def fit_spin(
             loss="soft_l1",
             args=args,
         )
-    except (RuntimeError, ValueError):
+    except (RuntimeError, ValueError) as e:
+        print(e)
         outdic = {"fit": 3, "status": -2}
         return outdic
 
