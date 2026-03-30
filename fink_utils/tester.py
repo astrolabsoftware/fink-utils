@@ -99,20 +99,13 @@ def spark_unit_tests(global_args: dict = None, verbose: bool = False):
             )
         })
     conf.setMaster("local[2]")
-    conf.setAppName("fink_science_test")
+    conf.setAppName("fink_utils_test")
     for k, v in confdic.items():
         conf.set(key=k, value=v)
     spark = (
-        SparkSession.builder
-        .appName("fink_science_test")
-        .config(conf=conf)
-        .getOrCreate()
+        SparkSession.builder.appName("fink_utils_test").config(conf=conf).getOrCreate()
     )
 
     global_args["spark"] = spark
-
-    # Numpy introduced non-backward compatible change from v1.14.
-    if np.__version__ >= "1.14.0":
-        np.set_printoptions(legacy="1.13")
 
     sys.exit(doctest.testmod(globs=global_args, verbose=verbose)[0])

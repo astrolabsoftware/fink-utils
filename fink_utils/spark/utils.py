@@ -350,7 +350,7 @@ def get_cols_from_args(argname, flatten_schema):
         # when searching for 'ra'. # Check if only one corresponds exactly to argname
         mask_exact = np.array([i.split(".")[-1] == argname for i in colname])
 
-        if sum(mask) == 1:
+        if sum(mask_exact) == 1:
             return [col for col, mask in zip(colname, mask_exact) if mask][0]
 
         raise AssertionError(
@@ -360,6 +360,7 @@ def get_cols_from_args(argname, flatten_schema):
         )
 
     return colname[0]
+
 
 def expand_function_from_string(df, str_func):
     """Return a function and its arguments from a string function
