@@ -1,4 +1,4 @@
-# Copyright 2020-2024 AstroLab Software
+# Copyright 2020-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,8 @@ from pyspark.sql.types import (
     FloatType,
 )
 from pyspark.sql import DataFrame
+
+from fink_utils.tester import regular_unit_tests
 
 import importlib
 import logging
@@ -313,6 +315,54 @@ def retrieve_tag_from_string(str_func):
     return tag, description
 
 
+def get_cols_from_args(argname, flatten_schema):
+    """Get column name in the schema from function argument
+
+    Parameters
+    ----------
+    argname: str
+        Function argument name
+    flatten_schema: list of str
+        List of all fields in schema, with struct flattened and array removed.
+
+    Returns
+    -------
+    colname: str
+        Corresponding entry in the schema
+
+    Examples
+    --------
+    >>> flatten_schema = pd.read_csv('fink_utils/test_data/colnames_ztf.csv')['colnames'].to_numpy()
+    >>> get_cols_from_args('ra', flatten_schema)
+    'candidate.ra'
+    """
+    # Get all occurences
+    colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
+
+    if len(colname) == 0:
+        raise AssertionError(
+            """
+            Column name {} is not a valid column of the DataFrame.
+            """.format(argname)
+        )
+
+    if len(colname) > 1:
+        # endswith can lead to things like ['anomaly_score_varvara', 'candidate.ra']
+        # when searching for 'ra'. # Check if only one corresponds exactly to argname
+        mask_exact = np.array([i.split(".")[-1] == argname for i in colname])
+
+        if sum(mask_exact) == 1:
+            return [col for col, mask in zip(colname, mask_exact) if mask][0]
+
+        raise AssertionError(
+            """
+            argname {} corresponds to several entries in the schema: {}.
+            """.format(argname, colname)
+        )
+
+    return colname[0]
+
+
 def expand_function_from_string(df, str_func):
     """Return a function and its arguments from a string function
 
@@ -335,8 +385,6 @@ def expand_function_from_string(df, str_func):
     args: list of str
         List of arguments as columns from the input dataframe
     """
-    flatten_schema = return_flatten_names(df, pref="", flatten_schema=[])
-
     # Load the filter
     filter_name = str_func.split(".")[-1]
     module_name = str_func.split("." + filter_name)[0]
@@ -353,16 +401,11 @@ def expand_function_from_string(df, str_func):
         # Note: This works only with `struct` fields - not `array`
         argnames = filter_func.__code__.co_varnames[:ninput]
 
+    flatten_schema = return_flatten_names(df, pref="", flatten_schema=[])
     colnames = []
     for argname in argnames:
-        colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
-        if len(colname) == 0:
-            raise AssertionError(
-                """
-                Column name {} is not a valid column of the DataFrame.
-                """.format(argname)
-            )
-        colnames.append(colname[0])
+        colname = get_cols_from_args(argname, flatten_schema)
+        colnames.append(colname)
 
     return filter_func, colnames
 
@@ -607,3 +650,10 @@ class FinkUDF(object):
     def __str__(self):
         """Return long description of the filter"""
         return self.description
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+
+    # Run the Spark test suite
+    regular_unit_tests(globals())
