@@ -1,4 +1,4 @@
-# Copyright 2020-2024 AstroLab Software
+# Copyright 2020-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -334,6 +334,7 @@ def get_cols_from_args(argname, flatten_schema):
     --------
     >>> flatten_schema = pd.read_csv('fink_utils/test_data/colnames_ztf.csv')['colnames'].to_numpy()
     >>> get_cols_from_args('ra', flatten_schema)
+    'candidate.ra'
     """
     # Get all occurences
     colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
