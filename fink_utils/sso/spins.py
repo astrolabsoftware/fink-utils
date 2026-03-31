@@ -27,32 +27,32 @@ from fink_utils.tester import regular_unit_tests
 
 
 def sigmoid(x):
-    """
-    Compute the sigmoid function.
+    """Compute the sigmoid function.
+
     Maps any real number to the interval (0, 1).
     """
     return 1 / (1 + np.exp(-x))
 
 
-def sc_sigmoid(x, C=-0.429, R=1.429 + np.abs(-0.429), k=1, I=0):
-    """
-    Compute the scaled sigmoid function.
+def sc_sigmoid(x, C=-0.429, R=1.858, k=1, In=0):
+    """Compute the scaled sigmoid function.
+
     Maps any real number to the interval (C, R-|C|).
     """
-    return C + R / (1 + np.exp(-k * (x - I)))
+    return C + R / (1 + np.exp(-k * (x - In)))
 
 
 def logit(x):
-    """
-    Compute the logit (inverse sigmoid) function.
+    """Compute the logit (inverse sigmoid) function.
+
     Maps a value in (0, 1) to the real line.
     """
     return np.log(x / (1 - x))
 
 
-def sc_logit(y, C=-0.429, R=1.429 + np.abs(-0.429)):
-    """
-    Compute the scaled logit (inverse scaled sigmoid) function.
+def sc_logit(y, C=-0.429, R=1.858):
+    """Compute the scaled logit (inverse scaled sigmoid) function.
+
     Maps a value in (C, R-|C|) to the real line.
     """
     p = (y - C) / R
@@ -67,10 +67,8 @@ a2, b2 = -0.9635, 1.0157
 a4 = -0.4
 
 
-def compute_LU_bounds(g1):
-    """
-    Compute allowed interval for G2 given G1.
-    """
+def compute_lu_bounds(g1):
+    """Compute allowed interval for G2 given G1."""
     lower1 = a1 * g1 + b1
     lower2 = a4 * g1
 
@@ -842,9 +840,7 @@ def prop_angle_error(X, Y, Z, err_X, err_Y, err_Z):
 
 
 def prop_phase_error(u_phi0, err_u_phi0):
-    """
-    Propagates the uncertainty on u_phi0 to the corresponding
-    uncertainty on the initial roation phase phi0.
+    """Propagates the uncertainty on u_phi0 to the corresponding uncertainty on the initial roation phase phi0.
 
     Parameters
     ----------
@@ -862,7 +858,7 @@ def prop_phase_error(u_phi0, err_u_phi0):
     return err_phi0
 
 
-def prop_G1_err(u_G1, err_u_G1, R=1.429 + np.abs(-0.429)):
+def prop_g1_err(u_G1, err_u_G1, R=1.858):
     """
     Propagate uncertainty from u_G1 to the G1 parameter.
 
@@ -882,7 +878,7 @@ def prop_G1_err(u_G1, err_u_G1, R=1.429 + np.abs(-0.429)):
     return err_G1
 
 
-def prop_G2_err(G1, u_G2, err_u_G2):
+def prop_g2_err(G1, u_G2, err_u_G2):
     """
     Propagate uncertainty to the G2 parameter.
 
@@ -902,7 +898,7 @@ def prop_G2_err(G1, u_G2, err_u_G2):
     err_G2 : float
         Propagated 1-sigma uncertainty on G2.
     """
-    U, L = compute_LU_bounds(G1)
+    U, L = compute_lu_bounds(G1)
     err_G2 = (U - L) * (1 - sigmoid(u_G2)) * sigmoid(u_G2) * err_u_G2
     return err_G2
 
@@ -917,6 +913,7 @@ def prop_ab_err(u_a_b, err_u_a_b):
         a/b shape parameter.
     u_a_b : float
         Unconstrained parameter mapped to a/b.
+
     Returns
     -------
     err_a_b : float
@@ -1021,9 +1018,9 @@ def propagate_errors(
     if use_filter_dependent:
         for i in range(0, len(err_f), 3):
             err_H = err_f[i]
-            err_G1 = prop_G1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
+            err_G1 = prop_g1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
             G1 = sc_sigmoid(filt_dependent[i + 1])
-            err_G2 = prop_G2_err(
+            err_G2 = prop_g2_err(
                 G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2]
             )
             out.extend([err_H, err_G1, err_G2])
@@ -1123,7 +1120,7 @@ def parameter_remapping(
                 H, G1, G2 = filter_dependent[i : i + 3]
                 u_H = H
                 u_G1 = sc_logit(G1)
-                L, U = compute_LU_bounds(G1)
+                L, U = compute_lu_bounds(G1)
                 u_G2 = logit((G2 - L) / (U - L))
                 u_filters.extend([u_H, u_G1, u_G2])
             out.extend(u_filters)
@@ -1178,7 +1175,7 @@ def parameter_remapping(
                 u_H, u_G1, u_G2 = filter_dependent[i : i + 3]
                 H = u_H
                 G1 = sc_sigmoid(u_G1)
-                L, U = compute_LU_bounds(G1)
+                L, U = compute_lu_bounds(G1)
                 G2 = L + (U - L) * sigmoid(u_G2)
                 filters.extend([H, G1, G2])
             out.extend(filters)
@@ -1572,6 +1569,7 @@ def estimate_sso_params(
         }
         By switching each of the boolean values, each block of parameters can be
         turned on-off for reparametrization.
+
     Returns
     -------
     outdic: dict
