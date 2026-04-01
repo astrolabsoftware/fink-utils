@@ -25,6 +25,10 @@ from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
 
+# Phase parameter global bounds
+GMIN = -0.429
+GMAX = 1.429
+
 
 def sigmoid(x):
     """Compute the sigmoid function.
@@ -59,15 +63,7 @@ def sc_logit(y, C=-0.429, R=1.858):
     return np.log(p / (1 - p))
 
 
-GMIN = -0.429
-GMAX = 1.429
-
-a1, b1 = -3.9038, -0.2445
-a2, b2 = -0.9635, 1.0157
-a4 = -0.4
-
-
-def compute_lu_bounds(g1):
+def compute_lu_bounds(g1, a1=-3.9038, b1=-0.2445, a2=-0.9635, b2=1.0157, a4=-0.4):
     """Compute allowed interval for G2 given G1."""
     lower1 = a1 * g1 + b1
     lower2 = a4 * g1
@@ -2355,7 +2351,7 @@ def extract_obliquity(sso_name, alpha0, delta0):
         )
 
         return obliquity
-    except Exception:
+    except ValueError:
         return np.nan
 
 
