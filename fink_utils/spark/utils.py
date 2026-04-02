@@ -327,7 +327,7 @@ def get_cols_from_args(argname, flatten_schema):
 
     Returns
     -------
-    colname: str
+    colname: Spark Column
         Corresponding entry in the schema
 
     Examples
@@ -337,7 +337,7 @@ def get_cols_from_args(argname, flatten_schema):
     'candidate.ra'
     """
     # Get all occurences
-    colname = [F.col(i) for i in flatten_schema if i.endswith("{}".format(argname))]
+    colname = [i for i in flatten_schema if i.endswith("{}".format(argname))]
 
     if len(colname) == 0:
         raise AssertionError(
@@ -352,7 +352,7 @@ def get_cols_from_args(argname, flatten_schema):
         mask_exact = np.array([i.split(".")[-1] == argname for i in colname])
 
         if sum(mask_exact) == 1:
-            return [col for col, mask in zip(colname, mask_exact) if mask][0]
+            return [F.col(col) for col, mask in zip(colname, mask_exact) if mask][0]
 
         raise AssertionError(
             """
@@ -360,7 +360,7 @@ def get_cols_from_args(argname, flatten_schema):
             """.format(argname, colname)
         )
 
-    return colname[0]
+    return F.col(colname[0])
 
 
 def expand_function_from_string(df, str_func):
