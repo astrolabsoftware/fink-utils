@@ -132,7 +132,7 @@ def query_miriade(
     # Execute query
     try:
         r = requests.post(url, params=params, files=files, timeout=timeout)
-    except requests.exceptions.ReadTimeout:
+    except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
         if return_json:
             return {}
         return pd.DataFrame()
