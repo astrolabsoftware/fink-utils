@@ -318,6 +318,13 @@ def retrieve_tag_from_string(str_func):
 def get_cols_from_args(argname, flatten_schema):
     """Get column name in the schema from function argument
 
+    Notes
+    -----
+    We check for two conditions
+    1. The field found should have the exact same name than `argname` ('candidate.ra' vs 'anomaly_score_varvara')
+    2. If many fields found, favor the one at root level ('diaSourceId' vs 'diaSource.diaSourceId')
+    If any of the condition is met (several fields and none at the root level), fail.
+
     Parameters
     ----------
     argname: str
@@ -351,9 +358,18 @@ def get_cols_from_args(argname, flatten_schema):
         # when searching for 'ra'. # Check if only one corresponds exactly to argname
         mask_exact = np.array([i.split(".")[-1] == argname for i in colname])
 
-        if sum(mask_exact) == 1:
-            return [F.col(col) for col, mask in zip(colname, mask_exact) if mask][0]
+        fieldnames = [F.col(col) for col, mask in zip(colname, mask_exact) if mask]
 
+        if len(fieldnames) == 1:
+            # We have a single field matching, good!
+            return fieldnames[0]
+
+        # Favor field at the root level
+        mask_root = np.array([len(i.split(".")) == 1 for i in fieldnames])
+        if sum(mask_root) == 1:
+            return [F.col(col) for col, mask in zip(fieldnames, mask_root) if mask][0]
+
+        # if no single field could be extracted, fail.
         raise AssertionError(
             """
             argname {} corresponds to several entries in the schema: {}.
