@@ -358,11 +358,11 @@ def get_cols_from_args(argname, flatten_schema):
         # when searching for 'ra'. # Check if only one corresponds exactly to argname
         mask_exact = np.array([i.split(".")[-1] == argname for i in colname])
 
-        fieldnames = [F.col(col) for col, mask in zip(colname, mask_exact) if mask]
+        fieldnames = [col for col, mask in zip(colname, mask_exact) if mask]
 
         if len(fieldnames) == 1:
             # We have a single field matching, good!
-            return fieldnames[0]
+            return F.col(fieldnames[0])
 
         # Favor field at the root level
         mask_root = np.array([len(i.split(".")) == 1 for i in fieldnames])
