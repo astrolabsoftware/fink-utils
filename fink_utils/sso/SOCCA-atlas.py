@@ -10,7 +10,6 @@ from astropy.time import Time
 import requests
 from asteroid_spinprops.ssolib import modelfit
 import os
-import json
 
 def usage():
     print("""
@@ -56,7 +55,6 @@ def query(name, epochs):
     pd.DataFrame - Input dataframe with ephemerides columns appended
                 False - If query failed somehow
     """
-
     # Pass sorted list of epochs to speed up query
     # Have to convert them to JD
     epochs = [Time(str(e), format="jd").jd for e in epochs]
@@ -75,7 +73,7 @@ def query(name, epochs):
         "-observer": "500",
         "-tscale": "UTC",
     }
-    params["-output"] += f",--iofile(ephemcc-photom.xml)"
+    params["-output"] += ",--iofile(ephemcc-photom.xml)"
 
     # Execute query
     try:
@@ -121,8 +119,8 @@ def main(argv):
     data["dxy"] = np.sqrt(data["dx"] ** 2 + data["dy"] ** 2)
     data["mred"] = data["m"] - 5 * np.log10(data["R"] * data["delta"])
 
-    x = data["dxy"].values
-    y = data["mred"].values
+    x = data["dxy"].to_numpy()
+    y = data["mred"].to_numpy()
 
     xy = np.vstack([x, y])
     kde = gaussian_kde(xy)
@@ -202,8 +200,8 @@ def main(argv):
     print("Querying ephemerides via IMCCE Miriade..")
     ephem = query(rockid, data_inl["JD_lc"])
 
-    ra_s = ephem["RA_h"].values
-    dec_s = ephem["DEC_h"].values
+    ra_s = ephem["RA_h"].to_numpy()
+    dec_s = ephem["DEC_h"].to_numpy()
 
     pdf = data_inl.reset_index(drop=True)
 
@@ -216,7 +214,7 @@ def main(argv):
             "mred": "cmred",
             "R": "Dhelio",
         },
-        inplace=True,
+        # inplace=True,
     )
 
     # Add missing columns

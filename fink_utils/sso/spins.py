@@ -2185,7 +2185,7 @@ def fit_spin(
             loss="soft_l1",
             args=args,
         )
-    except (RuntimeError, ValueError) as e:
+    except (RuntimeError, ValueError):
         outdic = {"fit": 3, "status": -2}
         return outdic
 
