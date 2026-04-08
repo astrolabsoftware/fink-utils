@@ -748,8 +748,8 @@ def build_bounds(
     """
     if bounds is None:
         bounds = (
-            [-3, GMIN, GMIN, 0, -np.pi / 2, 2.2 / 24.0, 1, 1, -np.pi / 2],
-            [30, GMAX, GMAX, 2 * np.pi, np.pi / 2, 1000, 5, 5, np.pi / 2],
+            [-3, GMIN, GMIN, 0, -np.pi / 2, 0.12 / 24, 1, 1, -np.pi / 2],
+            [30, GMAX, GMAX, 2 * np.pi, np.pi / 2, 2.4e5 / 24, 5, 5, np.pi / 2],
         )
         lower_bounds = np.array(bounds[0])
         upper_bounds = np.array(bounds[1])
@@ -768,8 +768,8 @@ def build_bounds(
 
     if use_angles:
         bounds = (
-            [-3, GMIN, GMIN, 2.2 / 24.0, -np.inf, -np.inf, -np.inf, 1, 1, -np.pi / 2],
-            [30, GMAX, GMAX, 1000, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
+            [-3, GMIN, GMIN, 0.12 / 24.0, -np.inf, -np.inf, -np.inf, 1, 1, -np.pi / 2],
+            [30, GMAX, GMAX, 2.4e5 / 24, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
         )
         lower_bounds = np.array(bounds[0])
         upper_bounds = np.array(bounds[1])
@@ -1406,12 +1406,14 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]),
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                        ]
+                    ),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1432,14 +1434,16 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca_terminator(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                        ra_s[mask].tolist(),
-                        dec_s[mask].tolist(),
-                    ]),
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                            ra_s[mask].tolist(),
+                            dec_s[mask].tolist(),
+                        ]
+                    ),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1917,13 +1921,15 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame({
-        "i:magpsf_red": magpsf_red,
-        "i:sigmapsf": sigmapsf,
-        "Phase": phase,
-        "i:jd": jds,
-        "i:fid": filters,
-    })
+    pdf = pd.DataFrame(
+        {
+            "i:magpsf_red": magpsf_red,
+            "i:sigmapsf": sigmapsf,
+            "Phase": phase,
+            "i:jd": jds,
+            "i:fid": filters,
+        }
+    )
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
