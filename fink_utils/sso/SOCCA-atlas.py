@@ -11,6 +11,7 @@ import requests
 from asteroid_spinprops.ssolib import modelfit
 import os
 
+
 def usage():
     print("""
 SOCCA - ATLAS
