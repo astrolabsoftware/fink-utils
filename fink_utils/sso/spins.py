@@ -749,7 +749,7 @@ def build_bounds(
     if bounds is None:
         bounds = (
             [-3, GMIN, GMIN, 0, -np.pi / 2, 0.12 / 24, 1, 1, -np.pi / 2],
-            [30, GMAX, GMAX, 2 * np.pi, np.pi / 2, 2.4e5 / 24, 5, 5, np.pi / 2],
+            [30, GMAX, GMAX, 2 * np.pi, np.pi / 2, 4.8e5 / 24, 5, 5, np.pi / 2],
         )
         lower_bounds = np.array(bounds[0])
         upper_bounds = np.array(bounds[1])
@@ -769,7 +769,7 @@ def build_bounds(
     if use_angles:
         bounds = (
             [-3, GMIN, GMIN, 0.12 / 24.0, -np.inf, -np.inf, -np.inf, 1, 1, -np.pi / 2],
-            [30, GMAX, GMAX, 2.4e5 / 24, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
+            [30, GMAX, GMAX, 4.8e5 / 24, np.inf, np.inf, np.inf, 5, 5, np.pi / 2],
         )
         lower_bounds = np.array(bounds[0])
         upper_bounds = np.array(bounds[1])
@@ -2186,7 +2186,6 @@ def fit_spin(
             args=args,
         )
     except (RuntimeError, ValueError) as e:
-        print(e)
         outdic = {"fit": 3, "status": -2}
         return outdic
 
