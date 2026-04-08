@@ -29,7 +29,6 @@ def dxy_cleaning(data, dxy, mag_red):
     --------
     >>> data_xy = dxy_cleaning(data, data["dxy"], data["mred"])
     """
-
     x = dxy
     y = mag_red
 
@@ -104,8 +103,6 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
     ...     data_xy["dec"].values,
     ... )
     """
-
-
     data_inl, mag_red_inl, sigma_inl, phase_angle_inl, filters_inl, ra_inl, dec_inl = (
         data.copy(),
         mag_red.copy(),
