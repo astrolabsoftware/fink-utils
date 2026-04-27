@@ -1,14 +1,35 @@
+# Copyright 2026 AstroLab Software
+# Author: Odysseas Xenos
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Utilities for cleaning data before calling SOCCA"""
+
 import numpy as np
 from scipy.stats import gaussian_kde
+
 from fink_utils.sso.spins import estimate_sso_params, func_shg1g2
 
+from fink_utils.tester import regular_unit_tests
 
-def dxy_cleaning(data, dxy, mag_red):
+
+def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
     """
     Filter observations based on their density in (dxy, reduced magnitude) space using a Gaussian KDE.
 
+    Notes
+    -----
     A 2D KDE is computed over the (dxy, mag_red) plane.
-    Points are retained if they fall within the 95% highest-density region(s).
+    Points are retained if they fall within the 95% (default) highest-density region(s).
 
     Parameters
     ----------
@@ -27,6 +48,17 @@ def dxy_cleaning(data, dxy, mag_red):
 
     Examples
     --------
+    >>> import pandas as pd
+    >>> pdf = pd.read_parquet('fink_utils/test_data/agg_benoit_julien_2024/')
+    >>> data = pd.DataFrame.from_dict(pdf.head(1).to_dict(orient='records')[0])
+
+    # Dummy values
+    >>> data["dx"] = np.random.normal(0, 1, size=len(data))
+    >>> data["dy"] = np.random.normal(0, 1, size=len(data))
+    >>> data["dxy"] = np.sqrt(data["dx"] ** 2 + data["dy"] ** 2)
+
+    # Dummy values
+    >>> data["mred"] = data["cmagpsf"]
     >>> data_xy = dxy_cleaning(data, data["dxy"], data["mred"])
     """
     x = dxy
@@ -50,7 +82,7 @@ def dxy_cleaning(data, dxy, mag_red):
     Z_cumsum = np.cumsum(Z_sorted)
     Z_cumsum /= Z_cumsum[-1]
 
-    threshold_index = np.searchsorted(Z_cumsum, 0.95)
+    threshold_index = np.searchsorted(Z_cumsum, threshold)
     level = Z_sorted[threshold_index]
 
     cond_kde = kde(xy) >= level
@@ -164,3 +196,10 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
             break
 
     return data_inl
+
+
+if __name__ == "__main__":
+    """Execute the unit test suite"""
+
+    # Run the test suite
+    regular_unit_tests(globals())
