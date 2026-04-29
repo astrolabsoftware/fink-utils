@@ -49,7 +49,7 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
     Examples
     --------
     >>> import pandas as pd
-    >>> pdf = pd.read_parquet('fink_utils/test_data/agg_benoit_julien_2024/')
+    >>> pdf = pd.read_parquet('fink_utils/test_data/atlas-sscat.v3.0_x_ztf.202512_M22_with_ephems.parquet')
     >>> data = pd.DataFrame.from_dict(pdf.head(1).to_dict(orient='records')[0])
 
     # Dummy values
@@ -92,7 +92,9 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
     return data_kde
 
 
-def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
+def iterative_cleaning(
+    data, mag_red, sigma, phase_angle, filters, ra, dec, verbose=False
+):
     """
     Iteratively filter observations based on residuals from an sHG1G2 photometric model fit.
 
@@ -117,6 +119,8 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
         Right ascension values of the observations [deg].
     dec : array-like
         Declination values of the observations [deg].
+    verbose: bool
+        If True, print useful debugging messages
 
     Returns
     -------
@@ -125,14 +129,17 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
 
     Examples
     --------
+    >>> import pandas as pd
+    >>> pdf = pd.read_parquet('fink_utils/test_data/atlas-sscat.v3.0_x_ztf.202512_M22_with_ephems.parquet')
+    >>> data = pd.DataFrame.from_dict(pdf.head(1).to_dict(orient='records')[0])
     >>> data_it = iterative_cleaning(
-    ...     data_xy,
-    ...     data_xy["mred"].values,
-    ...     data_xy["dm"].values,
-    ...     data_xy["SOE"].values,
-    ...     data_xy["filt"].values,
-    ...     data_xy["ra"].values,
-    ...     data_xy["dec"].values,
+    ...     data,
+    ...     data["cmagpsf"].values,
+    ...     data["csigmapsf"].values,
+    ...     data["Phase"].values,
+    ...     data["cfid"].values,
+    ...     data["cra"].values,
+    ...     data["cdec"].values,
     ... )
     """
     data_inl, mag_red_inl, sigma_inl, phase_angle_inl, filters_inl, ra_inl, dec_inl = (
@@ -191,7 +198,7 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
         dec_inl = dec_inl[cutoff]
 
         new_len = len(data_inl)
-        if prev_len == new_len:
+        if (prev_len == new_len) and verbose:
             print("Number of sHG1G2 cleaning iterations:", k)
             break
 
