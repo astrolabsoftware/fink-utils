@@ -247,16 +247,15 @@ def query_miriade_ephemcc(
     with open(ephem_path, "r") as f:
         data = json.load(f)
 
-    if return_json:
-        return data
-
-    ephem = pd.DataFrame(data["data"], columns=data["datacol"].keys())
-
     # clean tmp files
     os.remove(ephem_path)
     os.remove(date_path)
 
-    return ephem
+    if return_json:
+        return data
+    else:
+        ephem = pd.DataFrame(data["data"], columns=data["datacol"].keys())
+        return ephem
 
 
 @profile
