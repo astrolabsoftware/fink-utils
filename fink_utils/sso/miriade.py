@@ -14,14 +14,13 @@
 # limitations under the License.
 """Utilities for Miriade/eproc"""
 
+import logging
 import requests
 import subprocess
 import json
 import os
 import io
 
-from astropy.coordinates import SkyCoord
-import astropy.units as u
 from astropy.time import Time
 
 import pandas as pd
@@ -30,6 +29,8 @@ import numpy as np
 from line_profiler import profile
 
 from fink_utils.tester import regular_unit_tests
+
+_LOG = logging.getLogger(__name__)
 
 
 def get_sso_data(ssnamenr):
@@ -118,6 +119,7 @@ def query_miriade(
         "-output": "--jd,--colors(SDSS:r,SDSS:g),--iofile(default-ephemcc-observation.xml)",
         "-observer": observer,
         "-tscale": "UTC",
+        "-from": "fink",
     }
 
     # Pass sorted list of epochs to speed up query
@@ -261,11 +263,10 @@ def query_miriade_ephemcc(
 @profile
 def get_miriade_data(
     pdf,
-    sso_colname="i:ssnamenr",
+    survey="ztf",
     observer="I41",
     rplane="1",
     tcoor=5,
-    withecl=False,
     method="rest",
     parameters=None,
     timeout=30,
@@ -277,11 +278,12 @@ def get_miriade_data(
     Parameters
     ----------
     pdf: pd.DataFrame
-        Pandas DataFrame containing Fink alert data for a (or several) SSO
-    sso_colname: str, optional
-        Name of the column containing the SSO name to use when querying
-        the miriade service. Beware that `ssnamenr` from ZTF is not very
-        accurate, and it is better to use quaero before. Default is `i:ssnamenr`
+        Pandas DataFrame containing Fink alert data for a (or several) SSO.
+        Mandatory columns depend on the survey:
+        - ztf: i:ssnamenr, i:jd, i:magpsf
+        - lsst: r:packed_primary_provisional_designation, r:midpointMjdTai, r:psfFlux
+    survey: str
+        Survey name among ztf | lsst.
     observer: str
         IAU Obs code - default to ZTF
         https://minorplanetcenter.net//iau/lists/ObsCodesF.html
@@ -291,9 +293,6 @@ def get_miriade_data(
     tcoor: int
         See https://ssp.imcce.fr/webservices/miriade/api/ephemcc/
         Default is 5 (dedicated to observation)
-    withecl: bool
-        If True, query for also for ecliptic Longitude & Latitude (extra call to miriade).
-        Default is True.
     method: str
         Use the REST API (`rest`), or a local installation of miriade (`ephemcc`)
     parameters: dict, optional
@@ -314,23 +313,59 @@ def get_miriade_data(
     >>> ssnamenrs = ["33803"]
     >>> for ssnamenr in ssnamenrs:
     ...     pdf = get_sso_data(ssnamenr)
-    ...     pdfEphem = get_miriade_data(pdf, withecl=False)
+    ...     pdfEphem = get_miriade_data(pdf, survey="ztf", observer="I41", shift=15.0)
+    ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
+    ...     pdfEphem = get_miriade_data(pdf, survey="lsst", observer="X05", shift=0.0)
     ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
     """
+    COLDEF = {
+        "ztf": {
+            "name": "i:ssnamenr",
+            "time": "i:jd",
+            "mag": "i:magpsf",
+            "scale": "utc",
+            "unittime": "jd",
+            "unitphot": "mag",
+        },
+        "lsst": {
+            "name": "r:packed_primary_provisional_designation",
+            "time": "r:midpointMjdTai",
+            "mag": "r:psfFlux",
+            "scale": "tai",
+            "unittime": "mjd",
+            "unitphot": "flux",
+        },
+    }
+    for colname in COLDEF[survey].values():
+        if colname not in pdf.columns:
+            _LOG.warning(f"You must have {colname} in your DataFrame!")
+            return pdf
+
     if parameters is None:
         parameters = {}
 
-    ssnamenrs = np.unique(pdf[sso_colname].values)
+    if (COLDEF[survey]["unittime"] != "jd") and (COLDEF[survey]["scale"] != "utc"):
+        time = Time(
+            pdf[COLDEF[survey]["time"]].to_numpy(),
+            format=COLDEF[survey]["unittime"],
+            scale=COLDEF[survey]["scale"],
+        ).utc.jd
+    else:
+        time = pdf[COLDEF[survey]["time"]].to_numpy()
+
+    # FIXME: why looping? despite being different names, they should be
+    # the same target (i.e. resolved the same way by quaero).
+    ssnamenrs = np.unique(pdf[COLDEF[survey]["name"]].values)
 
     infos = []
     for ssnamenr in ssnamenrs:
-        mask = pdf[sso_colname] == ssnamenr
+        mask = pdf[COLDEF[survey]["name"]] == ssnamenr
         pdf_sub = pdf[mask]
 
         if method == "rest":
             eph = query_miriade(
                 str(ssnamenr),
-                pdf_sub["i:jd"],
+                time[mask],
                 observer=observer,
                 rplane=rplane,
                 tcoor=tcoor,
@@ -340,7 +375,7 @@ def get_miriade_data(
         elif method == "ephemcc":
             eph = query_miriade_ephemcc(
                 str(ssnamenr),
-                pdf_sub["i:jd"],
+                time[mask],
                 observer=observer,
                 rplane=rplane,
                 tcoor=tcoor,
@@ -354,50 +389,20 @@ def get_miriade_data(
             )
 
         if not eph.empty:
-            if withecl:
-                # Add Ecliptic coordinates
-                if method == "rest":
-                    eph_ec = query_miriade(
-                        str(ssnamenr),
-                        pdf_sub["i:jd"],
-                        observer=observer,
-                        rplane="2",
-                        shift=shift,
-                        timeout=timeout,
-                    )
-                elif method == "ephemcc":
-                    eph_ec = query_miriade_ephemcc(
-                        str(ssnamenr),
-                        pdf_sub["i:jd"],
-                        observer=observer,
-                        rplane="2",
-                        shift=shift,
-                        parameters=parameters,
-                        uid=uid,
-                    )
-                else:
-                    raise AssertionError(
-                        "Method must be `rest` or `ephemcc`. {} not supported".format(
-                            method
-                        )
-                    )
-
-                sc = SkyCoord(
-                    eph_ec["Longitude"], eph_ec["Latitude"], unit=(u.deg, u.deg)
-                )
-                eph["Longitude"] = sc.ra.value
-                eph["Latitude"] = sc.dec.value
-
             # Merge fink & Eph
             info = pd.concat([eph.reset_index(), pdf_sub.reset_index()], axis=1)
 
             # index has been duplicated obviously
             info = info.loc[:, ~info.columns.duplicated()]
 
+            if COLDEF[survey]["unitphot"] == "flux":
+                # FIXME: assume LSST zero point...
+                mag = 31.4 - 2.5 * np.log10(info[COLDEF[survey]["mag"]])
+            else:
+                mag = info[COLDEF[survey]["mag"]].to_numpy()
+
             # Compute magnitude reduced to unit distance
-            info["i:magpsf_red"] = info["i:magpsf"] - 5 * np.log10(
-                info["Dobs"] * info["Dhelio"]
-            )
+            info["i:magpsf_red"] = mag - 5 * np.log10(info["Dobs"] * info["Dhelio"])
             infos.append(info)
         else:
             infos.append(pdf_sub)
