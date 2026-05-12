@@ -267,7 +267,6 @@ def get_miriade_data(
     observer="I41",
     rplane="1",
     tcoor=5,
-    withecl=False,
     method="rest",
     parameters=None,
     timeout=30,
@@ -294,9 +293,6 @@ def get_miriade_data(
     tcoor: int
         See https://ssp.imcce.fr/webservices/miriade/api/ephemcc/
         Default is 5 (dedicated to observation)
-    withecl: bool
-        If True, query for also for ecliptic Longitude & Latitude (extra call to miriade).
-        Default is True.
     method: str
         Use the REST API (`rest`), or a local installation of miriade (`ephemcc`)
     parameters: dict, optional
@@ -317,7 +313,9 @@ def get_miriade_data(
     >>> ssnamenrs = ["33803"]
     >>> for ssnamenr in ssnamenrs:
     ...     pdf = get_sso_data(ssnamenr)
-    ...     pdfEphem = get_miriade_data(pdf, survey="ztf", withecl=False)
+    ...     pdfEphem = get_miriade_data(pdf, survey="ztf", observer="I41", shift=15.0)
+    ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
+    ...     pdfEphem = get_miriade_data(pdf, survey="lsst", observer="X05", shift=0.0)
     ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
     """
     COLDEF = {
