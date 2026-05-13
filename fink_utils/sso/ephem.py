@@ -151,7 +151,7 @@ def extract_ztf_ephemerides_from_miriade(
     ...         F.lit("I41"),
     ...         F.lit(15.0),
     ...         F.expr("uuid()"),
-    ...         F.lit("rest")))
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
 
     >>> df_prev_ephem = expand_columns(df_prev_ephem)
     >>> out = df_prev_ephem.select(["cjd", "Dobs"]).collect()
@@ -171,7 +171,7 @@ def extract_ztf_ephemerides_from_miriade(
     ...         F.lit("I41"),
     ...         F.lit(15.0),
     ...         F.expr("uuid()"),
-    ...         F.lit("rest")))
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
     >>> df_new_ephem = expand_columns(df_new_ephem)
     >>> out = df_new_ephem.select(["cjd", "RA"]).collect()
     >>> assert len(out[0]["cjd"]) == len(out[0]["RA"])
@@ -187,7 +187,7 @@ def extract_ztf_ephemerides_from_miriade(
     ...         F.lit("I41"),
     ...         F.lit(15.0),
     ...         F.expr("uuid()"),
-    ...         F.lit("rest")))
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
     >>> df_join_ephem = expand_columns(df_join_ephem)
 
     >>> df_join_ephem_bis = join_aggregated_sso_data(df_prev_ephem, df_new_ephem, on="ssnamenr")
