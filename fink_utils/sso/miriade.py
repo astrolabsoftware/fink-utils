@@ -62,6 +62,7 @@ def query_miriade(
     shift=15.0,
     timeout=30,
     return_json=False,
+    iofile="ephemcc-photom.xml",
 ):
     """Gets asteroid or comet ephemerides from IMCCE Miriade for a suite of JD for a single SSO
 
@@ -93,6 +94,9 @@ def query_miriade(
     return_json: bool
         If True, return the JSON payload. Otherwise, returns
         a pandas DataFrame. Default is False.
+    iofile: str
+        IO file name for Miriade. Default is ephemcc-photom.xml
+        For SOCCA use ephemcc-photom.xml
 
     Returns
     -------
@@ -116,7 +120,7 @@ def query_miriade(
         "-mime": "json",
         "-rplane": rplane,
         "-tcoor": tcoor,
-        "-output": "--jd,--colors(SDSS:r,SDSS:g),--iofile(default-ephemcc-observation.xml)",
+        "-output": "--jd,--colors(SDSS:r,SDSS:g),--iofile({})".format(iofile),
         "-observer": observer,
         "-tscale": "UTC",
         "-from": "fink",
