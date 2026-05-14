@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 import pyspark.sql.functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (
     ArrayType,
     BooleanType,
@@ -144,10 +144,10 @@ def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
         return diffmaglim[-1]
 
 
-@pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
+@pandas_udf(MapType(StringType(), ArrayType(FloatType())))
 def extend_lc_with_upper_limits(
-    cmagpsf, csigmapsf, cfid, cdiffmaglim, onlyfainterlimits=False
-):
+    cmagpsf: pd.Series, csigmapsf: pd.Series, cfid: pd.Series, cdiffmaglim: pd.Series, onlyfainterlimits: pd.Series
+) -> pd.Series:
     """Extend valid measurements with the last upper limit for each band
 
     Notes
@@ -495,8 +495,8 @@ def apply_user_defined_filter(df: DataFrame, toapply: str, logger=None) -> DataF
     )
 
 
-@pandas_udf(ArrayType(BooleanType()), PandasUDFType.SCALAR)
-def apply_quality_flags_on_history(rb, nbad):
+@pandas_udf(ArrayType(BooleanType()))
+def apply_quality_flags_on_history(rb: pd.Series, nbad: pd.Series) -> pd.Series:
     """Apply quality flags for the history vector
 
     Parameters
