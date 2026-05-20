@@ -165,7 +165,7 @@ def get_conversion_dic(path: str = None, remove_unknown: bool = True) -> pd.Data
 
     pdf = pdf[["otype", "old_label", "new_label"]]
 
-    pdf = pdf.applymap(lambda x: x.strip())
+    pdf = pdf.map(lambda x: x.strip())
 
     if remove_unknown:
         pdf = pdf[pdf["old_label"] != "Unknown"]
