@@ -36,12 +36,14 @@ COLUMNS = [
     "Elong.",
     "RA",
     "DEC",
-    "px",
-    "py",
-    "pz",
-    "vx",
-    "vy",
-    "vz",
+    "RA_h",
+    "DEC_h",
+    "px_ec",
+    "py_ec",
+    "pz_ec",
+    "px_h_ec",
+    "py_h_ec",
+    "pz_h_ec",
 ]
 
 
