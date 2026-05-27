@@ -43,13 +43,10 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
 
     Returns
     -------
-    <<<<<<< HEAD
     data_kde: pandas.DataFrame
         Subset of `data` containing only the retained points.
     data_kde_rejects: pandas.DataFrame
         Subset of `data` containing only the rejected points.
-    pandas.DataFrame
-        Subset of `data` containing only the retained points.
 
     Examples
     --------
