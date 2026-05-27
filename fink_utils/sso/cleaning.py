@@ -43,8 +43,10 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
 
     Returns
     -------
-    pandas.DataFrame
+    data_kde: pandas.DataFrame
         Subset of `data` containing only the retained points.
+    data_kde_rejects: pandas.DataFrame
+        Subset of `data` containing only the rejected points.
 
     Examples
     --------
@@ -59,7 +61,7 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
 
     # Dummy values
     >>> data["mred"] = data["cmagpsf"]
-    >>> data_xy = dxy_cleaning(data, data["dxy"], data["mred"])
+    >>> data_xy, data_rejects = dxy_cleaning(data, data["dxy"], data["mred"])
     """
     x = dxy
     y = mag_red
@@ -88,8 +90,9 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
     cond_kde = kde(xy) >= level
 
     data_kde = data[cond_kde]
+    data_kde_rejects = data[~cond_kde]
 
-    return data_kde
+    return data_kde, data_kde_rejects
 
 
 def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
@@ -120,12 +123,14 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
 
     Returns
     -------
-    pandas.DataFrame
+    data_inl : pandas.DataFrame
         Subset of `data` containing only the retained points after iterative cleaning.
+    data_rej : pandas.DataFrame
+        Subset of `data` containing only the rejected points after iterative cleaning.
 
     Examples
     --------
-    >>> data_it = iterative_cleaning(
+    >>> data_it, data_rej = iterative_cleaning(
     ...     data_xy,
     ...     data_xy["mred"].values,
     ...     data_xy["dm"].values,
@@ -144,6 +149,10 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
         ra.copy(),
         dec.copy(),
     )
+
+    # to keep track of rejected points
+    rejected_mask_total = np.zeros(len(data), dtype=bool)
+
     for k in range(11):
         shgg_params = estimate_sso_params(
             mag_red_inl,
@@ -191,11 +200,19 @@ def iterative_cleaning(data, mag_red, sigma, phase_angle, filters, ra, dec):
         dec_inl = dec_inl[cutoff]
 
         new_len = len(data_inl)
+
+        rejected_mask_iter = ~cutoff
+        rejected_mask_total[np.where(~rejected_mask_total)[0][rejected_mask_iter]] = (
+            True
+        )
+
         if prev_len == new_len:
             print("Number of sHG1G2 cleaning iterations:", k)
             break
 
-    return data_inl
+    data_rej = data[rejected_mask_total]
+
+    return data_inl, data_rej
 
 
 if __name__ == "__main__":
