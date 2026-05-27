@@ -160,11 +160,11 @@ def func_hg12(ph, h, g12):
     out: array of floats
         H - 2.5 log(f(G12))
     """
-    from sbpy.photometry import HG1G2, HG12
+    from sbpy.photometry import HG1G2, HG12_Pen16
 
     # Standard G1G2 part
-    g1 = HG12._G12_to_G1(g12)
-    g2 = HG12._G12_to_G2(g12)
+    g1 = HG12_Pen16._G12_to_G1(g12)
+    g2 = HG12_Pen16._G12_to_G2(g12)
     func1 = (
         g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
     )
