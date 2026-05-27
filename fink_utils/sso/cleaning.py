@@ -138,26 +138,10 @@ def iterative_cleaning(
 
     Examples
     --------
-    >>> data_it, data_rej = iterative_cleaning(
-    ...     data_xy,
-    ...     data_xy["mred"].values,
-    ...     data_xy["dm"].values,
-    ...     data_xy["SOE"].values,
-    ...     data_xy["filt"].values,
-    ...     data_xy["ra"].values,
-    ...     data_xy["dec"].values,
-
-    Returns
-    -------
-    pandas.DataFrame
-        Subset of `data` containing only the retained points after iterative cleaning.
-
-    Examples
-    --------
     >>> import pandas as pd
     >>> pdf = pd.read_parquet('fink_utils/test_data/atlas-sscat.v3.0_x_ztf.202512_M22_with_ephems.parquet')
     >>> data = pd.DataFrame.from_dict(pdf.head(1).to_dict(orient='records')[0])
-    >>> data_it = iterative_cleaning(
+    >>> data_it, data_rej = iterative_cleaning(
     ...     data,
     ...     data["cmagpsf"].values,
     ...     data["csigmapsf"].values,
