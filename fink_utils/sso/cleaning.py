@@ -43,8 +43,10 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
 
     Returns
     -------
-    pandas.DataFrame
+    data_kde: pandas.DataFrame
         Subset of `data` containing only the retained points.
+    data_kde_rejects: pandas.DataFrame
+        Subset of `data` containing only the rejected points.
 
     Examples
     --------
@@ -59,7 +61,7 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
 
     # Dummy values
     >>> data["mred"] = data["cmagpsf"]
-    >>> data_xy = dxy_cleaning(data, data["dxy"], data["mred"])
+    >>> data_xy, data_rejects = dxy_cleaning(data, data["dxy"], data["mred"])
     """
     x = dxy
     y = mag_red
@@ -88,8 +90,9 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
     cond_kde = kde(xy) >= level
 
     data_kde = data[cond_kde]
+    data_kde_rejects = data[~cond_kde]
 
-    return data_kde
+    return data_kde, data_kde_rejects
 
 
 def iterative_cleaning(
@@ -122,17 +125,20 @@ def iterative_cleaning(
     verbose: bool
         If True, print useful debugging messages
 
+
     Returns
     -------
-    pandas.DataFrame
+    data_inl : pandas.DataFrame
         Subset of `data` containing only the retained points after iterative cleaning.
+    data_rej : pandas.DataFrame
+        Subset of `data` containing only the rejected points after iterative cleaning.
 
     Examples
     --------
     >>> import pandas as pd
     >>> pdf = pd.read_parquet('fink_utils/test_data/atlas-sscat.v3.0_x_ztf.202512_M22_with_ephems.parquet')
     >>> data = pd.DataFrame.from_dict(pdf.head(1).to_dict(orient='records')[0])
-    >>> data_it = iterative_cleaning(
+    >>> data_it, data_rej = iterative_cleaning(
     ...     data,
     ...     data["cmagpsf"].values,
     ...     data["csigmapsf"].values,
@@ -151,6 +157,10 @@ def iterative_cleaning(
         ra.copy(),
         dec.copy(),
     )
+
+    # to keep track of rejected points
+    rejected_mask_total = np.zeros(len(data), dtype=bool)
+
     for k in range(11):
         shgg_params = estimate_sso_params(
             mag_red_inl,
@@ -198,11 +208,19 @@ def iterative_cleaning(
         dec_inl = dec_inl[cutoff]
 
         new_len = len(data_inl)
-        if (prev_len == new_len) and verbose:
+
+        rejected_mask_iter = ~cutoff
+        rejected_mask_total[np.where(~rejected_mask_total)[0][rejected_mask_iter]] = (
+            True
+        )
+
+        if prev_len == new_len and verbose:
             print("Number of sHG1G2 cleaning iterations:", k)
             break
 
-    return data_inl
+    data_rej = data[rejected_mask_total]
+
+    return data_inl, data_rej
 
 
 if __name__ == "__main__":
