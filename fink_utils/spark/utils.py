@@ -146,7 +146,11 @@ def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())))
 def extend_lc_with_upper_limits(
-    cmagpsf: pd.Series, csigmapsf: pd.Series, cfid: pd.Series, cdiffmaglim: pd.Series, onlyfainterlimits: pd.Series
+    cmagpsf: pd.Series,
+    csigmapsf: pd.Series,
+    cfid: pd.Series,
+    cdiffmaglim: pd.Series,
+    onlyfainterlimits: pd.Series,
 ) -> pd.Series:
     """Extend valid measurements with the last upper limit for each band
 
@@ -191,7 +195,7 @@ def extend_lc_with_upper_limits(
 
     >>> df = spark.read.format("parquet").load("datatest")
     >>> df = df.withColumn("ext", extend_lc_with_upper_limits(
-    ...     "cmagpsf", "csigmapsf", "cfid", "cdiffmaglim"))
+    ...     "cmagpsf", "csigmapsf", "cfid", "cdiffmaglim", F.lit(False)))
     >>> df = df.withColumn("cmagpsf_ext", df["ext"].getItem("cmagpsf_ext"))
     >>> df = df.withColumn("csigmapsf_ext", df["ext"].getItem("csigmapsf_ext"))
 
