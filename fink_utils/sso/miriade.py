@@ -33,7 +33,7 @@ from fink_utils.tester import regular_unit_tests
 _LOG = logging.getLogger(__name__)
 
 
-def get_sso_data(ssnamenr):
+def get_sso_data(ssnamenr, survey="ztf", withEphem=True):
     """Wrapper for tests
 
     Parameters
@@ -42,8 +42,8 @@ def get_sso_data(ssnamenr):
         SSO name
     """
     r = requests.post(
-        "https://api.ztf.fink-portal.org/api/v1/sso",
-        json={"n_or_d": ssnamenr, "withEphem": True, "output-format": "json"},
+        f"https://api.{survey}.fink-portal.org/api/v1/sso",
+        json={"n_or_d": ssnamenr, "withEphem": withEphem, "output-format": "json"},
     )
 
     if r.status_code != 200:
@@ -314,13 +314,13 @@ def get_miriade_data(
 
     Examples
     --------
-    >>> ssnamenrs = ["33803"]
-    >>> for ssnamenr in ssnamenrs:
-    ...     pdf = get_sso_data(ssnamenr)
-    ...     pdfEphem = get_miriade_data(pdf, survey="ztf", observer="I41", shift=15.0)
-    ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
-    ...     pdfEphem = get_miriade_data(pdf, survey="lsst", observer="X05", shift=0.0)
-    ...     assert "Phase" in pdfEphem.columns, (ssnamenr)
+    >>> pdf = get_sso_data("33803", survey="ztf", withEphem=False)
+    >>> pdfEphem = get_miriade_data(pdf, survey="ztf", observer="I41", shift=15.0)
+    >>> assert "Phase" in pdfEphem.columns
+
+    >>> pdf = get_sso_data("1996 TC28", survey="lsst", withEphem=False)
+    >>> pdfEphem = get_miriade_data(pdf, survey="lsst", observer="X05", shift=0.0)
+    >>> assert "Phase" in pdfEphem.columns
     """
     COLDEF = {
         "ztf": {
@@ -332,7 +332,8 @@ def get_miriade_data(
             "unitphot": "mag",
         },
         "lsst": {
-            "name": "r:packed_primary_provisional_designation",
+            # "name": "r:packed_primary_provisional_designation",
+            "name": "f:sso_name",
             "time": "r:midpointMjdTai",
             "mag": "r:psfFlux",
             "scale": "tai",
@@ -341,7 +342,11 @@ def get_miriade_data(
         },
     }
     for colname in COLDEF[survey].values():
-        if colname not in pdf.columns:
+        if (
+            colname.startswith("i:")
+            or colname.startswith("r:")
+            or colname.startswith("f:")
+        ) and colname not in pdf.columns:
             _LOG.warning(f"You must have {colname} in your DataFrame!")
             return pdf
 
