@@ -478,7 +478,7 @@ def join_aggregated_sso_data(df_prev, df_new, on="ssnamenr", output_filename=Non
 
 
 def aggregate_ztf_sso_data(
-    year,
+    year=None,
     month=None,
     stop_previous_month=False,
     prefix_path="archive/science",
@@ -488,8 +488,9 @@ def aggregate_ztf_sso_data(
 
     Parameters
     ----------
-    year: str
-        Year date in format YYYY.
+    year: str, optional
+        Year date in format YYYY. If not specified, take
+        all Fink data
     month: str, optional
         Month date in format MM. Default is None, in
         which case `year` only will be considered.
@@ -524,6 +525,13 @@ def aggregate_ztf_sso_data(
 
     >>> out = df_agg.collect()
     >>> assert len(out[0]["cfid"]) == 3, len(out[0]["cfid"])
+
+    Check full aggregation
+    >>> df_agg = aggregate_ztf_sso_data(prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cfid"]) == 3, len(out[0]["cfid"])
     """
     spark = SparkSession.builder.getOrCreate()
     cols0 = ["candidate.ssnamenr"]
@@ -536,6 +544,8 @@ def aggregate_ztf_sso_data(
         "candidate.jd",
     ]
 
+    if year is None:
+        path = prefix_path
     if month is not None:
         path = "{}/year={}/month={}".format(prefix_path, year, month)
     else:
