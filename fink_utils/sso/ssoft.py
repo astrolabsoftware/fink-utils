@@ -546,10 +546,10 @@ def aggregate_ztf_sso_data(
 
     if year is None:
         path = prefix_path
-    if month is not None:
-        path = "{}/year={}/month={}".format(prefix_path, year, month)
-    else:
+    elif month is None:
         path = "{}/year={}".format(prefix_path, year)
+    else:
+        path = "{}/year={}/month={}".format(prefix_path, year, month)
 
     df = spark.read.format("parquet").option("basePath", prefix_path).load(path)
 
