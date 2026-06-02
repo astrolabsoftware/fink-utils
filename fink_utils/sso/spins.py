@@ -954,6 +954,7 @@ def prop_ac_err(a_b, u_a_c, err_u_a_c, err_a_b):
     err_a_c = np.sqrt(term1 + term2 + term3)
     return err_a_c
 
+
 def propr_oblateness_error(u_obl, err_u_obl, R=0.7):
     """
     Propagate uncertainty from u_obl to the R parameter.
@@ -972,6 +973,7 @@ def propr_oblateness_error(u_obl, err_u_obl, R=0.7):
     """
     err_obl = R * np.exp(-u_obl) / (np.exp(-u_obl) + 1) ** 2 * err_u_obl
     return err_obl
+
 
 def propagate_legacy_errors(popt, perr, model):
     """
@@ -1012,6 +1014,7 @@ def propagate_legacy_errors(popt, perr, model):
             out.extend([err_H, err_G1, err_G2])
     return out
 
+
 def propagate_errors_shg1g2(popt, perr):
     """
     Propagate fitted parameter uncertainties to physical parameter uncertainties for the sHG1G2 model
@@ -1047,6 +1050,7 @@ def propagate_errors_shg1g2(popt, perr):
         err_G2 = prop_g2_err(G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2])
         out.extend([err_H, err_G1, err_G2])
     return out
+
 
 def propagate_errors(
     popt,
@@ -1117,6 +1121,7 @@ def propagate_errors(
         for i in range(0, len(err_f), 3):
             out.extend([err_f[i], err_f[i + 1], err_f[i + 2]])
     return out
+
 
 def parameter_remapping_legacy(x, model, physical_to_latent=True):
     """
@@ -1196,6 +1201,7 @@ def parameter_remapping_legacy(x, model, physical_to_latent=True):
                 out.extend([H, G1, G2])
 
     return out
+
 
 def parameter_remapping_shg1g2(
     x,
@@ -1296,6 +1302,7 @@ def parameter_remapping_shg1g2(
             out.extend([H, G1, G2])
 
     return np.array(out)
+
 
 def parameter_remapping(
     x,
