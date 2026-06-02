@@ -534,6 +534,7 @@ def get_opposition(jds, ssnamenr, location="I41"):
 
     return pdf[["elong", "elongFlag"]].to_numpy()
 
+
 def f_test_models(nfilt, nobs, models, rms_per_model):
     """
     Perform pairwise F-tests between phase curve models.
@@ -582,7 +583,6 @@ def f_test_models(nfilt, nobs, models, rms_per_model):
 
     Examples
     --------
-
     Scalar (single object)
     -----------------------
     >>> nfilt = 2
@@ -643,6 +643,7 @@ def f_test_models(nfilt, nobs, models, rms_per_model):
             store_comparisons[f"{m1}_{m2}"] = passed
 
     return store_comparisons
+
 
 if __name__ == "__main__":
     """Execute the unit test suite"""
