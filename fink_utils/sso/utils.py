@@ -106,7 +106,7 @@ def get_num_opposition(elong, width=4):
 
     # estimate number of oppositions
     >>> noppositions = get_num_opposition(
-    ...     pdf['Elong.'].values,
+    ...     pdf['Elong'].values,
     ...     width=4
     ... )
     >>> assert noppositions == 4, "Found {} oppositions for 8467 instead of 4!".format(noppositions)
@@ -533,6 +533,116 @@ def get_opposition(jds, ssnamenr, location="I41"):
     )
 
     return pdf[["elong", "elongFlag"]].to_numpy()
+
+
+def f_test_models(nfilt, nobs, models, rms_per_model):
+    """
+    Perform pairwise F-tests between phase curve models.
+
+    This function compares model fits using an F-test based on RMS values
+    and degrees of freedom, evaluating whether the addition of parameters
+    in a more complex model significantly improves the fit relative to a
+    simpler model.
+
+    The test is only applied in the valid direction:
+    from simpler models (fewer parameters) to more complex models.
+
+    Parameters
+    ----------
+    nfilt : int or array-like
+        Number of filters used in the fit. Can be a scalar (object-by-object mode)
+        or an array (vectorized mode over multiple objects).
+
+    nobs : int or array-like
+        Number of observations. Can be scalar or array-like.
+
+    models : list of str
+        List of model names to compare. Supported keys must exist in `dof_dict`.
+        Currently supported:
+            - HG
+            - HG12
+            - HG1G2
+            - SHG1G2
+            - SOCCA
+
+    rms_per_model : list of array-like
+        RMS values for each model, ordered consistently with `models`.
+        Each entry can be:
+            - scalar (single-object), or
+            - array-like (vectorized mode over many objects)
+
+    Returns
+    -------
+    dict
+        Dictionary where keys are `"model1_model2"` and values are:
+            - int (0 or 1) in scalar mode
+            - np.ndarray in vectorized mode
+
+        A value of 1 indicates that model2 significantly improves over model1
+        at the 99% confidence level.
+
+    Examples
+    --------
+    Scalar (single object)
+    -----------------------
+    >>> nfilt = 2
+    >>> nobs = 120
+    >>> models = ["HG", "HG1G2"]
+    >>> rms = [0.12, 0.08]
+    >>> out = f_test_models(nfilt, nobs, models, rms)
+    >>> out
+    {'HG_HG1G2': 1}
+
+    Vectorized (multiple objects)
+    -----------------------------
+    >>> import numpy as np
+    >>> nfilt = np.full(1000, 2)
+    >>> nobs = np.full(1000, 120)
+    >>> models = ["HG", "HG1G2"]
+    >>> rms = [
+            np.random.normal(0.1, 0.02, 1000),
+            np.random.normal(0.08, 0.02, 1000),
+        ]
+    >>> out = f_test_models(nfilt, nobs, models, rms)
+    >>> out["HG_HG1G2"].shape
+    (1000,)
+
+    """
+    import scipy.stats
+
+    dof_dict = {
+        "HG": 2 * nfilt,
+        "HG12": 2 * nfilt,
+        "HG1G2": 3 * nfilt,
+        "SHG1G2": 3 * nfilt + 3,
+        "SOCCA": 3 * nfilt + 7,
+    }
+
+    store_comparisons = {}
+
+    for i, m1 in enumerate(models):
+        for j, m2 in enumerate(models):
+            if m1 == m2:
+                continue
+
+            # test simpler -> more complex
+            if np.all(dof_dict[m2] <= dof_dict[m1]):
+                continue
+            dfn = dof_dict[m2] - dof_dict[m1]
+            dfd = nobs - dof_dict[m2]
+
+            F = (((rms_per_model[i] ** 2) / (rms_per_model[j] ** 2)) - 1) * (dfd / dfn)
+
+            alpha = scipy.stats.f.ppf(
+                q=0.99,
+                dfn=dfn,
+                dfd=dfd,
+            )
+
+            passed = (F > alpha).astype(int)
+            store_comparisons[f"{m1}_{m2}"] = passed
+
+    return store_comparisons
 
 
 if __name__ == "__main__":

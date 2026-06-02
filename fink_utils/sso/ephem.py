@@ -36,12 +36,14 @@ COLUMNS = [
     "Elong.",
     "RA",
     "DEC",
-    "px",
-    "py",
-    "pz",
-    "vx",
-    "vy",
-    "vz",
+    "RA_h",
+    "DEC_h",
+    "px_ec",
+    "py_ec",
+    "pz_ec",
+    "px_h_ec",
+    "py_h_ec",
+    "pz_h_ec",
 ]
 
 
@@ -106,7 +108,9 @@ def expand_columns(df, col_to_expand="ephem"):
 
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
-def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, method):
+def extract_ztf_ephemerides_from_miriade(
+    ssnamenr, cjd, observer, shift, uid, method, iofile
+):
     """Extract ephemerides for ZTF from Miriade
 
     Parameters
@@ -126,6 +130,8 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
         Method to compute ephemerides: `ephemcc` or `rest`.
         Use only the former on the Spark Cluster (local installation of ephemcc),
         otherwise use `rest` to call the ssodnet web service.
+    iofile: pd.Series of str
+        Name of the iofile to use. For SOCCA, use ephemcc-photom.xml.
 
     Returns
     -------
@@ -147,7 +153,7 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
     ...         F.lit("I41"),
     ...         F.lit(15.0),
     ...         F.expr("uuid()"),
-    ...         F.lit("rest")))
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
 
     >>> df_prev_ephem = expand_columns(df_prev_ephem)
     >>> out = df_prev_ephem.select(["cjd", "Dobs"]).collect()
@@ -167,7 +173,7 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
     ...         F.lit("I41"),
     ...         F.lit(15.0),
     ...         F.expr("uuid()"),
-    ...         F.lit("rest")))
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
     >>> df_new_ephem = expand_columns(df_new_ephem)
     >>> out = df_new_ephem.select(["cjd", "RA"]).collect()
     >>> assert len(out[0]["cjd"]) == len(out[0]["RA"])
@@ -183,7 +189,7 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
     ...         F.lit("I41"),
     ...         F.lit(15.0),
     ...         F.expr("uuid()"),
-    ...         F.lit("rest")))
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
     >>> df_join_ephem = expand_columns(df_join_ephem)
 
     >>> df_join_ephem_bis = join_aggregated_sso_data(df_prev_ephem, df_new_ephem, on="ssnamenr")
@@ -192,6 +198,7 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
     >>> assert out_1 == out_2, (out_1, out_2)
     """
     method_ = method.to_numpy()[0]
+    iofile = iofile.to_numpy()[0]
     out = []
     for index, ssname in enumerate(ssnamenr.to_numpy()):
         if method_ == "ephemcc":
@@ -200,7 +207,7 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
                 "outdir": "/tmp/ramdisk/spins",
                 "runner_path": "/tmp/fink_run_ephemcc4.4.sh",
                 "userconf": "/tmp/.eproc-4.4",
-                "iofile": "/tmp/default-ephemcc-observation.xml",
+                "iofile": f"/tmp/{iofile}",
             }
             ephems = query_miriade_ephemcc(
                 ssname,
@@ -223,6 +230,7 @@ def extract_ztf_ephemerides_from_miriade(ssnamenr, cjd, observer, shift, uid, me
                 shift=shift.to_numpy()[index],
                 timeout=30,
                 return_json=True,
+                iofile=iofile,
             )
         if ephems.get("data", None) is not None:
             # Remove any "." in name
