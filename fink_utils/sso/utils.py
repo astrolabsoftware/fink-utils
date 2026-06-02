@@ -106,7 +106,7 @@ def get_num_opposition(elong, width=4):
 
     # estimate number of oppositions
     >>> noppositions = get_num_opposition(
-    ...     pdf['Elong.'].values,
+    ...     pdf['Elong'].values,
     ...     width=4
     ... )
     >>> assert noppositions == 4, "Found {} oppositions for 8467 instead of 4!".format(noppositions)
