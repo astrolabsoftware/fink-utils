@@ -600,9 +600,9 @@ def f_test_models(nfilt, nobs, models, rms_per_model):
     >>> nobs = np.full(1000, 120)
     >>> models = ["HG", "HG1G2"]
     >>> rms = [
-            np.random.normal(0.1, 0.02, 1000),
-            np.random.normal(0.08, 0.02, 1000),
-        ]
+    ...     np.random.normal(0.1, 0.02, 1000),
+    ...     np.random.normal(0.08, 0.02, 1000),
+    ... ]
     >>> out = f_test_models(nfilt, nobs, models, rms)
     >>> out["HG_HG1G2"].shape
     (1000,)

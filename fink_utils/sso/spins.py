@@ -955,6 +955,103 @@ def prop_ac_err(a_b, u_a_c, err_u_a_c, err_a_b):
     return err_a_c
 
 
+def propr_oblateness_error(u_obl, err_u_obl, R=0.7):
+    """
+    Propagate uncertainty from u_obl to the R parameter.
+
+    Parameters
+    ----------
+    u_obl : float
+        Unconstrained parameter mapped to R (oblateness).
+    err_u_obl : float
+        1-sigma uncertainty on u_obl.
+
+    Returns
+    -------
+    err_obl : float
+        Propagated 1-sigma uncertainty on the oblateness.
+    """
+    err_obl = R * np.exp(-u_obl) / (np.exp(-u_obl) + 1) ** 2 * err_u_obl
+    return err_obl
+
+
+def propagate_legacy_errors(popt, perr, model):
+    """
+    Propagate fitted parameter uncertainties to physical parameter uncertainties for the leagacy models (HG, HG12, HG1G2)
+
+    Parameters
+    ----------
+    popt : array-like
+        Best-fit parameter values.
+    perr : array-like
+        1-sigma uncertainties on the fitted parameters.
+
+    Returns
+    -------
+    out : list
+        Propagated 1-sigma uncertainties in the same order as the least square output parameters.
+    """
+    if model == "HG":
+        out = []
+        for i in range(0, len(perr), 3):
+            err_H = perr[i]
+            err_G = prop_g1_err(u_G1=popt[i + 1], err_u_G1=perr[i + 1], R=1)
+            out.extend([err_H, err_G])
+    elif model == "HG12":
+        out = []
+        for i in range(0, len(perr), 3):
+            err_H = perr[i]
+            err_G = prop_g1_err(u_G1=popt[i + 1], err_u_G1=perr[i + 1], R=1.9879)
+            out.extend([err_H, err_G])
+
+    elif model == "HG1G2":
+        out = []
+        for i in range(0, len(perr), 3):
+            err_H = perr[i]
+            err_G1 = prop_g1_err(u_G1=popt[i + 1], err_u_G1=perr[i + 1])
+            G1 = sc_sigmoid(popt[i + 1])
+            err_G2 = prop_g2_err(G1=G1, u_G2=popt[i + 2], err_u_G2=perr[i + 2])
+            out.extend([err_H, err_G1, err_G2])
+    return out
+
+
+def propagate_errors_shg1g2(popt, perr):
+    """
+    Propagate fitted parameter uncertainties to physical parameter uncertainties for the sHG1G2 model
+
+    Parameters
+    ----------
+    popt : array-like
+        Best-fit parameter values.
+    perr : array-like
+        1-sigma uncertainties on the fitted parameters.
+
+    Returns
+    -------
+    out : list
+        Propagated 1-sigma uncertainties in the same order as the least square output parameters.
+    """
+    out = []
+    err_u_R, err_X, err_Y, err_Z = perr[:4]
+    err_f = perr[4:]
+
+    u_obl, X, Y, Z = popt[:4]
+    filt_dependent = popt[4:]
+
+    err_obl = propr_oblateness_error(u_obl, err_u_R)
+    err_alpha0, err_delta0 = prop_angle_error(X, Y, Z, err_X, err_Y, err_Z)
+
+    out.extend([err_obl, err_alpha0, err_delta0])
+
+    for i in range(0, len(err_f), 3):
+        err_H = err_f[i]
+        err_G1 = prop_g1_err(u_G1=filt_dependent[i + 1], err_u_G1=err_f[i + 1])
+        G1 = sc_sigmoid(filt_dependent[i + 1])
+        err_G2 = prop_g2_err(G1=G1, u_G2=filt_dependent[i + 2], err_u_G2=err_f[i + 2])
+        out.extend([err_H, err_G1, err_G2])
+    return out
+
+
 def propagate_errors(
     popt,
     perr,
@@ -964,7 +1061,7 @@ def propagate_errors(
     use_filter_dependent=True,
 ):
     """
-    Propagate fitted parameter uncertainties to physical parameter uncertainties
+    Propagate fitted parameter uncertainties to physical parameter uncertainties for the SOCCA model
 
     Parameters
     ----------
@@ -1026,6 +1123,187 @@ def propagate_errors(
     return out
 
 
+def parameter_remapping_legacy(x, model, physical_to_latent=True):
+    """
+    Convert between physical and latent parameter representations (legacy models).
+
+    Parameters
+    ----------
+    x : array-like
+        Input parameter vector, form depends on the model selected.
+            - HG1G2: [H, u_G1, u_G2].
+            - HG12: [H, u_G12].
+            - HG: [H, u_G].
+    model : str
+        One of the legacy models to be reparametrized:
+            - HG1G2
+            - HG12
+            - HG
+    physical_to_latent : bool, default=True
+        Direction of conversion. If True, maps physical -> latent
+        if False, maps latent -> physical.
+
+    Returns
+    -------
+    np.ndarray
+        Parameter vector in the target representation (physical or latent).
+    """
+    x = np.asarray(x)
+    out = []
+    if physical_to_latent:
+        # -------------------------
+        # Physical -> Latent
+        # -------------------------
+        if model == "HG":
+            for i in range(0, len(x), 2):
+                H, G = x[i : i + 2]
+                u_H = H
+                u_G = logit(G)
+                out.extend([u_H, u_G])
+        if model == "HG12":
+            for i in range(0, len(x), 2):
+                H, G = x[i : i + 2]
+                u_H = H
+                u_G = sc_logit(G, C=-0.29, R=1.9879)  # Oszkiewicz+26
+                out.extend([u_H, u_G])
+        if model == "HG1G2":
+            for i in range(0, len(x), 3):
+                H, G1, G2 = x[i : i + 3]
+                u_H = H
+                u_G1 = sc_logit(G1)
+                L, U = compute_lu_bounds(G1)
+                u_G2 = logit((G2 - L) / (U - L))
+                out.extend([u_H, u_G1, u_G2])
+
+    else:
+        # -------------------------
+        # Latent -> Physical
+        # -------------------------
+        if model == "HG":
+            for i in range(0, len(x), 2):
+                u_H, u_G = x[i : i + 2]
+                H = u_H
+                G = sigmoid(u_G)
+                out.extend([H, G])
+        if model == "HG12":
+            for i in range(0, len(x), 2):
+                u_H, u_G = x[i : i + 2]
+                H = u_H
+                G = sc_sigmoid(u_G, C=-0.29, R=1.9879)  # Oszkiewicz+26
+                out.extend([H, G])
+        if model == "HG1G2":
+            for i in range(0, len(x), 3):
+                u_H, u_G1, u_G2 = x[i : i + 3]
+                H = u_H
+                G1 = sc_sigmoid(u_G1)
+                L, U = compute_lu_bounds(G1)
+                G2 = L + (U - L) * sigmoid(u_G2)
+                out.extend([H, G1, G2])
+
+    return out
+
+
+def parameter_remapping_shg1g2(
+    x,
+    physical_to_latent=True,
+):
+    """
+    Convert between physical and latent parameter representations (SHG1G2 model).
+
+    Parameters
+    ----------
+    x : array-like
+        Input parameter vector (R, rho, alpha0, delta0, H, G1, G2 | u_R, X, Y, Z, H, u_G1, u_G2).
+
+    Returns
+    -------
+    np.ndarray
+        Parameter vector in the target representation (physical or latent),
+    """
+    # -----------------------------------------------------------------
+    # Global block
+    # -----------------------------------------------------------------
+
+    x = np.asarray(x)
+    idx = 0
+    out = []
+
+    if physical_to_latent:
+        # -------------------------
+        # Physical -> Latent
+        # -------------------------
+
+        R = x[idx]
+        idx += 1
+
+        rho, alpha0, delta0 = x[idx : idx + 3]
+        idx += 3
+
+        u_R = sc_logit(R, C=0.3, R=0.7)
+
+        X = rho * np.cos(delta0) * np.cos(alpha0)
+        Y = rho * np.cos(delta0) * np.sin(alpha0)
+        Z = rho * np.sin(delta0)
+
+        out.extend([u_R, X, Y, Z])
+
+    else:
+        # -------------------------
+        # Latent -> Physical
+        # -------------------------
+
+        u_R = x[idx]
+        idx += 1
+
+        X, Y, Z = x[idx : idx + 3]
+        idx += 3
+
+        R = sc_sigmoid(u_R, C=0.3, R=0.7)
+
+        rho = np.sqrt(X**2 + Y**2 + Z**2)
+        delta0 = np.arcsin(Z / rho)
+        alpha0 = np.arctan2(Y, X) % (2 * np.pi)
+
+        out.extend([R, alpha0, delta0])
+
+    # -----------------------------------------------------------------
+    # Filter dependent block
+    # -----------------------------------------------------------------
+
+    filter_dependent = x[idx:]
+    for i in range(0, len(filter_dependent), 3):
+        if physical_to_latent:
+            # -------------------------
+            # Physical -> Latent
+            # -------------------------
+            H, G1, G2 = filter_dependent[i : i + 3]
+
+            u_H = H
+            u_G1 = sc_logit(G1)
+
+            L, U = compute_lu_bounds(G1)
+            u_G2 = logit((G2 - L) / (U - L))
+
+            out.extend([u_H, u_G1, u_G2])
+
+        else:
+            # -------------------------
+            # Latent -> Physical
+            # -------------------------
+
+            u_H, u_G1, u_G2 = filter_dependent[i : i + 3]
+
+            H = u_H
+            G1 = sc_sigmoid(u_G1)
+
+            L, U = compute_lu_bounds(G1)
+            G2 = L + (U - L) * sigmoid(u_G2)
+
+            out.extend([H, G1, G2])
+
+    return np.array(out)
+
+
 def parameter_remapping(
     x,
     physical_to_latent=True,
@@ -1035,7 +1313,7 @@ def parameter_remapping(
     use_filter_dependent=True,  # filter parameters
 ):
     """
-    Convert between physical and latent parameter representations.
+    Convert between physical and latent parameter representations (SOCCA model).
 
     Allows modular reparametrization of the follwoing blocks:
     - Spin axis/period: (alpha0, delta0, period)
@@ -1181,7 +1459,7 @@ def parameter_remapping(
     return np.array(out)
 
 
-def build_eqs(x, filters, ph, rhs, func=None):
+def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
     Parameters
@@ -1196,6 +1474,13 @@ def build_eqs(x, filters, ph, rhs, func=None):
         Array of size N containing the actual measurements (magnitude)
     func: callable
         Model function to use (e.g. `func_hg1g2`)
+    remap: bool
+        Reparametrize model parameters from their physical domain to +- infinity.
+    model : str
+        One of the legacy models to solve with:
+            - HG1G2
+            - HG12
+            - HG
 
     Returns
     -------
@@ -1215,6 +1500,13 @@ def build_eqs(x, filters, ph, rhs, func=None):
     ```
 
     """
+    x = x.copy()
+    if remap:
+        x = parameter_remapping_legacy(
+            x,
+            model=model,
+            physical_to_latent=False,
+        )  # Latent to physical
     filternames = np.unique(filters)
 
     params = x
@@ -1239,7 +1531,7 @@ def build_eqs(x, filters, ph, rhs, func=None):
     return np.ravel(eqs)
 
 
-def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
+def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     """Build the system of equations to solve using the HG1G2 + spin model
 
     Parameters
@@ -1256,6 +1548,8 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
         Array of size N containing the Dec (radian)
     rhs: np.array
         Array of size N containing the actual measurements (magnitude)
+    remap: bool
+        Reparametrize model parameters from their physical domain to +- infinity.
 
     Returns
     -------
@@ -1277,6 +1571,9 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs):
     ```
 
     """
+    x = x.copy()
+    if remap:
+        x = parameter_remapping_shg1g2(x, physical_to_latent=False)
     R, alpha, delta = x[0:3]
     filternames = np.unique(filters)
 
@@ -1676,7 +1973,6 @@ def estimate_sso_params(
 
     if model in ["SOCCA", "SHG1G2"]:
         if model == "SHG1G2":
-            remap = False
             remap_kwargs = (None,)
 
         outdic = fit_spin(
@@ -1698,7 +1994,7 @@ def estimate_sso_params(
         )
     elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
-            ydata, sigmapsf, phase, filters, model, p0=p0, bounds=bounds
+            ydata, sigmapsf, phase, filters, model, p0=p0, bounds=bounds, remap=remap
         )
     elif model == "sfHG1G2":
         outdic = fit_sfhg1g2(
@@ -1720,13 +2016,7 @@ def estimate_sso_params(
 
 
 def fit_legacy_models(
-    magpsf_red,
-    sigmapsf,
-    phase,
-    filters,
-    model,
-    p0=None,
-    bounds=None,
+    magpsf_red, sigmapsf, phase, filters, model, p0=None, bounds=None, remap=False
 ):
     """Fit for phase curve parameters
 
@@ -1748,20 +2038,30 @@ def fit_legacy_models(
     bounds: tuple of lists
         Parameters boundaries for `func` ([all_mins], [all_maxs]).
         Defaults are given for `func_shg1g2`: (H, G1, G2, R, alpha0, delta0).
+    remap: bool
+        Reparametrize model parameters from their physical domain to +- infinity.
 
     Returns
     -------
     outdic: dict
     """
-    if p0 is None:
-        p0 = [15, 0.15, 0.15]
-    if bounds is None:
-        bounds = ([-3, GMIN, GMAX], [30, GMIN, GMAX])
-
     if model == "HG1G2":
         func = func_hg1g2
         nparams = 3
         params_ = ["H", "G1", "G2"]
+        if p0 is None:
+            if remap:
+                p0 = parameter_remapping_legacy(
+                    [15, 0.15, 0.15], model="HG1G2", physical_to_latent=True
+                )
+            else:
+                p0 = [15, 0.15, 0.15]
+        if bounds is None:
+            if remap:
+                bounds = ([-3, -np.inf, -np.inf], [30, np.inf, np.inf])
+            else:
+                bounds = ([-3, GMIN, GMIN], [30, GMAX, GMAX])
+
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G1, G2) parameters"
         )
@@ -1769,6 +2069,19 @@ def fit_legacy_models(
         func = func_hg12
         nparams = 2
         params_ = ["H", "G12"]
+        if p0 is None:
+            if remap:
+                p0 = parameter_remapping_legacy(
+                    [15, 0.15], model="HG12", physical_to_latent=True
+                )
+            else:
+                p0 = [15, 0.15]
+        if bounds is None:
+            if remap:
+                bounds = ([-3, -np.inf], [30, np.inf])
+            else:
+                bounds = ([-3, -0.29], [30, 1.6979])
+
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G12) parameters"
         )
@@ -1776,6 +2089,18 @@ def fit_legacy_models(
         func = func_hg
         nparams = 2
         params_ = ["H", "G"]
+        if p0 is None:
+            if remap:
+                p0 = parameter_remapping_legacy(
+                    [15, 0.15], model="HG", physical_to_latent=True
+                )
+            else:
+                p0 = [15, 0.15]
+        if bounds is None:
+            if remap:
+                bounds = ([-3, -np.inf], [30, np.inf])
+            else:
+                bounds = ([-3, 0], [30, 1])
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G) parameters"
         )
@@ -1800,7 +2125,6 @@ def fit_legacy_models(
     if not np.all([i == i for i in magpsf_red]):
         outdic = {"fit": 1, "status": -2}
         return outdic
-
     try:
         res_lsq = least_squares(
             build_eqs,
@@ -1808,15 +2132,16 @@ def fit_legacy_models(
             bounds=(lower_bounds, upper_bounds),
             jac="2-point",
             loss="soft_l1",
-            args=(filters, phase, magpsf_red, func),
+            args=(filters, phase, magpsf_red, func, remap, model),
         )
-
     except RuntimeError:
         outdic = {"fit": 3, "status": -2}
         return outdic
 
     popt = res_lsq.x
-
+    if remap:
+        popt_u = np.copy(popt)
+        popt = parameter_remapping_legacy(popt_u, model=model, physical_to_latent=False)
     # estimate covariance matrix using the jacobian
     try:
         cov = linalg.inv(res_lsq.jac.T @ res_lsq.jac)
@@ -1825,12 +2150,13 @@ def fit_legacy_models(
 
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
+        if remap:
+            perr = propagate_legacy_errors(popt_u, perr, model)
     except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
         outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
     # For the chi2, we use the error estimate from the data directly
-
     sorted_sigmapsf = sort_quantity_by_filter(filters, sigmapsf)
 
     chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
@@ -2096,15 +2422,27 @@ def fit_spin(
     if p0 is None:
         if model == "SHG1G2":
             p0 = [15.0, 0.15, 0.15, 0.8, np.pi, 0.0]
+            if remap:
+                p0 = p0[3:] + p0[:3]
+                p0 = np.insert(p0, 1, 1.0)
+                p0 = parameter_remapping_shg1g2(p0, physical_to_latent=True)
+                p0 = np.concatenate((p0[-3:], p0[:-3]))
+
         elif model == "SOCCA":
             p0 = [15.0, 0.15, 0.15, np.pi, 0.0, 1, 1.05, 1.05, 0.0]
-            # FIXME p0 in remap
+            # FIXME p0 in remap for SOCCA
     if bounds is None:
         if model == "SHG1G2":
-            bounds = (
-                [-3, GMIN, GMIN, 3e-1, 0, -np.pi / 2],
-                [30, GMAX, GMAX, 1, 2 * np.pi, np.pi / 2],
-            )
+            if remap:
+                bounds = (
+                    [-3, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf],
+                    [30, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf],
+                )
+            else:
+                bounds = (
+                    [-3, GMIN, GMIN, 3e-1, 0, -np.pi / 2],
+                    [30, GMAX, GMAX, 1, 2 * np.pi, np.pi / 2],
+                )
         elif model == "SOCCA":
             if remap:
                 bounds = build_bounds(**remap_kwargs)
@@ -2141,7 +2479,7 @@ def fit_spin(
     try:
         if model == "SHG1G2":
             func = build_eqs_for_spins
-            args = (filters, phase, ra, dec, magpsf_red)
+            args = (filters, phase, ra, dec, magpsf_red, remap)
         elif model == "SOCCA":
             func = build_eqs_for_spin_shape
             if not terminator:
@@ -2185,10 +2523,12 @@ def fit_spin(
 
     popt = res_lsq.x  # this is popt_u (latent)
 
-    if model == "SOCCA":
-        if remap:
-            popt_u = np.copy(popt)
+    if remap:
+        popt_u = np.copy(popt)
+        if model == "SOCCA":
             popt = parameter_remapping(popt_u, physical_to_latent=False, **remap_kwargs)
+        elif model == "SHG1G2":
+            popt = parameter_remapping_shg1g2(popt_u, physical_to_latent=False)
     # estimate covariance matrix using the jacobian
     try:
         cov = linalg.pinv(res_lsq.jac.T @ res_lsq.jac)
@@ -2196,28 +2536,30 @@ def fit_spin(
         cov *= chi2dof
         # 1sigma uncertainty on fitted parameters
         perr = np.sqrt(np.diag(cov))
+        if remap:
+            X, Y, Z = res_lsq.x[1], res_lsq.x[2], res_lsq.x[3]
+            # fitted vector
+            v = np.array([X, Y, Z])
+            C_xyz = cov[np.ix_([1, 2, 3], [1, 2, 3])]  # 3x3 covariance
+            # unit vector along v
+            n = v / np.linalg.norm(v)
 
-        X, Y, Z = res_lsq.x[1], res_lsq.x[2], res_lsq.x[3]
-        # fitted vector
-        v = np.array([X, Y, Z])
-        C_xyz = cov[np.ix_([1, 2, 3], [1, 2, 3])]  # 3x3 covariance
-        # unit vector along v
-        n = v / np.linalg.norm(v)
+            # projection matrix onto tangent plane
+            P = np.eye(3) - np.outer(n, n)
 
-        # projection matrix onto tangent plane
-        P = np.eye(3) - np.outer(n, n)
+            # directional covariance
+            C_dir = P @ C_xyz @ P
 
-        # directional covariance
-        C_dir = P @ C_xyz @ P
+            # directional 1-sigma errors
+            perr[1] = np.sqrt(C_dir[0, 0])
+            perr[2] = np.sqrt(C_dir[1, 1])
+            perr[3] = np.sqrt(C_dir[2, 2])
 
-        # directional 1-sigma errors
-        perr[1] = np.sqrt(C_dir[0, 0])
-        perr[2] = np.sqrt(C_dir[1, 1])
-        perr[3] = np.sqrt(C_dir[2, 2])
-
-        if model == "SOCCA":
-            if remap:
+            if model == "SOCCA":
                 perr = propagate_errors(popt_u, perr, **remap_kwargs)
+            elif model == "SHG1G2":
+                perr = propagate_errors_shg1g2(popt_u, perr)
+
     except np.linalg.LinAlgError:
         # raised if jacobian is degenerated
         outdic = {"fit": 4, "status": res_lsq.status}
