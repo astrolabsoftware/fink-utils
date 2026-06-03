@@ -993,13 +993,13 @@ def propagate_legacy_errors(popt, perr, model):
     """
     if model == "HG":
         out = []
-        for i in range(0, len(perr), 3):
+        for i in range(0, len(perr), 2):
             err_H = perr[i]
             err_G = prop_g1_err(u_G1=popt[i + 1], err_u_G1=perr[i + 1], R=1)
             out.extend([err_H, err_G])
     elif model == "HG12":
         out = []
-        for i in range(0, len(perr), 3):
+        for i in range(0, len(perr), 2):
             err_H = perr[i]
             err_G = prop_g1_err(u_G1=popt[i + 1], err_u_G1=perr[i + 1], R=1.9879)
             out.extend([err_H, err_G])
@@ -1857,7 +1857,7 @@ def estimate_sso_params(
             'use_shape': True
         }
         By switching each of the boolean values, each block of parameters can be
-        turned on-off for reparametrization.
+        turned on-off for reparametrization. Only used for SOCCA.
 
     Returns
     -------
@@ -1891,7 +1891,7 @@ def estimate_sso_params(
     ...    p0=[15.0, 0.15],
     ...    bounds=([-3, 0], [30, 1]),
     ...    model='HG',
-    ...    normalise_to_V=False)
+    ...    normalise_to_V=False, remap=True)
     >>> assert len(hg) == 26, "Found {} parameters: {}".format(len(hg), hg)
 
     >>> hg12 = estimate_sso_params(
@@ -1902,7 +1902,7 @@ def estimate_sso_params(
     ...    p0=[15.0, 0.15],
     ...    bounds=([-3, 0], [30, 1]),
     ...    model='HG12',
-    ...    normalise_to_V=False)
+    ...    normalise_to_V=False, remap=True)
     >>> assert len(hg12) == 26, "Found {} parameters: {}".format(len(hg12), hg12)
 
     >>> hg1g2 = estimate_sso_params(
@@ -1913,7 +1913,7 @@ def estimate_sso_params(
     ...    p0=[15.0, 0.15, 0.15],
     ...    bounds=([-3, 0, 0], [30, 1, 1]),
     ...    model='HG1G2',
-    ...    normalise_to_V=False)
+    ...    normalise_to_V=False, remap=True)
     >>> assert len(hg1g2) == 30, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
 
     >>> shg1g2 = estimate_sso_params(
@@ -1924,20 +1924,22 @@ def estimate_sso_params(
     ...    np.deg2rad(pdf['i:ra'].values),
     ...    np.deg2rad(pdf['i:dec'].values),
     ...    model='SHG1G2',
-    ...    normalise_to_V=False)
+    ...    normalise_to_V=False, remap=True)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
 
-    >>> socca = estimate_sso_params(
-    ...    pdf['i:magpsf_red'].values,
-    ...    pdf['i:sigmapsf'].values,
-    ...    np.deg2rad(pdf['Phase'].values),
-    ...    pdf['i:fid'].values,
-    ...    np.deg2rad(pdf['i:ra'].values),
-    ...    np.deg2rad(pdf['i:dec'].values),
-    ...    pdf['i:jd'].values,
-    ...    model='SOCCA',
-    ...    normalise_to_V=False)
-    >>> assert len(socca) == 45, "Found {} parameters: {}".format(len(socca), socca)
+    # SOCCA uses asteroid_spinprops
+    # >>> base_kwargs = dict(use_angles=True, use_filter_dependent=True, use_phase=True, use_shape=True,)
+    # >>> socca = estimate_sso_params(
+    # ...    pdf['i:magpsf_red'].values,
+    # ...    pdf['i:sigmapsf'].values,
+    # ...    np.deg2rad(pdf['Phase'].values),
+    # ...    pdf['i:fid'].values,
+    # ...    np.deg2rad(pdf['i:ra'].values),
+    # ...    np.deg2rad(pdf['i:dec'].values),
+    # ...    pdf['i:jd'].values,
+    # ...    model='SOCCA',
+    # ...    normalise_to_V=False, remap=True, remap_kwargs=base_kwargs)
+    # >>> assert len(socca) == 45, "Found {} parameters: {}".format(len(socca), socca)
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
