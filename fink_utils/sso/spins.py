@@ -73,6 +73,7 @@ def compute_lu_bounds(g1, a1=-3.9038, b1=-0.2445, a2=-0.9635, b2=1.0157, a4=-0.4
 
     return L, U
 
+
 def sort_quantity_by_filter(filter, quantity):
     """
     Sort a vector (quantity) by its corresponding filter under which it was measured
@@ -1702,12 +1703,14 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]),
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                        ]
+                    ),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1728,14 +1731,16 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca_terminator(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                        ra_s[mask].tolist(),
-                        dec_s[mask].tolist(),
-                    ]),
+                    np.vstack(
+                        [
+                            ph[mask].tolist(),
+                            ra[mask].tolist(),
+                            dec[mask].tolist(),
+                            jd[mask].tolist(),
+                            ra_s[mask].tolist(),
+                            dec_s[mask].tolist(),
+                        ]
+                    ),
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -2244,13 +2249,15 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame({
-        "i:magpsf_red": magpsf_red,
-        "i:sigmapsf": sigmapsf,
-        "Phase": phase,
-        "i:jd": jds,
-        "i:fid": filters,
-    })
+    pdf = pd.DataFrame(
+        {
+            "i:magpsf_red": magpsf_red,
+            "i:sigmapsf": sigmapsf,
+            "Phase": phase,
+            "i:jd": jds,
+            "i:fid": filters,
+        }
+    )
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
