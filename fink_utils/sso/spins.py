@@ -63,16 +63,15 @@ def sc_logit(y, C=-0.429, R=1.858):
     return np.log(p / (1 - p))
 
 
-def compute_lu_bounds(g1, a1=-3.9038, b1=-0.2445, a2=-0.9635, b2=1.0157, a4=-0.4):
+def compute_lu_bounds(g1, a1=-3.9038, b1=-0.2445, a2=-0.9635, b2=1.0157, a4=-0.4, k=20):
     """Compute allowed interval for G2 given G1."""
     lower1 = a1 * g1 + b1
     lower2 = a4 * g1
 
-    L = np.maximum(lower1, lower2)
+    L = (1 / k) * np.log(np.exp(k * lower1) + np.exp(k * lower2))
     U = a2 * g1 + b2
 
     return L, U
-
 
 def sort_quantity_by_filter(filter, quantity):
     """
