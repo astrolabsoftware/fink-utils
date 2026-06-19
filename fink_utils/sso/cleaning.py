@@ -96,7 +96,7 @@ def dxy_cleaning(data, dxy, mag_red, threshold=0.95):
 
 
 def iterative_cleaning(
-    data, mag_red, sigma, phase_angle, filters, ra, dec, verbose=False
+    data, mag_red, sigma, phase_angle, filters, ra, dec, verbose=False, level=3
 ):
     """
     Iteratively filter observations based on residuals from an sHG1G2 photometric model fit.
@@ -124,7 +124,8 @@ def iterative_cleaning(
         Declination values of the observations [deg].
     verbose: bool
         If True, print useful debugging messages
-
+    level: float
+        Sigma-clipping level at which to remove points. Default is 3
 
     Returns
     -------
@@ -194,7 +195,7 @@ def iterative_cleaning(
 
         residuals = fw_model - mag_red_inl
 
-        threshold = 3 * np.std(residuals)
+        threshold = level * np.std(residuals)
         cutoff = np.abs(residuals) <= threshold
 
         prev_len = len(data_inl)
