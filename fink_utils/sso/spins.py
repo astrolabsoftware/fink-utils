@@ -349,10 +349,12 @@ def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
     """
-    ph = pha[0]
-    ra = pha[1]
-    dec = pha[2]
-    ep = pha[3]
+    phi1 = pha[0]
+    phi2 = pha[1]
+    phi3 = pha[2]
+    ra = pha[3]
+    dec = pha[4]
+    ep = pha[5]
 
     # TBD: For the time being, we fix the reference time
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
@@ -361,7 +363,7 @@ def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     t0 = 2459580.5
 
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(ph, h, g1, g2)
+    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
     # Spin part
     cos_aspect = cos_aspect_angle(ra, dec, alpha0, delta0)
@@ -470,12 +472,14 @@ def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
         Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
-    ph = pha[0]
-    ra = pha[1]
-    dec = pha[2]
-    ep = pha[3]
-    ra_s = pha[4]
-    dec_s = pha[5]
+    phi1 = pha[0]
+    phi2 = pha[1]
+    phi3 = pha[2]
+    ra = pha[3]
+    dec = pha[4]
+    ep = pha[5]
+    ra_s = pha[6]
+    dec_s = pha[7]
 
     # TBD: For the time being, we fix the reference time
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
@@ -484,7 +488,7 @@ def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
     t0 = 2459580.5
 
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(ph, h, g1, g2)
+    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
     # Rotation
     W = rotation_phase(ep, phi0, 2 * np.pi / period, t0)
@@ -1715,6 +1719,9 @@ def build_eqs_for_spin_shape(
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
 
+    # Get pre-computed phi functions
+    phi1, phi2, phi3 = ph
+
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
     if not terminator:
@@ -1724,7 +1731,9 @@ def build_eqs_for_spin_shape(
             myfunc = (
                 func_socca(
                     [
-                        ph[mask],
+                        phi1[mask],
+                        phi2[mask],
+                        phi3[mask],
                         ra[mask],
                         dec[mask],
                         jd[mask],
@@ -1749,14 +1758,16 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca_terminator(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                        ra_s[mask].tolist(),
-                        dec_s[mask].tolist(),
-                    ]),
+                    [
+                        phi1[mask],
+                        phi2[mask],
+                        phi3[mask],
+                        ra[mask],
+                        dec[mask],
+                        jd[mask],
+                        ra_s[mask],
+                        dec_s[mask],
+                    ],
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1951,20 +1962,6 @@ def estimate_sso_params(
     ...    normalise_to_V=False, remap=True)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
     >>> assert np.isclose(shg1g2['chi2red'], 6.281, rtol=1e-3), shg1g2
-
-    # SOCCA uses asteroid_spinprops
-    # >>> base_kwargs = dict(use_angles=True, use_filter_dependent=True, use_phase=True, use_shape=True,)
-    # >>> socca = estimate_sso_params(
-    # ...    pdf['i:magpsf_red'].values,
-    # ...    pdf['i:sigmapsf'].values,
-    # ...    np.deg2rad(pdf['Phase'].values),
-    # ...    pdf['i:fid'].values,
-    # ...    np.deg2rad(pdf['i:ra'].values),
-    # ...    np.deg2rad(pdf['i:dec'].values),
-    # ...    pdf['i:jd'].values,
-    # ...    model='SOCCA',
-    # ...    normalise_to_V=False, remap=True, remap_kwargs=base_kwargs)
-    # >>> assert len(socca) == 45, "Found {} parameters: {}".format(len(socca), socca)
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
