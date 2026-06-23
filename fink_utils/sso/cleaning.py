@@ -18,6 +18,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 
 from fink_utils.sso.spins import estimate_sso_params, func_shg1g2
+from sbpy.photometry import HG1G2
 
 from fink_utils.tester import regular_unit_tests
 
@@ -163,6 +164,12 @@ def iterative_cleaning(
     rejected_mask_total = np.zeros(len(data), dtype=bool)
 
     for k in range(11):
+        # Need to recompute it as length changes iteratively
+        phi_funcs = [
+            HG1G2._phi1(np.radians(phase_angle_inl)),
+            HG1G2._phi2(np.radians(phase_angle_inl)),
+            HG1G2._phi3(np.radians(phase_angle_inl)),
+        ]
         shgg_params = estimate_sso_params(
             mag_red_inl,
             sigma_inl,
@@ -179,7 +186,9 @@ def iterative_cleaning(
 
             pts = func_shg1g2(
                 [
-                    np.radians(phase_angle_inl[mask]),
+                    phi_funcs[0][mask],
+                    phi_funcs[1][mask],
+                    phi_funcs[2][mask],
                     np.radians(ra_inl[mask]),
                     np.radians(dec_inl[mask]),
                 ],

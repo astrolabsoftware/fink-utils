@@ -1,4 +1,4 @@
-# Copyright 2022-2025 AstroLab Software
+# Copyright 2022-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,9 @@ import astropy.units as u
 from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
+from line_profiler import profile
+
+from sbpy.photometry import HG, HG1G2, HG12_Pen16
 
 # Phase parameter global bounds
 GMIN = -0.429
@@ -117,7 +120,8 @@ def split_quantity_by_filter(list_of_filters, ordered_vector):
     return np.array_split(ordered_vector, np.cumsum(split_at))
 
 
-def func_hg(ph, h, g):
+@profile
+def func_hg(phi1, phi2, h, g):
     """Return f(H, G) part of the lightcurve in mag space
 
     Parameters
@@ -134,16 +138,15 @@ def func_hg(ph, h, g):
     out: array of floats
         H - 2.5 log(f(G))
     """
-    from sbpy.photometry import HG
-
     # Standard G part
-    func1 = (1 - g) * HG._hgphi(ph, 1) + g * HG._hgphi(ph, 2)
+    func1 = (1 - g) * phi1 + g * phi2
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
 
-def func_hg12(ph, h, g12):
+@profile
+def func_hg12(phi1, phi2, phi3, h, g12):
     """Return f(H, G) part of the lightcurve in mag space
 
     Parameters
@@ -160,20 +163,13 @@ def func_hg12(ph, h, g12):
     out: array of floats
         H - 2.5 log(f(G12))
     """
-    from sbpy.photometry import HG1G2, HG12_Pen16
-
-    # Standard G1G2 part
     g1 = HG12_Pen16._G12_to_G1(g12)
     g2 = HG12_Pen16._G12_to_G2(g12)
-    func1 = (
-        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
-    )
-    func1 = -2.5 * np.log10(func1)
-
-    return h + func1
+    return func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
 
-def func_hg1g2(ph, h, g1, g2):
+@profile
+def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
     """Return f(H, G1, G2) part of the lightcurve in mag space
 
     Parameters
@@ -192,23 +188,20 @@ def func_hg1g2(ph, h, g1, g2):
     out: array of floats
         H - 2.5 log(f(G1G2))
     """
-    from sbpy.photometry import HG1G2
-
     # Standard G1G2 part
-    func1 = (
-        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
-    )
+    func1 = g1 * phi1 + g2 * phi2 + (1 - g1 - g2) * phi3
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
 
+@profile
 def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
     Parameters
     ----------
-    pha: array-like [3, N]
+    pha: array-like [5, N]
         List containing [phase angle in radians, RA in radians, Dec in radians]
     h: float
         Absolute magnitude in mag
@@ -228,15 +221,11 @@ def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
-    ph = pha[0]
-    ra = pha[1]
-    dec = pha[2]
-
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(ph, h, g1, g2)
+    func1 = func_hg1g2(pha[0], pha[1], pha[2], h, g1, g2)
 
     # Spin part
-    geo = cos_aspect_angle(ra, dec, alpha0, delta0)
+    geo = cos_aspect_angle(pha[3], pha[4], alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = 2.5 * np.log10(func2)
 
@@ -360,10 +349,12 @@ def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
     """
-    ph = pha[0]
-    ra = pha[1]
-    dec = pha[2]
-    ep = pha[3]
+    phi1 = pha[0]
+    phi2 = pha[1]
+    phi3 = pha[2]
+    ra = pha[3]
+    dec = pha[4]
+    ep = pha[5]
 
     # TBD: For the time being, we fix the reference time
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
@@ -372,7 +363,7 @@ def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     t0 = 2459580.5
 
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(ph, h, g1, g2)
+    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
     # Spin part
     cos_aspect = cos_aspect_angle(ra, dec, alpha0, delta0)
@@ -481,12 +472,14 @@ def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
         Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
-    ph = pha[0]
-    ra = pha[1]
-    dec = pha[2]
-    ep = pha[3]
-    ra_s = pha[4]
-    dec_s = pha[5]
+    phi1 = pha[0]
+    phi2 = pha[1]
+    phi3 = pha[2]
+    ra = pha[3]
+    dec = pha[4]
+    ep = pha[5]
+    ra_s = pha[6]
+    dec_s = pha[7]
 
     # TBD: For the time being, we fix the reference time
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
@@ -495,7 +488,7 @@ def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
     t0 = 2459580.5
 
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(ph, h, g1, g2)
+    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
     # Rotation
     W = rotation_phase(ep, phi0, 2 * np.pi / period, t0)
@@ -1459,6 +1452,7 @@ def parameter_remapping(
     return np.array(out)
 
 
+@profile
 def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
@@ -1515,22 +1509,42 @@ def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
 
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
+
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
-
-        myfunc = (
-            func(
-                ph[mask],
+        if model == "HG1G2":
+            phi1, phi2, phi3 = ph
+            lhs = func(
+                phi1[mask],
+                phi2[mask],
+                phi3[mask],
                 *params_per_band[index],
             )
-            - rhs[mask]
-        )
+        elif model == "HG12":
+            phi1, phi2, phi3 = ph
+            lhs = func(
+                phi1[mask],
+                phi2[mask],
+                phi3[mask],
+                *params_per_band[index],
+            )
+        elif model == "HG":
+            phi1, phi2 = ph
+            lhs = func(
+                phi1[mask],
+                phi2[mask],
+                *params_per_band[index],
+            )
+        mask = filters == filtername
+
+        myfunc = lhs - rhs[mask]
 
         eqs = np.concatenate((eqs, myfunc))
 
     return np.ravel(eqs)
 
 
+@profile
 def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     """Build the system of equations to solve using the HG1G2 + spin model
 
@@ -1581,6 +1595,9 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
 
+    # Get pre-computed phi functions
+    phi1, phi2, phi3 = ph
+
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
     for index, filtername in enumerate(filternames):
@@ -1588,7 +1605,13 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
 
         myfunc = (
             func_shg1g2(
-                np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
+                [
+                    phi1[mask],
+                    phi2[mask],
+                    phi3[mask],
+                    ra[mask],
+                    dec[mask],
+                ],
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -1604,6 +1627,7 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     return np.ravel(eqs)
 
 
+@profile
 def build_eqs_for_spin_shape(
     x,
     filters,
@@ -1695,6 +1719,9 @@ def build_eqs_for_spin_shape(
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
 
+    # Get pre-computed phi functions
+    phi1, phi2, phi3 = ph
+
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
     if not terminator:
@@ -1703,12 +1730,14 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]),
+                    [
+                        phi1[mask],
+                        phi2[mask],
+                        phi3[mask],
+                        ra[mask],
+                        dec[mask],
+                        jd[mask],
+                    ],
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1729,14 +1758,16 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca_terminator(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                        ra_s[mask].tolist(),
-                        dec_s[mask].tolist(),
-                    ]),
+                    [
+                        phi1[mask],
+                        phi2[mask],
+                        phi3[mask],
+                        ra[mask],
+                        dec[mask],
+                        jd[mask],
+                        ra_s[mask],
+                        dec_s[mask],
+                    ],
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1755,6 +1786,7 @@ def build_eqs_for_spin_shape(
     return np.ravel(eqs)
 
 
+@profile
 def estimate_sso_params(
     magpsf_red,
     sigmapsf,
@@ -1893,6 +1925,7 @@ def estimate_sso_params(
     ...    model='HG',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg) == 26, "Found {} parameters: {}".format(len(hg), hg)
+    >>> assert np.isclose(hg['chi2red'], 108.12, rtol=1e-3), hg
 
     >>> hg12 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1904,6 +1937,7 @@ def estimate_sso_params(
     ...    model='HG12',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg12) == 26, "Found {} parameters: {}".format(len(hg12), hg12)
+    >>> assert np.isclose(hg12['chi2red'], 99.50, rtol=1e-3), hg12
 
     >>> hg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1915,6 +1949,7 @@ def estimate_sso_params(
     ...    model='HG1G2',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg1g2) == 30, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
+    >>> assert np.isclose(hg1g2['chi2red'], 99.24, rtol=1e-3), hg1g2
 
     >>> shg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1926,20 +1961,7 @@ def estimate_sso_params(
     ...    model='SHG1G2',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
-
-    # SOCCA uses asteroid_spinprops
-    # >>> base_kwargs = dict(use_angles=True, use_filter_dependent=True, use_phase=True, use_shape=True,)
-    # >>> socca = estimate_sso_params(
-    # ...    pdf['i:magpsf_red'].values,
-    # ...    pdf['i:sigmapsf'].values,
-    # ...    np.deg2rad(pdf['Phase'].values),
-    # ...    pdf['i:fid'].values,
-    # ...    np.deg2rad(pdf['i:ra'].values),
-    # ...    np.deg2rad(pdf['i:dec'].values),
-    # ...    pdf['i:jd'].values,
-    # ...    model='SOCCA',
-    # ...    normalise_to_V=False, remap=True, remap_kwargs=base_kwargs)
-    # >>> assert len(socca) == 45, "Found {} parameters: {}".format(len(socca), socca)
+    >>> assert np.isclose(shg1g2['chi2red'], 6.281, rtol=1e-3), shg1g2
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
@@ -2017,6 +2039,7 @@ def estimate_sso_params(
     return outdic
 
 
+@profile
 def fit_legacy_models(
     magpsf_red, sigmapsf, phase, filters, model, p0=None, bounds=None, remap=False
 ):
@@ -2067,6 +2090,7 @@ def fit_legacy_models(
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G1, G2) parameters"
         )
+        phi_funcs = [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)]
     elif model == "HG12":
         func = func_hg12
         nparams = 2
@@ -2087,6 +2111,7 @@ def fit_legacy_models(
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G12) parameters"
         )
+        phi_funcs = [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)]
     elif model == "HG":
         func = func_hg
         nparams = 2
@@ -2106,6 +2131,7 @@ def fit_legacy_models(
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G) parameters"
         )
+        phi_funcs = [HG._hgphi(phase, 1), HG._hgphi(phase, 2)]
 
     ufilters = np.unique(filters)
 
@@ -2134,7 +2160,7 @@ def fit_legacy_models(
             bounds=(lower_bounds, upper_bounds),
             jac="2-point",
             loss="soft_l1",
-            args=(filters, phase, magpsf_red, func, remap, model),
+            args=(filters, phi_funcs, magpsf_red, func, remap, model),
         )
     except RuntimeError:
         outdic = {"fit": 3, "status": -2}
@@ -2330,6 +2356,7 @@ def fit_sfhg1g2(
     return outdics
 
 
+@profile
 def fit_spin(
     magpsf_red,
     sigmapsf,
@@ -2481,13 +2508,20 @@ def fit_spin(
     try:
         if model == "SHG1G2":
             func = build_eqs_for_spins
-            args = (filters, phase, ra, dec, magpsf_red, remap)
+            args = (
+                filters,
+                [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)],
+                ra,
+                dec,
+                magpsf_red,
+                remap,
+            )
         elif model == "SOCCA":
             func = build_eqs_for_spin_shape
             if not terminator:
                 args = (
                     filters,
-                    phase,
+                    [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)],
                     ra,
                     dec,
                     jd,
@@ -2500,7 +2534,7 @@ def fit_spin(
             else:
                 args = (
                     filters,
-                    phase,
+                    [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)],
                     ra,
                     dec,
                     jd,
