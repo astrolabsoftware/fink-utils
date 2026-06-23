@@ -2521,7 +2521,7 @@ def fit_spin(
             if not terminator:
                 args = (
                     filters,
-                    phase,
+                    [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)],
                     ra,
                     dec,
                     jd,
@@ -2534,7 +2534,7 @@ def fit_spin(
             else:
                 args = (
                     filters,
-                    phase,
+                    [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)],
                     ra,
                     dec,
                     jd,

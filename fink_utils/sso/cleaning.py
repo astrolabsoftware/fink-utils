@@ -189,7 +189,6 @@ def iterative_cleaning(
                     phi_funcs[0][mask],
                     phi_funcs[1][mask],
                     phi_funcs[2][mask],
-                    np.radians(phase_angle_inl[mask]),
                     np.radians(ra_inl[mask]),
                     np.radians(dec_inl[mask]),
                 ],
