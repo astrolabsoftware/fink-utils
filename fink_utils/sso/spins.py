@@ -1,4 +1,4 @@
-# Copyright 2022-2025 AstroLab Software
+# Copyright 2022-2026 AstroLab Software
 # Author: Julien Peloton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,9 @@ import astropy.units as u
 from fink_utils.sso.utils import estimate_axes_ratio
 from fink_utils.sso.utils import get_opposition, split_dataframe_per_apparition
 from fink_utils.tester import regular_unit_tests
+from line_profiler import profile
+
+from sbpy.photometry import HG, HG1G2, HG12_Pen16
 
 # Phase parameter global bounds
 GMIN = -0.429
@@ -117,7 +120,7 @@ def split_quantity_by_filter(list_of_filters, ordered_vector):
     return np.array_split(ordered_vector, np.cumsum(split_at))
 
 
-def func_hg(ph, h, g):
+def func_hg(phi1, phi2, h, g):
     """Return f(H, G) part of the lightcurve in mag space
 
     Parameters
@@ -134,16 +137,14 @@ def func_hg(ph, h, g):
     out: array of floats
         H - 2.5 log(f(G))
     """
-    from sbpy.photometry import HG
-
     # Standard G part
-    func1 = (1 - g) * HG._hgphi(ph, 1) + g * HG._hgphi(ph, 2)
+    func1 = (1 - g) * phi1 + g * phi2
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
 
 
-def func_hg12(ph, h, g12):
+def func_hg12(phi1, phi2, phi3, h, g12):
     """Return f(H, G) part of the lightcurve in mag space
 
     Parameters
@@ -160,20 +161,13 @@ def func_hg12(ph, h, g12):
     out: array of floats
         H - 2.5 log(f(G12))
     """
-    from sbpy.photometry import HG1G2, HG12_Pen16
-
-    # Standard G1G2 part
     g1 = HG12_Pen16._G12_to_G1(g12)
     g2 = HG12_Pen16._G12_to_G2(g12)
-    func1 = (
-        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
-    )
-    func1 = -2.5 * np.log10(func1)
-
-    return h + func1
+    return func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
 
-def func_hg1g2(ph, h, g1, g2):
+@profile
+def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
     """Return f(H, G1, G2) part of the lightcurve in mag space
 
     Parameters
@@ -192,12 +186,8 @@ def func_hg1g2(ph, h, g1, g2):
     out: array of floats
         H - 2.5 log(f(G1G2))
     """
-    from sbpy.photometry import HG1G2
-
     # Standard G1G2 part
-    func1 = (
-        g1 * HG1G2._phi1(ph) + g2 * HG1G2._phi2(ph) + (1 - g1 - g2) * HG1G2._phi3(ph)
-    )
+    func1 = g1 * phi1 + g2 * phi2 + (1 - g1 - g2) * phi3
     func1 = -2.5 * np.log10(func1)
 
     return h + func1
@@ -208,7 +198,7 @@ def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
 
     Parameters
     ----------
-    pha: array-like [3, N]
+    pha: array-like [5, N]
         List containing [phase angle in radians, RA in radians, Dec in radians]
     h: float
         Absolute magnitude in mag
@@ -228,12 +218,14 @@ def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
-    ph = pha[0]
-    ra = pha[1]
-    dec = pha[2]
+    phi1 = pha[0]
+    phi2 = pha[1]
+    phi3 = pha[2]
+    ra = pha[3]
+    dec = pha[4]
 
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(ph, h, g1, g2)
+    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
     # Spin part
     geo = cos_aspect_angle(ra, dec, alpha0, delta0)
@@ -1515,16 +1507,32 @@ def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
 
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
+
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
-
-        myfunc = (
-            func(
-                ph[mask],
+        if model == "HG1G2":
+            lhs = func(
+                HG1G2._phi1(ph[mask]),
+                HG1G2._phi2(ph[mask]),
+                HG1G2._phi3(ph[mask]),
                 *params_per_band[index],
             )
-            - rhs[mask]
-        )
+        elif model == "HG12":
+            lhs = func(
+                HG1G2._phi1(ph[mask]),
+                HG1G2._phi2(ph[mask]),
+                HG1G2._phi3(ph[mask]),
+                *params_per_band[index],
+            )
+        elif model == "HG":
+            lhs = func(
+                HG._hgphi(ph[mask], 1),
+                HG._hgphi(ph[mask], 2),
+                *params_per_band[index],
+            )
+        mask = filters == filtername
+
+        myfunc = lhs - rhs[mask]
 
         eqs = np.concatenate((eqs, myfunc))
 
@@ -1586,9 +1594,20 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
 
+        # Pre-compute phi functions for HG1G2
+        phi1 = HG1G2._phi1(ph[mask])
+        phi2 = HG1G2._phi2(ph[mask])
+        phi3 = HG1G2._phi3(ph[mask])
+
         myfunc = (
             func_shg1g2(
-                np.vstack([ph[mask].tolist(), ra[mask].tolist(), dec[mask].tolist()]),
+                np.vstack([
+                    phi1.tolist(),
+                    phi2.tolist(),
+                    phi3.tolist(),
+                    ra[mask].tolist(),
+                    dec[mask].tolist(),
+                ]),
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -1893,6 +1912,7 @@ def estimate_sso_params(
     ...    model='HG',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg) == 26, "Found {} parameters: {}".format(len(hg), hg)
+    >>> assert np.isclose(hg['chi2red'], 108.12, rtol=1e-3), hg
 
     >>> hg12 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1904,6 +1924,7 @@ def estimate_sso_params(
     ...    model='HG12',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg12) == 26, "Found {} parameters: {}".format(len(hg12), hg12)
+    >>> assert np.isclose(hg12['chi2red'], 99.50, rtol=1e-3), hg12
 
     >>> hg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1915,6 +1936,7 @@ def estimate_sso_params(
     ...    model='HG1G2',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg1g2) == 30, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
+    >>> assert np.isclose(hg1g2['chi2red'], 99.24, rtol=1e-3), hg1g2
 
     >>> shg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1926,6 +1948,7 @@ def estimate_sso_params(
     ...    model='SHG1G2',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
+    >>> assert np.isclose(shg1g2['chi2red'], 6.281, rtol=1e-3), shg1g2
 
     # SOCCA uses asteroid_spinprops
     # >>> base_kwargs = dict(use_angles=True, use_filter_dependent=True, use_phase=True, use_shape=True,)
@@ -2017,6 +2040,7 @@ def estimate_sso_params(
     return outdic
 
 
+@profile
 def fit_legacy_models(
     magpsf_red, sigmapsf, phase, filters, model, p0=None, bounds=None, remap=False
 ):
