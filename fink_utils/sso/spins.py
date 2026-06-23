@@ -120,6 +120,7 @@ def split_quantity_by_filter(list_of_filters, ordered_vector):
     return np.array_split(ordered_vector, np.cumsum(split_at))
 
 
+@profile
 def func_hg(phi1, phi2, h, g):
     """Return f(H, G) part of the lightcurve in mag space
 
@@ -144,6 +145,7 @@ def func_hg(phi1, phi2, h, g):
     return h + func1
 
 
+@profile
 def func_hg12(phi1, phi2, phi3, h, g12):
     """Return f(H, G) part of the lightcurve in mag space
 
@@ -193,6 +195,7 @@ def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
     return h + func1
 
 
+@profile
 def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
@@ -1451,6 +1454,7 @@ def parameter_remapping(
     return np.array(out)
 
 
+@profile
 def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
@@ -1539,6 +1543,7 @@ def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     return np.ravel(eqs)
 
 
+@profile
 def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     """Build the system of equations to solve using the HG1G2 + spin model
 
@@ -1623,6 +1628,7 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     return np.ravel(eqs)
 
 
+@profile
 def build_eqs_for_spin_shape(
     x,
     filters,
@@ -1774,6 +1780,7 @@ def build_eqs_for_spin_shape(
     return np.ravel(eqs)
 
 
+@profile
 def estimate_sso_params(
     magpsf_red,
     sigmapsf,
