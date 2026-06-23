@@ -221,17 +221,11 @@ def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
-    phi1 = pha[0]
-    phi2 = pha[1]
-    phi3 = pha[2]
-    ra = pha[3]
-    dec = pha[4]
-
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
+    func1 = func_hg1g2(pha[0], pha[1], pha[2], h, g1, g2)
 
     # Spin part
-    geo = cos_aspect_angle(ra, dec, alpha0, delta0)
+    geo = cos_aspect_angle(pha[3], pha[4], alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = 2.5 * np.log10(func2)
 
@@ -1515,23 +1509,26 @@ def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
         if model == "HG1G2":
+            phi1, phi2, phi3 = ph
             lhs = func(
-                HG1G2._phi1(ph[mask]),
-                HG1G2._phi2(ph[mask]),
-                HG1G2._phi3(ph[mask]),
+                phi1[mask],
+                phi2[mask],
+                phi3[mask],
                 *params_per_band[index],
             )
         elif model == "HG12":
+            phi1, phi2, phi3 = ph
             lhs = func(
-                HG1G2._phi1(ph[mask]),
-                HG1G2._phi2(ph[mask]),
-                HG1G2._phi3(ph[mask]),
+                phi1[mask],
+                phi2[mask],
+                phi3[mask],
                 *params_per_band[index],
             )
         elif model == "HG":
+            phi1, phi2 = ph
             lhs = func(
-                HG._hgphi(ph[mask], 1),
-                HG._hgphi(ph[mask], 2),
+                phi1[mask],
+                phi2[mask],
                 *params_per_band[index],
             )
         mask = filters == filtername
@@ -1594,25 +1591,23 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
 
+    # Get pre-computed phi functions
+    phi1, phi2, phi3 = ph
+
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
     eqs = []
     for index, filtername in enumerate(filternames):
         mask = filters == filtername
 
-        # Pre-compute phi functions for HG1G2
-        phi1 = HG1G2._phi1(ph[mask])
-        phi2 = HG1G2._phi2(ph[mask])
-        phi3 = HG1G2._phi3(ph[mask])
-
         myfunc = (
             func_shg1g2(
-                np.vstack([
-                    phi1.tolist(),
-                    phi2.tolist(),
-                    phi3.tolist(),
-                    ra[mask].tolist(),
-                    dec[mask].tolist(),
-                ]),
+                [
+                    phi1[mask],
+                    phi2[mask],
+                    phi3[mask],
+                    ra[mask],
+                    dec[mask],
+                ],
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
@@ -1728,12 +1723,12 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca(
-                    np.vstack([
-                        ph[mask].tolist(),
-                        ra[mask].tolist(),
-                        dec[mask].tolist(),
-                        jd[mask].tolist(),
-                    ]),
+                    [
+                        ph[mask],
+                        ra[mask],
+                        dec[mask],
+                        jd[mask],
+                    ],
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -2098,6 +2093,7 @@ def fit_legacy_models(
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G1, G2) parameters"
         )
+        phi_funcs = [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)]
     elif model == "HG12":
         func = func_hg12
         nparams = 2
@@ -2118,6 +2114,7 @@ def fit_legacy_models(
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G12) parameters"
         )
+        phi_funcs = [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)]
     elif model == "HG":
         func = func_hg
         nparams = 2
@@ -2137,6 +2134,7 @@ def fit_legacy_models(
         assert len(bounds[0]) == nparams, (
             "You need to specify bounds on all (H, G) parameters"
         )
+        phi_funcs = [HG._hgphi(phase, 1), HG._hgphi(phase, 2)]
 
     ufilters = np.unique(filters)
 
@@ -2165,7 +2163,7 @@ def fit_legacy_models(
             bounds=(lower_bounds, upper_bounds),
             jac="2-point",
             loss="soft_l1",
-            args=(filters, phase, magpsf_red, func, remap, model),
+            args=(filters, phi_funcs, magpsf_red, func, remap, model),
         )
     except RuntimeError:
         outdic = {"fit": 3, "status": -2}
@@ -2361,6 +2359,7 @@ def fit_sfhg1g2(
     return outdics
 
 
+@profile
 def fit_spin(
     magpsf_red,
     sigmapsf,
@@ -2512,7 +2511,14 @@ def fit_spin(
     try:
         if model == "SHG1G2":
             func = build_eqs_for_spins
-            args = (filters, phase, ra, dec, magpsf_red, remap)
+            args = (
+                filters,
+                [HG1G2._phi1(phase), HG1G2._phi2(phase), HG1G2._phi3(phase)],
+                ra,
+                dec,
+                magpsf_red,
+                remap,
+            )
         elif model == "SOCCA":
             func = build_eqs_for_spin_shape
             if not terminator:
