@@ -2691,7 +2691,7 @@ def extract_obliquity(sso_name, alpha0, delta0):
     import rocks
 
     cols = [
-        "sso_name",
+        "name",
         "orbital_elements.node_longitude.value",
         "orbital_elements.inclination.value",
     ]
@@ -2699,9 +2699,9 @@ def extract_obliquity(sso_name, alpha0, delta0):
 
     sub = pdf_bft[cols]
 
-    pdf = pd.DataFrame({"sso_name": sso_name, "alpha0": alpha0, "delta0": delta0})
+    pdf = pd.DataFrame({"name": sso_name, "alpha0": alpha0, "delta0": delta0})
 
-    pdf = pdf.merge(sub[cols], left_on="sso_name", right_on="sso_name", how="left")
+    pdf = pdf.merge(sub[cols], left_on="name", right_on="name", how="left")
 
     # Orbit
     lon_orbit = (pdf["orbital_elements.node_longitude.value"] - 90).to_numpy()
