@@ -185,13 +185,11 @@ def iterative_cleaning(
             mask = filters_inl == ff
 
             pts = func_shg1g2(
-                [
-                    phi_funcs[0][mask],
-                    phi_funcs[1][mask],
-                    phi_funcs[2][mask],
-                    np.radians(ra_inl[mask]),
-                    np.radians(dec_inl[mask]),
-                ],
+                phi_funcs[0][mask],
+                phi_funcs[1][mask],
+                phi_funcs[2][mask],
+                np.radians(ra_inl[mask]),
+                np.radians(dec_inl[mask]),
                 shgg_params[f"H_{ff}"],
                 shgg_params[f"G1_{ff}"],
                 shgg_params[f"G2_{ff}"],

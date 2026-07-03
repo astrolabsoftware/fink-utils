@@ -126,8 +126,10 @@ def func_hg(phi1, phi2, h, g):
 
     Parameters
     ----------
-    ph: array-like
-        Phase angle in radians
+    phi1: array-like
+        First part of the phase function
+    phi2: array-like
+        Second part of the phase function
     h: float
         Absolute magnitude in mag
     G: float
@@ -196,7 +198,7 @@ def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
 
 
 @profile
-def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
+def func_shg1g2(phi1, phi2, phi3, ra, dec, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
     Parameters
@@ -222,10 +224,10 @@ def func_shg1g2(pha, h, g1, g2, R, alpha0, delta0):
         H - 2.5 log(f(G1G2)) - 2.5 log(f(R, spin))
     """
     # Standard HG1G2 part: h + f(alpha, G1, G2)
-    func1 = func_hg1g2(pha[0], pha[1], pha[2], h, g1, g2)
+    func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
     # Spin part
-    geo = cos_aspect_angle(pha[3], pha[4], alpha0, delta0)
+    geo = cos_aspect_angle(ra, dec, alpha0, delta0)
     func2 = 1 - (1 - R) * np.abs(geo)
     func2 = 2.5 * np.log10(func2)
 
@@ -1605,13 +1607,11 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
 
         myfunc = (
             func_shg1g2(
-                [
-                    phi1[mask],
-                    phi2[mask],
-                    phi3[mask],
-                    ra[mask],
-                    dec[mask],
-                ],
+                phi1[mask],
+                phi2[mask],
+                phi3[mask],
+                ra[mask],
+                dec[mask],
                 params_per_band[index][0],
                 params_per_band[index][1],
                 params_per_band[index][2],
