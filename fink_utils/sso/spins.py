@@ -408,8 +408,8 @@ def func_sfhg1g2(phas, g1, g2, *args):
         Magnitude as predicted by `func_hg1g2`.
     """
     fl = []
-    for alpha, h in zip(phas, args[0][:]):
-        fl.append(func_hg1g2(alpha, h, g1, g2))
+    for alphas, h in zip(phas, args[0][:]):
+        fl.append(func_hg1g2(*alphas, h, g1, g2))
     return np.concatenate(fl)
 
 
@@ -2300,8 +2300,15 @@ def fit_sfhg1g2(
         params_ = ["G1", "G2", *["H{}".format(i) for i in range(napparition)]]
         params = [i + "_{}".format(str(filt)) for i in params_]
 
-        # Split phase
-        phase_list = [df["Phase"].to_numpy().tolist() for df in splitted]
+        # Split phase and pre-compute phi functions
+        phase_list = [
+            [
+                HG1G2._phi1(df["Phase"].to_numpy().tolist()),
+                HG1G2._phi2(df["Phase"].to_numpy().tolist()),
+                HG1G2._phi3(df["Phase"].to_numpy().tolist()),
+            ]
+            for df in splitted
+        ]
 
         # Fit
         res_lsq = least_squares(
