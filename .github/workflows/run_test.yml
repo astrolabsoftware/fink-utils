@@ -34,6 +34,7 @@ jobs:
         pip install -r requirements.txt
         # Uninstall container version
         pip uninstall -y fink-utils
+        pip install .
 
     - name: Run tests
       run: |
