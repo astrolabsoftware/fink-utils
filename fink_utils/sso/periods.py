@@ -24,6 +24,7 @@ from fink_utils.sso.spins import (
 )
 from fink_utils.sso.utils import compute_light_travel_correction
 from astropy.timeseries import LombScargleMultiband
+from sbpy.photometry import HG, HG1G2
 
 import requests
 import numpy as np
@@ -128,20 +129,20 @@ def compute_residuals(
         Series containing `observation - model` in magnitude
     """
     model = np.zeros_like(phase, dtype=float)
+    phase = np.deg2rad(phase)
     for filtnum in np.unique(filters):
         # if filtnum == 3:
         #    continue
         cond = filters == filtnum
 
         if flavor == "SOCCA":
-            pha = [
-                np.deg2rad(phase[cond]),
+            preds = func_socca(
+                HG1G2._phi1(phase[cond]),
+                HG1G2._phi2(phase[cond]),
+                HG1G2._phi3(phase[cond]),
                 np.deg2rad(ra[cond]),
                 np.deg2rad(dec[cond]),
                 times[cond],
-            ]
-            preds = func_socca(
-                pha,
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G1_{}".format(filtnum)],
                 phyparam["G2_{}".format(filtnum)],
@@ -153,13 +154,12 @@ def compute_residuals(
                 phyparam["phi0"],
             )
         elif flavor == "SHG1G2":
-            pha = [
-                np.deg2rad(phase[cond]),
+            preds = func_shg1g2(
+                HG1G2._phi1(phase[cond]),
+                HG1G2._phi2(phase[cond]),
+                HG1G2._phi3(phase[cond]),
                 np.deg2rad(ra[cond]),
                 np.deg2rad(dec[cond]),
-            ]
-            preds = func_shg1g2(
-                pha,
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G1_{}".format(filtnum)],
                 phyparam["G2_{}".format(filtnum)],
@@ -169,19 +169,24 @@ def compute_residuals(
             )
         elif flavor == "HG":
             preds = func_hg(
-                np.deg2rad(phase[cond]),
+                HG._hgphi(phase[cond], 1),
+                HG._hgphi(phase[cond], 2),
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G_{}".format(filtnum)],
             )
         elif flavor == "HG12":
             preds = func_hg12(
-                np.deg2rad(phase[cond]),
+                HG1G2._phi1(phase[cond]),
+                HG1G2._phi2(phase[cond]),
+                HG1G2._phi3(phase[cond]),
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G12_{}".format(filtnum)],
             )
         elif flavor == "HG1G2":
             preds = func_hg1g2(
-                np.deg2rad(phase[cond]),
+                HG1G2._phi1(phase[cond]),
+                HG1G2._phi2(phase[cond]),
+                HG1G2._phi3(phase[cond]),
                 phyparam["H_{}".format(filtnum)],
                 phyparam["G1_{}".format(filtnum)],
                 phyparam["G2_{}".format(filtnum)],
