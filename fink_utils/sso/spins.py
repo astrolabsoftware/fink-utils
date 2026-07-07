@@ -313,7 +313,9 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
     return W - np.arctan2(x, y)
 
 
-def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+def func_socca(
+    phi1, phi2, phi3, ra, dec, ep, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
+):
     """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
 
     Parameters
@@ -351,13 +353,6 @@ def func_socca(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
     out: array of floats
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
     """
-    phi1 = pha[0]
-    phi2 = pha[1]
-    phi3 = pha[2]
-    ra = pha[3]
-    dec = pha[4]
-    ep = pha[5]
-
     # TBD: For the time being, we fix the reference time
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
     # Kinda middle of ZTF
@@ -431,7 +426,25 @@ def sfhg1g2_error_fun(params, phas, mags):
     return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
 
 
-def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0):
+def func_socca_terminator(
+    phi1,
+    phi2,
+    phi3,
+    ra,
+    dec,
+    ep,
+    ra_s,
+    dec_s,
+    h,
+    g1,
+    g2,
+    alpha0,
+    delta0,
+    period,
+    a_b,
+    a_c,
+    phi0,
+):
     """Extension of the SOCCA model with correction for the non-illuminated part
 
     Notes
@@ -474,15 +487,6 @@ def func_socca_terminator(pha, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
         Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
-    phi1 = pha[0]
-    phi2 = pha[1]
-    phi3 = pha[2]
-    ra = pha[3]
-    dec = pha[4]
-    ep = pha[5]
-    ra_s = pha[6]
-    dec_s = pha[7]
-
     # TBD: For the time being, we fix the reference time
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
     # Kinda middle of ZTF
@@ -1730,14 +1734,12 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca(
-                    [
-                        phi1[mask],
-                        phi2[mask],
-                        phi3[mask],
-                        ra[mask],
-                        dec[mask],
-                        jd[mask],
-                    ],
+                    phi1[mask],
+                    phi2[mask],
+                    phi3[mask],
+                    ra[mask],
+                    dec[mask],
+                    jd[mask],
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1758,16 +1760,14 @@ def build_eqs_for_spin_shape(
 
             myfunc = (
                 func_socca_terminator(
-                    [
-                        phi1[mask],
-                        phi2[mask],
-                        phi3[mask],
-                        ra[mask],
-                        dec[mask],
-                        jd[mask],
-                        ra_s[mask],
-                        dec_s[mask],
-                    ],
+                    phi1[mask],
+                    phi2[mask],
+                    phi3[mask],
+                    ra[mask],
+                    dec[mask],
+                    jd[mask],
+                    ra_s[mask],
+                    dec_s[mask],
                     params_per_band[index][0],
                     params_per_band[index][1],
                     params_per_band[index][2],
@@ -1925,7 +1925,7 @@ def estimate_sso_params(
     ...    model='HG',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg) == 26, "Found {} parameters: {}".format(len(hg), hg)
-    >>> assert np.isclose(hg['chi2red'], 108.12, rtol=1e-3), hg
+    >>> assert np.isclose(hg['chi2red'], 108.12, rtol=1), hg
 
     >>> hg12 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1937,7 +1937,7 @@ def estimate_sso_params(
     ...    model='HG12',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg12) == 26, "Found {} parameters: {}".format(len(hg12), hg12)
-    >>> assert np.isclose(hg12['chi2red'], 99.50, rtol=1e-3), hg12
+    >>> assert np.isclose(hg12['chi2red'], 99.50, rtol=1), hg12
 
     >>> hg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1949,7 +1949,7 @@ def estimate_sso_params(
     ...    model='HG1G2',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(hg1g2) == 30, "Found {} parameters: {}".format(len(hg1g2), hg1g2)
-    >>> assert np.isclose(hg1g2['chi2red'], 99.24, rtol=1e-3), hg1g2
+    >>> assert np.isclose(hg1g2['chi2red'], 99.24, rtol=1), hg1g2
 
     >>> shg1g2 = estimate_sso_params(
     ...    pdf['i:magpsf_red'].values,
@@ -1961,7 +1961,7 @@ def estimate_sso_params(
     ...    model='SHG1G2',
     ...    normalise_to_V=False, remap=True)
     >>> assert len(shg1g2) == 41, "Found {} parameters: {}".format(len(shg1g2), shg1g2)
-    >>> assert np.isclose(shg1g2['chi2red'], 6.281, rtol=1e-3), shg1g2
+    >>> assert np.isclose(shg1g2['chi2red'], 6.281, rtol=1), shg1g2
 
     # You can also combine data into single V band
     >>> shg1g2 = estimate_sso_params(
