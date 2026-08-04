@@ -27,6 +27,7 @@ from fink_utils.tester import regular_unit_tests
 from line_profiler import profile
 
 from sbpy.photometry import HG, HG1G2, HG12_Pen16
+from numba import jit
 
 # Phase parameter global bounds
 GMIN = -0.429
@@ -120,7 +121,6 @@ def split_quantity_by_filter(list_of_filters, ordered_vector):
     return np.array_split(ordered_vector, np.cumsum(split_at))
 
 
-@profile
 def func_hg(phi1, phi2, h, g):
     """Return f(H, G) part of the lightcurve in mag space
 
@@ -147,7 +147,6 @@ def func_hg(phi1, phi2, h, g):
     return h + func1
 
 
-@profile
 def func_hg12(phi1, phi2, phi3, h, g12):
     """Return f(H, G) part of the lightcurve in mag space
 
@@ -170,7 +169,6 @@ def func_hg12(phi1, phi2, phi3, h, g12):
     return func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
 
-@profile
 def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
     """Return f(H, G1, G2) part of the lightcurve in mag space
 
@@ -197,7 +195,6 @@ def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
     return h + func1
 
 
-@profile
 def func_shg1g2(phi1, phi2, phi3, ra, dec, h, g1, g2, R, alpha0, delta0):
     """Return f(H, G1, G2, R, alpha0, delta0) part of the lightcurve in mag space
 
@@ -313,6 +310,7 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
     return W - np.arctan2(x, y)
 
 
+@jit(nopython=True)
 def func_socca(
     phi1, phi2, phi3, ra, dec, ep, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
 ):
@@ -426,6 +424,7 @@ def sfhg1g2_error_fun(params, phas, mags):
     return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
 
 
+@jit(nopython=True)
 def func_socca_terminator(
     phi1,
     phi2,
@@ -1303,6 +1302,7 @@ def parameter_remapping_shg1g2(
     return np.array(out)
 
 
+@jit(nopython=True)
 def parameter_remapping(
     x,
     physical_to_latent=True,
@@ -1458,7 +1458,6 @@ def parameter_remapping(
     return np.array(out)
 
 
-@profile
 def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     """Build the system of equations to solve using the HG, HG12, or HG1G2 model
 
@@ -1550,7 +1549,6 @@ def build_eqs(x, filters, ph, rhs, func=None, remap=False, model=None):
     return np.ravel(eqs)
 
 
-@profile
 def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     """Build the system of equations to solve using the HG1G2 + spin model
 
@@ -1631,7 +1629,7 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
     return np.ravel(eqs)
 
 
-@profile
+@jit(nopython=True)
 def build_eqs_for_spin_shape(
     x,
     filters,
@@ -2271,13 +2269,15 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame({
-        "i:magpsf_red": magpsf_red,
-        "i:sigmapsf": sigmapsf,
-        "Phase": phase,
-        "i:jd": jds,
-        "i:fid": filters,
-    })
+    pdf = pd.DataFrame(
+        {
+            "i:magpsf_red": magpsf_red,
+            "i:sigmapsf": sigmapsf,
+            "Phase": phase,
+            "i:jd": jds,
+            "i:fid": filters,
+        }
+    )
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
