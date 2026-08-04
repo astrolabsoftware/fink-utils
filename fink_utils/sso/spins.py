@@ -168,7 +168,7 @@ def func_hg12(phi1, phi2, phi3, h, g12):
     g2 = HG12_Pen16._G12_to_G2(g12)
     return func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
-
+@jit(nopython=True)
 def func_hg1g2(phi1, phi2, phi3, h, g1, g2):
     """Return f(H, G1, G2) part of the lightcurve in mag space
 
@@ -230,7 +230,7 @@ def func_shg1g2(phi1, phi2, phi3, ra, dec, h, g1, g2, R, alpha0, delta0):
 
     return func1 + func2
 
-
+@jit(nopython=True)
 def cos_aspect_angle(ra, dec, ra0, dec0):
     """Compute the cosine of the aspect angle
 
@@ -255,7 +255,7 @@ def cos_aspect_angle(ra, dec, ra0, dec0):
     """
     return np.sin(dec) * np.sin(dec0) + np.cos(dec) * np.cos(dec0) * np.cos(ra - ra0)
 
-
+@jit(nopython=True)
 def rotation_phase(t, W0, W1, t0):
     """Compute the rotational phase
 
@@ -280,7 +280,7 @@ def rotation_phase(t, W0, W1, t0):
     """
     return W0 + W1 * (t - t0)
 
-
+@jit(nopython=True)
 def subobserver_longitude(ra, dec, ra0, dec0, W):
     """Compute the subobserver longitude (radian)
 
@@ -310,7 +310,6 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
     return W - np.arctan2(x, y)
 
 
-@jit(nopython=True)
 def func_socca(
     phi1, phi2, phi3, ra, dec, ep, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
 ):
@@ -422,7 +421,6 @@ def sfhg1g2_error_fun(params, phas, mags):
         Sorted by time.
     """
     return func_sfhg1g2(phas, params[0], params[1], params[2:]) - mags
-
 
 @jit(nopython=True)
 def func_socca_terminator(
@@ -1302,7 +1300,6 @@ def parameter_remapping_shg1g2(
     return np.array(out)
 
 
-@jit(nopython=True)
 def parameter_remapping(
     x,
     physical_to_latent=True,
@@ -1628,8 +1625,7 @@ def build_eqs_for_spins(x, filters, ph, ra, dec, rhs, remap=False):
 
     return np.ravel(eqs)
 
-
-@jit(nopython=True)
+@profile
 def build_eqs_for_spin_shape(
     x,
     filters,
@@ -1784,7 +1780,6 @@ def build_eqs_for_spin_shape(
     return np.ravel(eqs)
 
 
-@profile
 def estimate_sso_params(
     magpsf_red,
     sigmapsf,
@@ -2037,7 +2032,7 @@ def estimate_sso_params(
     return outdic
 
 
-@profile
+
 def fit_legacy_models(
     magpsf_red, sigmapsf, phase, filters, model, p0=None, bounds=None, remap=False
 ):
