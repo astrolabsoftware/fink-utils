@@ -577,6 +577,107 @@ def aggregate_ztf_sso_data(
     return df_agg
 
 
+def aggregate_rubin_sso_data(
+    year=None,
+    month=None,
+    stop_previous_month=False,
+    prefix_path="archive/science",
+    output_filename=None,
+):
+    """Aggregate Rubin SSO data in Fink
+
+    Parameters
+    ----------
+    year: str, optional
+        Year date in format YYYY. If not specified, take
+        all Fink data
+    month: str, optional
+        Month date in format MM. Default is None, in
+        which case `year` only will be considered.
+    stop_previous_month: bool, optional
+        If True, load data only until previous month.
+        To use only with month=None, to reconstruct
+        data from the current year.
+    prefix_path: str, optional
+        Prefix path on HDFS. Default is archive/science
+    output_filename: str, optional
+        If given, save data on HDFS. Cannot overwrite. Default is None.
+
+    Returns
+    -------
+    df_grouped: Spark DataFrame
+        Spark DataFrame with aggregated SSO data.
+
+    Examples
+    --------
+    >>> path = "fink_utils/test_data/rubin_sso_test_data"
+
+    Check monthly aggregation
+    >>> df_agg = aggregate_rubin_sso_data(year=2026, month='06', prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+
+    Check yearly aggregation
+    >>> df_agg = aggregate_rubin_sso_data(year=2026, prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+
+    Check full aggregation
+    >>> df_agg = aggregate_rubin_sso_data(prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+    """
+    spark = SparkSession.builder.getOrCreate()
+    cols0 = ["mpc_orbits.designation"]
+    cols = [
+        "diaSource.ra",
+        "diaSource.dec",
+        "diaSource.psfFlux",
+        "diaSource.psfFluxErr",
+        "diaSource.band",
+        "diaSource.midpointMjdTai",
+        "ssSource.phaseAngle",
+    ]
+
+    if year is None:
+        path = prefix_path
+    elif month is None:
+        path = "{}/year={}".format(prefix_path, year)
+    else:
+        path = "{}/year={}/month={}".format(prefix_path, year, month)
+
+    df = spark.read.format("parquet").option("basePath", prefix_path).load(path)
+
+    if month is None and stop_previous_month:
+        prevdate = retrieve_last_date_of_previous_month(datetime.datetime.today())
+        # take the last hour of the last day
+        prevdate = prevdate.replace(hour=23)
+        mjd0 = Time(prevdate, format="datetime", scale="tai").utc.mjd
+        df = df.filter(df["diaSource.midpointMjdTai"] <= mjd0)
+
+    df_agg = (
+        df
+        .select(cols0 + cols)
+        .filter(df["mpc_orbits"].isNotNull())
+        .groupBy("designation")
+        .agg(*[
+            F.collect_list(col.split(".")[1]).alias("c" + col.split(".")[1])
+            for col in cols
+        ])
+    )
+
+    if output_filename is not None:
+        df_agg.write.parquet(output_filename)
+
+    return df_agg
+
+
 if __name__ == "__main__":
     """Execute the unit test suite"""
 
