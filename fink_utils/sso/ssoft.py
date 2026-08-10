@@ -17,11 +17,18 @@
 import datetime
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
+from pyspark.sql.functions import pandas_udf
+from pyspark.sql.types import MapType, StringType, FloatType
 
+import pandas as pd
 from astropy.time import Time
+from astropy import units as u
+from astropy.coordinates import CartesianRepresentation, ICRS
 
 from fink_utils.sso.utils import retrieve_last_date_of_previous_month
+from fink_utils.spark.utils import mjdtai_to_jdutc
 from fink_utils.tester import spark_unit_tests
+from fink_utils.photometry.conversion import rubin_flux_to_mag
 
 COLUMNS = {
     "ssnamenr": {
@@ -575,6 +582,165 @@ def aggregate_ztf_sso_data(
         df_agg.write.parquet(output_filename)
 
     return df_agg
+
+
+def aggregate_rubin_sso_data(
+    year=None,
+    month=None,
+    stop_previous_month=False,
+    prefix_path="archive/science",
+    output_filename=None,
+):
+    """Aggregate Rubin SSO data in Fink
+
+    Notes
+    -----
+    Input time, MJD in tai scale, is transformed into
+    JD with utc scale. A new column in available: cjdUtc
+
+    Parameters
+    ----------
+    year: str, optional
+        Year date in format YYYY. If not specified, take
+        all Fink data
+    month: str, optional
+        Month date in format MM. Default is None, in
+        which case `year` only will be considered.
+    stop_previous_month: bool, optional
+        If True, load data only until previous month.
+        To use only with month=None, to reconstruct
+        data from the current year.
+    prefix_path: str, optional
+        Prefix path on HDFS. Default is archive/science
+    output_filename: str, optional
+        If given, save data on HDFS. Cannot overwrite. Default is None.
+
+    Returns
+    -------
+    df_grouped: Spark DataFrame
+        Spark DataFrame with aggregated SSO data.
+
+    Examples
+    --------
+    >>> path = "fink_utils/test_data/rubin_sso_test_data"
+
+    Check monthly aggregation
+    >>> df_agg = aggregate_rubin_sso_data(year=2026, month='06', prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    #>>> df_agg.toPandas().to_parquet('rubin_agg_data_test.parquet')
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+    >>> assert 'cjdUtc' in out[0], out[0]
+    >>> assert 'chelioRa' in out[0], out[0]
+    >>> assert 'chelioDec' in out[0], out[0]
+    >>> assert 'cmagpsf' in out[0], out[0]
+    >>> assert 'csigmapsf' in out[0], out[0]
+
+    Check yearly aggregation
+    >>> df_agg = aggregate_rubin_sso_data(year=2026, prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+
+    Check full aggregation
+    >>> df_agg = aggregate_rubin_sso_data(prefix_path=path)
+    >>> assert df_agg.count() == 1, df_agg.count()
+
+    >>> out = df_agg.collect()
+    >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+    """
+    spark = SparkSession.builder.getOrCreate()
+    cols0 = ["mpc_orbits.designation"]
+    cols = [
+        "diaSource.ra",
+        "diaSource.dec",
+        "diaSource.band",
+        "diaSource.midpointMjdTai",
+        "ssSource.phaseAngle",
+        "ssSource.ephRa",
+        "ssSource.ephDec",
+        "ssSource.topoRange",
+        "ssSource.helioRange",
+        "ssSource.ephOffsetRa",
+        "ssSource.ephOffsetDec",
+    ]
+    added_col = ["jdUtc", "helioRa", "helioDec", "magpsf", "sigmapsf"]
+
+    if year is None:
+        path = prefix_path
+    elif month is None:
+        path = "{}/year={}".format(prefix_path, year)
+    else:
+        path = "{}/year={}/month={}".format(prefix_path, year, month)
+
+    df = spark.read.format("parquet").option("basePath", prefix_path).load(path)
+
+    if month is None and stop_previous_month:
+        prevdate = retrieve_last_date_of_previous_month(datetime.datetime.today())
+        # take the last hour of the last day
+        prevdate = prevdate.replace(hour=23)
+        mjd0 = Time(prevdate, format="datetime", scale="utc").tai.mjd
+        df = df.filter(df["diaSource.midpointMjdTai"] <= mjd0)
+
+    # Transform MJD/TAI into JD/UTC
+    # This is useful for later operations (ephemerides, etc.)
+    df = df.withColumn("jdUtc", mjdtai_to_jdutc("diaSource.midpointMjdTai"))
+
+    df = (
+        df
+        .withColumn(
+            "helioCoords",
+            heliocoordinates(
+                "ssSource.helio_x", "ssSource.helio_y", "ssSource.helio_z"
+            ),
+        )
+        .withColumn("helioRa", F.col("helioCoords").getItem("ra"))
+        .withColumn("helioDec", F.col("helioCoords").getItem("dec"))
+        .drop("helioCoords")
+    )
+
+    df = (
+        df
+        .withColumn(
+            "mags",
+            rubin_flux_to_mag("diaSource.psfFlux", "diaSource.psfFluxErr"),
+        )
+        .withColumn("magpsf", F.col("mags").getItem("mag"))
+        .withColumn("sigmapsf", F.col("mags").getItem("mag_err"))
+        .drop("mags")
+    )
+
+    df_agg = (
+        df
+        .select(cols0 + cols + added_col)
+        .filter(df["mpc_orbits"].isNotNull())
+        .groupBy("designation")
+        .agg(*[
+            F.collect_list(col.split(".")[1]).alias("c" + col.split(".")[1])
+            for col in cols
+            + ["dummy.{}".format(col_) for col_ in added_col]  # added column
+        ])
+    )
+
+    if output_filename is not None:
+        df_agg.write.parquet(output_filename)
+
+    return df_agg
+
+
+@pandas_udf(MapType(StringType(), FloatType()))
+def heliocoordinates(x: pd.Series, y: pd.Series, z: pd.Series) -> pd.Series:
+    """Compute heliocentric equatorial coordinates from cartesian ones"""
+    pos = CartesianRepresentation(x=x * u.AU, y=y * u.AU, z=z * u.AU)
+
+    sky = ICRS(pos)
+    ra = sky.ra.deg
+    dec = sky.dec.deg
+    out = [{"ra": i, "dec": j} for i, j in zip(ra, dec)]
+    return pd.Series(out)
 
 
 if __name__ == "__main__":

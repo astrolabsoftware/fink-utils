@@ -108,22 +108,26 @@ def expand_columns(df, col_to_expand="ephem"):
 
 
 @pandas_udf(MapType(StringType(), ArrayType(FloatType())), PandasUDFType.SCALAR)
-def extract_ztf_ephemerides_from_miriade(
-    ssnamenr, cjd, observer, shift, uid, method, iofile
-):
-    """Extract ephemerides for ZTF from Miriade
+def extract_ephemerides_from_miriade(name, cjd, observer, shift, uid, method, iofile):
+    """Extract ephemerides from Miriade
+
+    Notes
+    -----
+    Works for any survey, assuming time is JD/UTC.
 
     Parameters
     ----------
-    ssnamenr: pd.Series of str
-        ZTF ssnamenr
+    name: pd.Series of str
+        ATLAS, ZTF ssnamenr or Rubin designation
     cjd: pd.Series of list of floats
-        List of JD values
+        List of JD values in UTC scale
     observer: pd.Series of str
-        IAU code for the observer. ZTF is I41.
+        IAU code for the observer.
+        ZTF is I41, Rubin is X05.
+        IAU code for ATLAS stations: M22, T05, T08, W68
     shift: pd.Series of float
         Shift for the JD values, in seconds.
-        Only required for ZTF (15 seconds).
+        ZTF has 15 seconds, Rubin has 0 second, ATLAS has 0.
     uid: pd.Series of int
         Unique ID for each object
     method: pd.Series of str
@@ -147,7 +151,7 @@ def extract_ztf_ephemerides_from_miriade(
 
     >>> df_prev_ephem = df_prev.withColumn(
     ...     "ephem",
-    ...     extract_ztf_ephemerides_from_miriade(
+    ...     extract_ephemerides_from_miriade(
     ...         "ssnamenr",
     ...         "cjd",
     ...         F.lit("I41"),
@@ -167,7 +171,7 @@ def extract_ztf_ephemerides_from_miriade(
 
     >>> df_new_ephem = df_new.withColumn(
     ...     "ephem",
-    ...     extract_ztf_ephemerides_from_miriade(
+    ...     extract_ephemerides_from_miriade(
     ...         "ssnamenr",
     ...         "cjd",
     ...         F.lit("I41"),
@@ -183,7 +187,7 @@ def extract_ztf_ephemerides_from_miriade(
     >>> df_join = join_aggregated_sso_data(df_prev, df_new, on="ssnamenr")
     >>> df_join_ephem = df_join.withColumn(
     ...     "ephem",
-    ...     extract_ztf_ephemerides_from_miriade(
+    ...     extract_ephemerides_from_miriade(
     ...         "ssnamenr",
     ...         "cjd",
     ...         F.lit("I41"),
@@ -196,12 +200,34 @@ def extract_ztf_ephemerides_from_miriade(
     >>> out_1 = df_join_ephem.select(["Elong"]).collect()
     >>> out_2 = df_join_ephem_bis.select(["Elong"]).collect()
     >>> assert out_1 == out_2, (out_1, out_2)
+
+    Check Rubin
+    >>> from fink_utils.sso.ssoft import aggregate_rubin_sso_data
+    >>> path = "fink_utils/test_data/rubin_sso_test_data"
+    >>> df_new = aggregate_rubin_sso_data(year=2026, month='06', prefix_path=path)
+
+    >>> df_new_ephem = df_new.withColumn(
+    ...     "ephem",
+    ...     extract_ephemerides_from_miriade(
+    ...         "designation",
+    ...         "cjdUtc",
+    ...         F.lit("X05"),
+    ...         F.lit(0.0),
+    ...         F.expr("uuid()"),
+    ...         F.lit("rest"), F.lit("ephemcc-photom.xml")))
+    >>> df_new_ephem = expand_columns(df_new_ephem)
+    >>> out = df_new_ephem.collect()
+    >>> assert len(out[0]["cjdUtc"]) == len(out[0]["RA"])
+
+    >>> import numpy as np
+    >>> assert np.isclose(out[0]['RA_h'][0], out[0]['chelioRa'][0], rtol=1e-4), (out[0]['RA_h'][0], out[0]['chelioRa'][0])
+    >>> assert np.isclose(out[0]['DEC_h'][0], out[0]['chelioDec'][0], rtol=1e-4), (out[0]['DEC_h'][0], out[0]['chelioDec'][0])
     """
-    method_ = method.to_numpy()[0]
+    method = method.to_numpy()[0]
     iofile = iofile.to_numpy()[0]
     out = []
-    for index, ssname in enumerate(ssnamenr.to_numpy()):
-        if method_ == "ephemcc":
+    for index, ssname in enumerate(name.to_numpy()):
+        if method == "ephemcc":
             # Hardcoded!
             parameters = {
                 "outdir": "/tmp/ramdisk/spins",

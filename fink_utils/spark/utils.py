@@ -24,6 +24,7 @@ from pyspark.sql.types import (
     MapType,
     StringType,
     FloatType,
+    DoubleType,
 )
 from pyspark.sql import DataFrame
 
@@ -31,6 +32,7 @@ from fink_utils.tester import regular_unit_tests
 
 import importlib
 import logging
+from astropy.time import Time
 
 _LOG = logging.getLogger(__name__)
 
@@ -670,6 +672,23 @@ class FinkUDF(object):
     def __str__(self):
         """Return long description of the filter"""
         return self.description
+
+
+@pandas_udf(DoubleType())
+def mjdtai_to_jdutc(mjdtai: pd.Series) -> pd.Series:
+    """Transform MJD/TAI to JD/UTC
+
+    Parameters
+    ----------
+    mjdtai: pd.Series
+        Series of MJD in TAI scale (double)
+
+    Returns
+    -------
+    jdutc: pd.Series
+        Series of JD in UTC scale (double)
+    """
+    return mjdtai.apply(lambda t: Time(t, format="mjd", scale="tai").utc.jd)
 
 
 if __name__ == "__main__":

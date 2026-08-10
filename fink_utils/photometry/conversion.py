@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pyspark.sql.functions import pandas_udf
+from pyspark.sql.types import MapType, StringType, FloatType
+import pandas as pd
 import numpy as np
 from typing import Tuple
 
@@ -138,3 +141,24 @@ def dc_mag(
     dc_sigmag = dc_sigflux / dc_flux * 1.0857
 
     return dc_mag, dc_sigmag
+
+
+@pandas_udf(MapType(StringType(), FloatType()))
+def rubin_flux_to_mag(flux: pd.Series, flux_err: pd.Series) -> pd.Series:
+    """Convert flux to magnitude (and errors)
+
+    Parameters
+    ----------
+    flux: array-like
+        Flux in nJy
+    flux_err: array-like
+        Flux error in nJy
+
+    Returns
+    -------
+    mag, mag_err: array-like
+    """
+    mag = 31.4 - 2.5 * np.log10(flux)
+    mag_err = 2.5 / np.log(10) * flux_err / flux
+    out = [{"mag": i, "mag_err": j} for i, j in zip(mag, mag_err)]
+    return pd.Series(out)
