@@ -219,17 +219,9 @@ def extract_ephemerides_from_miriade(name, cjd, observer, shift, uid, method, io
     >>> out = df_new_ephem.collect()
     >>> assert len(out[0]["cjdUtc"]) == len(out[0]["RA"])
 
-    >>> from astropy.coordinates import CartesianRepresentation, ICRS
-    >>> from astropy import units as u
     >>> import numpy as np
-    >>> x, y, z = out[0]['chelio_x'], out[0]['chelio_y'], out[0]['chelio_z']
-    >>> pos = CartesianRepresentation(
-    ...     x=x*u.AU,
-    ...     y=y*u.AU,
-    ...     z=z*u.AU)
-    >>> sky = ICRS(pos)
-    >>> assert np.isclose(out[0]['RA_h'][0], sky.ra.deg[0], rtol=1e-4), (out[0]['RA_h'][0], sky.ra.deg[0])
-    >>> assert np.isclose(out[0]['DEC_h'][0], sky.dec.deg[0], rtol=1e-4), (out[0]['DEC_h'][0], sky.dec.deg[0])
+    >>> assert np.isclose(out[0]['RA_h'][0], out[0]['chelioRa'][0], rtol=1e-4), (out[0]['RA_h'][0], out[0]['chelioRa'][0])
+    >>> assert np.isclose(out[0]['DEC_h'][0], out[0]['chelioDec'][0], rtol=1e-4), (out[0]['DEC_h'][0], out[0]['chelioDec'][0])
     """
     method = method.to_numpy()[0]
     iofile = iofile.to_numpy()[0]
