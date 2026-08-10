@@ -21,6 +21,7 @@ import pyspark.sql.functions as F
 from astropy.time import Time
 
 from fink_utils.sso.utils import retrieve_last_date_of_previous_month
+from fink_utils.spark.utils import mjdtai_to_jdutc
 from fink_utils.tester import spark_unit_tests
 
 COLUMNS = {
@@ -586,6 +587,11 @@ def aggregate_rubin_sso_data(
 ):
     """Aggregate Rubin SSO data in Fink
 
+    Notes
+    -----
+    Input time, MJD in tai scale, is transformed into
+    JD with utc scale. A new column in available: cjdUtc
+
     Parameters
     ----------
     year: str, optional
@@ -618,6 +624,7 @@ def aggregate_rubin_sso_data(
 
     >>> out = df_agg.collect()
     >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
+    >>> assert 'cjdUtc' in out[0], out[0]
 
     Check yearly aggregation
     >>> df_agg = aggregate_rubin_sso_data(year=2026, prefix_path=path)
@@ -644,6 +651,7 @@ def aggregate_rubin_sso_data(
         "diaSource.midpointMjdTai",
         "ssSource.phaseAngle",
     ]
+    added_col = ["jdUtc"]
 
     if year is None:
         path = prefix_path
@@ -658,17 +666,22 @@ def aggregate_rubin_sso_data(
         prevdate = retrieve_last_date_of_previous_month(datetime.datetime.today())
         # take the last hour of the last day
         prevdate = prevdate.replace(hour=23)
-        mjd0 = Time(prevdate, format="datetime", scale="tai").utc.mjd
+        mjd0 = Time(prevdate, format="datetime", scale="utc").tai.mjd
         df = df.filter(df["diaSource.midpointMjdTai"] <= mjd0)
+
+    # Transform MJD/TAI into JD/UTC
+    # This is useful for later operations (ephemerides, etc.)
+    df = df.withColumn("jdUtc", mjdtai_to_jdutc("diaSource.midpointMjdTai"))
 
     df_agg = (
         df
-        .select(cols0 + cols)
+        .select(cols0 + cols + added_col)
         .filter(df["mpc_orbits"].isNotNull())
         .groupBy("designation")
         .agg(*[
             F.collect_list(col.split(".")[1]).alias("c" + col.split(".")[1])
             for col in cols
+            + ["dummy.{}".format(col_) for col_ in added_col]  # added column
         ])
     )
 
