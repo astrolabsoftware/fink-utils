@@ -650,6 +650,15 @@ def aggregate_rubin_sso_data(
         "diaSource.band",
         "diaSource.midpointMjdTai",
         "ssSource.phaseAngle",
+        "ssSource.ephRa",
+        "ssSource.ephDec",
+        "ssSource.topoRange",
+        "ssSource.helioRange",
+        "ssSource.ephOffsetRa",
+        "ssSource.ephOffsetDec",
+        "ssSource.helio_x",
+        "ssSource.helio_y",
+        "ssSource.helio_z",
     ]
     added_col = ["jdUtc"]
 
