@@ -28,6 +28,7 @@ from astropy.coordinates import CartesianRepresentation, ICRS
 from fink_utils.sso.utils import retrieve_last_date_of_previous_month
 from fink_utils.spark.utils import mjdtai_to_jdutc
 from fink_utils.tester import spark_unit_tests
+from fink_utils.photometry.conversion import rubin_flux_to_mag
 
 COLUMNS = {
     "ssnamenr": {
@@ -632,6 +633,8 @@ def aggregate_rubin_sso_data(
     >>> assert 'cjdUtc' in out[0], out[0]
     >>> assert 'chelioRa' in out[0], out[0]
     >>> assert 'chelioDec' in out[0], out[0]
+    >>> assert 'cmagpsf' in out[0], out[0]
+    >>> assert 'csigmapsf' in out[0], out[0]
 
     Check yearly aggregation
     >>> df_agg = aggregate_rubin_sso_data(year=2026, prefix_path=path)
@@ -652,8 +655,6 @@ def aggregate_rubin_sso_data(
     cols = [
         "diaSource.ra",
         "diaSource.dec",
-        "diaSource.psfFlux",
-        "diaSource.psfFluxErr",
         "diaSource.band",
         "diaSource.midpointMjdTai",
         "ssSource.phaseAngle",
@@ -664,7 +665,7 @@ def aggregate_rubin_sso_data(
         "ssSource.ephOffsetRa",
         "ssSource.ephOffsetDec",
     ]
-    added_col = ["jdUtc", "helioRa", "helioDec"]
+    added_col = ["jdUtc", "helioRa", "helioDec", "magpsf", "sigmapsf"]
 
     if year is None:
         path = prefix_path
@@ -697,6 +698,17 @@ def aggregate_rubin_sso_data(
         .withColumn("helioRa", F.col("helioCoords").getItem("ra"))
         .withColumn("helioDec", F.col("helioCoords").getItem("dec"))
         .drop("helioCoords")
+    )
+
+    df = (
+        df
+        .withColumn(
+            "mags",
+            rubin_flux_to_mag("diaSource.psfFlux", "diaSource.psfFluxErr"),
+        )
+        .withColumn("magpsf", F.col("mags").getItem("mag"))
+        .withColumn("sigmapsf", F.col("mags").getItem("mag_err"))
+        .drop("mags")
     )
 
     df_agg = (
