@@ -628,6 +628,8 @@ def aggregate_rubin_sso_data(
     >>> df_agg = aggregate_rubin_sso_data(year=2026, month='06', prefix_path=path)
     >>> assert df_agg.count() == 1, df_agg.count()
 
+    #>>> df_agg.toPandas().to_parquet('rubin_agg_data_test.parquet')
+
     >>> out = df_agg.collect()
     >>> assert len(out[0]["cband"]) == 25, len(out[0]["cband"])
     >>> assert 'cjdUtc' in out[0], out[0]

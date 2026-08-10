@@ -301,7 +301,7 @@ def correct_ztf_mpc_names(ssnamenr):
     return ssnamenr
 
 
-def rockify(ssnamenr: pd.Series):
+def rockify(ssnamenr: pd.Series, prune=True):
     """Extract names and numbers from ssnamenr
 
     Parameters
@@ -318,11 +318,12 @@ def rockify(ssnamenr: pd.Series):
     """
     import rocks
 
-    # prune names
-    ssnamenr_alt = correct_ztf_mpc_names(ssnamenr.to_numpy())
+    if prune:
+        # prune names
+        ssnamenr = correct_ztf_mpc_names(ssnamenr.to_numpy())
 
     # rockify
-    names_numbers = rocks.identify(ssnamenr_alt)
+    names_numbers = rocks.identify(ssnamenr)
 
     sso_name = np.transpose(names_numbers)[0]
     sso_number = np.transpose(names_numbers)[1]
