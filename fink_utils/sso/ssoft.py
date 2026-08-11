@@ -64,12 +64,6 @@ def get_ssoft_columns(survey):
         raise AssertionError("survey must be ztf or lsst")
 
     COLUMNS = {
-        "designation": {
-            "type": "str",
-            "description": "Designation (name or number) of the object from MPC archive as given by {}".format(
-                survey.upper()
-            ),
-        },
         "sso_name": {
             "type": "str",
             "description": "Official name or provisional designation of the SSO",
@@ -197,6 +191,25 @@ def get_ssoft_columns(survey):
         "flag": {"type": "int", "description": "TBD"},
         "version": {"type": "str", "description": "Version of the SSOFT YYYY.MM"},
     }
+
+    if survey == "ztf":
+        COLUMNS.update({
+            "ssnamenr": {
+                "type": "str",
+                "description": "Designation (name or number) of the object from MPC archive as given by {}".format(
+                    survey.upper()
+                ),
+            },
+        })
+    elif survey == "lsst":
+        COLUMNS.update({
+            "designation": {
+                "type": "str",
+                "description": "Designation (name or number) of the object from MPC archive as given by {}".format(
+                    survey.upper()
+                ),
+            },
+        })
 
     COLUMNS_SOCCA = {
         **{
