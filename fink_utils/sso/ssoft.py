@@ -47,11 +47,21 @@ def get_ssoft_columns(survey):
         COLUMNS_HG1G2: specific columns for HG1G2
         COLUMNS_SHG1G2: specific columns for SHG1G2
         COLUMNS_SOCCA: specific columns for SOCCA
+
+    Examples
+    --------
+    >>> COLUMNS, COLUMNS_HG, COLUMNS_HG1G2, COLUMNS_SHG1G2, COLUMNS_SOCCA = get_ssoft_columns('ztf')
+    >>> assert len(COLUMNS) == 35, (COLUMNS, len(COLUMNS))
+
+    >>> COLUMNS, COLUMNS_HG, COLUMNS_HG1G2, COLUMNS_SHG1G2, COLUMNS_SOCCA = get_ssoft_columns('lsst')
+    >>> assert len(COLUMNS) == 67, (COLUMNS, len(COLUMNS))
     """
     if survey == "lsst":
         FILTERS = ["u", "g", "r", "i", "z", "y"]
     elif survey == "ztf":
         FILTERS = [1, 2]
+    else:
+        raise AssertionError("survey must be ztf or lsst")
 
     COLUMNS = {
         "designation": {
