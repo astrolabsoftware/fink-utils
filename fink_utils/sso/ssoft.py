@@ -756,6 +756,11 @@ def aggregate_rubin_sso_data(
 
     df = spark.read.format("parquet").option("basePath", prefix_path).load(path)
 
+    if year is None:
+        # Observations before April 2026 had no topoRange/helioRange
+        mjd_start = Time("2026-04-01").tai.mjd
+        df = df.filter(df["diaSource.midpointMjdTai"] >= mjd_start)
+
     if month is None and stop_previous_month:
         prevdate = retrieve_last_date_of_previous_month(datetime.datetime.today())
         # take the last hour of the last day
