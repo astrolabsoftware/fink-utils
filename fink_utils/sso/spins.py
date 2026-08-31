@@ -502,7 +502,6 @@ def func_socca_terminator(
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
         Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
-
     # Standard HG1G2 part: h + f(alpha, G1, G2)
     func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
@@ -1696,6 +1695,7 @@ def build_eqs_for_spin_shape(
     t0: float
         Reference epoch (JD) used to compute the rotational phase. The
         rotation phase ``phi0`` is defined at this epoch. Default is middle of ZTF.
+
     Returns
     -------
     out: np.array
