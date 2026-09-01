@@ -314,7 +314,22 @@ def subobserver_longitude(ra, dec, ra0, dec0, W):
 
 
 def func_socca(
-    phi1, phi2, phi3, ra, dec, ep, h, g1, g2, alpha0, delta0, period, a_b, a_c, phi0
+    phi1,
+    phi2,
+    phi3,
+    ra,
+    dec,
+    ep,
+    h,
+    g1,
+    g2,
+    alpha0,
+    delta0,
+    period,
+    a_b,
+    a_c,
+    phi0,
+    t0=2459580.5,
 ):
     """Return f(H, G1, G2, alpha0, delta0, period, a_b, a_c, phi0) part of the lightcurve in mag space
 
@@ -357,7 +372,6 @@ def func_socca(
     # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
     # Kinda middle of ZTF
     # TODO: take the middle jd?
-    t0 = 2459580.5
 
     # Standard HG1G2 part: h + f(alpha, G1, G2)
     func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
@@ -444,6 +458,7 @@ def func_socca_terminator(
     a_b,
     a_c,
     phi0,
+    t0=2459580.5,
 ):
     """Extension of the SOCCA model with correction for the non-illuminated part
 
@@ -487,12 +502,6 @@ def func_socca_terminator(
         H - 2.5 log(f(G1G2)) - 2.5 log(f(spin, shape))
         Similar to the SOCCA model, but including the correction for the non-illuminated part of the asteroid
     """
-    # TBD: For the time being, we fix the reference time
-    # Time( '2022-01-01T00:00:00', format='isot', scale='utc').jd
-    # Kinda middle of ZTF
-    # TODO: take the middle jd?
-    t0 = 2459580.5
-
     # Standard HG1G2 part: h + f(alpha, G1, G2)
     func1 = func_hg1g2(phi1, phi2, phi3, h, g1, g2)
 
@@ -1645,6 +1654,7 @@ def build_eqs_for_spin_shape(
     dec_s=None,
     remap=False,
     remap_kwargs=None,
+    t0=2459580.5,
 ):
     """Build the system of equations to solve using the HG1G2 + spin model
 
@@ -1682,6 +1692,9 @@ def build_eqs_for_spin_shape(
         }
         By switching each of the boolean values, each block of parameters can be
         turned on-off for reparametrization.
+    t0: float
+        Reference epoch (JD) used to compute the rotational phase. The
+        rotation phase ``phi0`` is defined at this epoch. Default is middle of ZTF.
 
     Returns
     -------
@@ -1749,6 +1762,7 @@ def build_eqs_for_spin_shape(
                     a_b,
                     a_c,
                     phi0,
+                    t0=t0,
                 )
                 - rhs[mask]
             )
@@ -1777,6 +1791,7 @@ def build_eqs_for_spin_shape(
                     a_b,
                     a_c,
                     phi0,
+                    t0=t0,
                 )
                 - rhs[mask]
             )
@@ -1805,6 +1820,7 @@ def estimate_sso_params(
     dec_s=None,
     remap=False,
     remap_kwargs=None,
+    t0=2459580.5,
 ):
     """Fit for phase curve parameters
 
@@ -1890,6 +1906,9 @@ def estimate_sso_params(
         }
         By switching each of the boolean values, each block of parameters can be
         turned on-off for reparametrization. Only used for SOCCA.
+    t0: float
+        Reference epoch (JD) used to compute the rotational phase. The
+        rotation phase ``phi0`` is defined at this epoch. Default is middle of ZTF.
 
     Returns
     -------
@@ -2015,6 +2034,7 @@ def estimate_sso_params(
             dec_s=dec_s,
             remap=remap,
             remap_kwargs=remap_kwargs,
+            t0=t0,
         )
     elif model in ["HG", "HG12", "HG1G2"]:
         outdic = fit_legacy_models(
@@ -2380,6 +2400,7 @@ def fit_spin(
     model="SHG1G2",
     remap=False,
     remap_kwargs=None,
+    t0=2459580.5,
 ):
     """Fit for phase curve parameters
 
@@ -2446,6 +2467,9 @@ def fit_spin(
         }
         By switching each of the boolean values, each block of parameters can be
         turned on-off for reparametrization.
+    t0: float
+        Reference epoch (JD) used to compute the rotational phase. The
+        rotation phase ``phi0`` is defined at this epoch. Default is middle of ZTF.
 
     Returns
     -------
@@ -2537,6 +2561,7 @@ def fit_spin(
                     None,
                     None,
                     remap,
+                    t0,
                 )
             else:
                 args = (
@@ -2551,6 +2576,7 @@ def fit_spin(
                     dec_s,
                     remap,
                     remap_kwargs,
+                    t0,
                 )
         res_lsq = least_squares(
             func,
