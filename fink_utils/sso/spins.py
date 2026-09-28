@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 
 from scipy.optimize import least_squares
+from scipy.optimize._numdiff import approx_derivative, group_columns
+from scipy.sparse import lil_matrix
 from scipy import linalg
 
 from astropy.coordinates import SkyCoord
@@ -1732,73 +1734,147 @@ def build_eqs_for_spin_shape(
         )  # Latent to physical
     alpha, delta, period, a_b, a_c, phi0 = x[:6]
     params = x[6:]
-    filternames = np.unique(filters)
+    filternames, filter_index = np.unique(filters, return_inverse=True)
     nparams = len(params) / len(filternames)
     assert int(nparams) == nparams, "You need to input all parameters for all bands"
 
     # Get pre-computed phi functions
     phi1, phi2, phi3 = ph
 
+    # Filter-dependent parameters broadcast to each measurement, so that the
+    # filter-independent spin & shape part is evaluated once for all points
     params_per_band = np.reshape(params, (len(filternames), int(nparams)))
-    eqs = []
+    h = params_per_band[filter_index, 0]
+    g1 = params_per_band[filter_index, 1]
+    g2 = params_per_band[filter_index, 2]
+
     if not terminator:
-        for index, filtername in enumerate(filternames):
-            mask = filters == filtername
-
-            myfunc = (
-                func_socca(
-                    phi1[mask],
-                    phi2[mask],
-                    phi3[mask],
-                    ra[mask],
-                    dec[mask],
-                    jd[mask],
-                    params_per_band[index][0],
-                    params_per_band[index][1],
-                    params_per_band[index][2],
-                    alpha,
-                    delta,
-                    period,
-                    a_b,
-                    a_c,
-                    phi0,
-                    t0=t0,
-                )
-                - rhs[mask]
-            )
-
-            eqs = np.concatenate((eqs, myfunc))
+        model = func_socca(
+            phi1,
+            phi2,
+            phi3,
+            ra,
+            dec,
+            jd,
+            h,
+            g1,
+            g2,
+            alpha,
+            delta,
+            period,
+            a_b,
+            a_c,
+            phi0,
+            t0=t0,
+        )
     else:
-        for index, filtername in enumerate(filternames):
-            mask = filters == filtername
+        model = func_socca_terminator(
+            phi1,
+            phi2,
+            phi3,
+            ra,
+            dec,
+            jd,
+            ra_s,
+            dec_s,
+            h,
+            g1,
+            g2,
+            alpha,
+            delta,
+            period,
+            a_b,
+            a_c,
+            phi0,
+            t0=t0,
+        )
 
-            myfunc = (
-                func_socca_terminator(
-                    phi1[mask],
-                    phi2[mask],
-                    phi3[mask],
-                    ra[mask],
-                    dec[mask],
-                    jd[mask],
-                    ra_s[mask],
-                    dec_s[mask],
-                    params_per_band[index][0],
-                    params_per_band[index][1],
-                    params_per_band[index][2],
-                    alpha,
-                    delta,
-                    period,
-                    a_b,
-                    a_c,
-                    phi0,
-                    t0=t0,
-                )
-                - rhs[mask]
-            )
+    # Residuals ordered by filter, as expected downstream
+    # (see `sort_quantity_by_filter` and `split_quantity_by_filter`)
+    order = np.argsort(filters, kind="stable")
+    return (model - rhs)[order]
 
-            eqs = np.concatenate((eqs, myfunc))
 
-    return np.ravel(eqs)
+def spin_shape_jacobian_sparsity(filters, nparams):
+    """Sparsity structure of the Jacobian of `build_eqs_for_spin_shape`
+
+    Filter-independent parameters affect all measurements, while the
+    filter-dependent parameters (H, G1, G2) of a band only affect
+    the measurements of that band.
+
+    Parameters
+    ----------
+    filters: np.array
+        Array of size N containing the filtername for each measurement
+    nparams: int
+        Total number of fitted parameters
+
+    Returns
+    -------
+    out: scipy.sparse.lil_matrix
+        Matrix of shape (N, nparams), with rows ordered by filter
+
+    Examples
+    --------
+    >>> filters = np.array([2, 1, 2])
+    >>> sparsity = spin_shape_jacobian_sparsity(filters, 7 + 3 * 2)
+    >>> sparsity.toarray()[:, 7:]
+    array([[1, 1, 1, 0, 0, 0],
+           [0, 0, 0, 1, 1, 1],
+           [0, 0, 0, 1, 1, 1]])
+    """
+    filternames, filter_index = np.unique(filters, return_inverse=True)
+    filter_index = np.sort(filter_index)
+    nshared = nparams - 3 * len(filternames)
+    rows = np.arange(len(filters))
+
+    sparsity = lil_matrix((len(filters), nparams), dtype=int)
+    sparsity[:, :nshared] = 1
+    for k in range(3):
+        sparsity[rows, nshared + 3 * filter_index + k] = 1
+    return sparsity
+
+
+def grouped_jacobian(func, sparsity, bounds):
+    """Build a 2-point finite difference Jacobian using column grouping
+
+    Parameters with no measurement in common are perturbed together,
+    so that the number of function evaluations does not depend on the
+    number of filters.
+
+    Notes
+    -----
+    The Jacobian is returned dense on purpose: passing `jac_sparsity` to
+    `least_squares` would switch the trust-region solver from `exact` to
+    `lsmr`, which changes the convergence path.
+
+    Parameters
+    ----------
+    func: callable
+        Function returning the residuals, as passed to `least_squares`
+    sparsity: array-like or sparse matrix
+        Sparsity structure of the Jacobian
+    bounds: tuple
+        (lower, upper) bounds of the parameters
+
+    Returns
+    -------
+    out: callable
+        Function jac(x, *args) returning the dense Jacobian
+    """
+    lower, upper = (np.asarray(b, dtype=float) for b in bounds)
+
+    def jac(x, *args):
+        return approx_derivative(
+            func,
+            x,
+            method="2-point",
+            bounds=(lower, upper),
+            sparsity=sparsity,
+            args=args,
+        ).toarray()
+
+    return jac
 
 
 @profile
@@ -2291,13 +2367,15 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame({
-        "i:magpsf_red": magpsf_red,
-        "i:sigmapsf": sigmapsf,
-        "Phase": phase,
-        "i:jd": jds,
-        "i:fid": filters,
-    })
+    pdf = pd.DataFrame(
+        {
+            "i:magpsf_red": magpsf_red,
+            "i:sigmapsf": sigmapsf,
+            "Phase": phase,
+            "i:jd": jds,
+            "i:fid": filters,
+        }
+    )
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
@@ -2578,11 +2656,19 @@ def fit_spin(
                     remap_kwargs,
                     t0,
                 )
+        if model == "SOCCA":
+            jac = grouped_jacobian(
+                func,
+                spin_shape_jacobian_sparsity(filters, len(initial_guess)),
+                (lower_bounds, upper_bounds),
+            )
+        else:
+            jac = "2-point"
         res_lsq = least_squares(
             func,
             x0=initial_guess,
             bounds=(lower_bounds, upper_bounds),
-            jac="2-point",
+            jac=jac,
             loss="soft_l1",
             args=args,
         )
