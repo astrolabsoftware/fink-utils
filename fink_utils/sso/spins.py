@@ -2210,7 +2210,7 @@ def fit_legacy_models(
     chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    if (chisq_red < 0) or np.isnan(chisq_red):
+    if (chisq_red < 0) or np.isnan(chisq_red) or np.isinf(chisq_red):
         outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
 
@@ -2644,7 +2644,7 @@ def fit_spin(
     chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
-    if (chisq_red < 0) or np.isnan(chisq_red):
+    if (chisq_red < 0) or np.isnan(chisq_red) or np.isinf(chisq_red):
         outdic = {"fit": 4, "status": res_lsq.status}
         return outdic
 
