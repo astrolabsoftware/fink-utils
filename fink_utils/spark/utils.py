@@ -116,7 +116,7 @@ def extract_values(cmagpsf, cdiffmaglim, onlyfainterlimits=False):
         # young transient must start with NaN
         return np.nan
 
-    if np.alltrue(np.isnan(cmagpsf)):
+    if np.all(np.isnan(cmagpsf)):
         # all NaNs
         return np.nan
 
