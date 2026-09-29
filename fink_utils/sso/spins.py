@@ -2210,6 +2210,10 @@ def fit_legacy_models(
     chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
 
+    if (chisq_red < 0) or np.isnan(chisq_red):
+        outdic = {"fit": 4, "status": res_lsq.status}
+        return outdic
+
     outdic = {"chi2red": chisq_red, "status": res_lsq.status, "fit": 0}
 
     # Total RMS, and per-band
@@ -2639,6 +2643,10 @@ def fit_spin(
 
     chisq = np.sum((res_lsq.fun / sorted_sigmapsf) ** 2)
     chisq_red = chisq / (res_lsq.fun.size - res_lsq.x.size - 1)
+
+    if (chisq_red < 0) or np.isnan(chisq_red):
+        outdic = {"fit": 4, "status": res_lsq.status}
+        return outdic
 
     geo = cos_aspect_angle(
         ra,
