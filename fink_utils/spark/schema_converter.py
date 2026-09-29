@@ -181,7 +181,8 @@ def _parse_struct(
         elif "type" in field["type"]:
             subData = field["type"]
             if subData["type"] == "struct":
-                outField["type"] = _parse_struct(subData, field["name"])
+                avro_type = _parse_struct(subData, field["name"])
+                outField["type"] = _is_nullable(field, avro_type)
             elif subData["type"] == "array":
                 avro_type = _parse_array(subData, field["name"])
                 outField["type"] = _is_nullable(field, avro_type)
