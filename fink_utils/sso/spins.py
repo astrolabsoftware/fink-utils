@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from scipy.optimize import least_squares
-from scipy.optimize._numdiff import approx_derivative, group_columns
+from scipy.optimize._numdiff import approx_derivative
 from scipy.sparse import lil_matrix
 from scipy import linalg
 
