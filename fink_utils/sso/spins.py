@@ -2371,15 +2371,13 @@ def fit_sfhg1g2(
         outdic = {"fit": 1, "status": -2}
         return outdic
 
-    pdf = pd.DataFrame(
-        {
-            "i:magpsf_red": magpsf_red,
-            "i:sigmapsf": sigmapsf,
-            "Phase": phase,
-            "i:jd": jds,
-            "i:fid": filters,
-        }
-    )
+    pdf = pd.DataFrame({
+        "i:magpsf_red": magpsf_red,
+        "i:sigmapsf": sigmapsf,
+        "Phase": phase,
+        "i:jd": jds,
+        "i:fid": filters,
+    })
     pdf = pdf.sort_values("i:jd")
 
     # Get oppositions
