@@ -2589,6 +2589,7 @@ def fit_spin(
             jac="2-point",
             loss="soft_l1",
             args=args,
+            x_scale="jac",
         )
     except (RuntimeError, ValueError):
         outdic = {"fit": 3, "status": -2}
