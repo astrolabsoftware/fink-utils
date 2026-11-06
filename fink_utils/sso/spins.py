@@ -2641,6 +2641,7 @@ def fit_spin(
                     None,
                     None,
                     remap,
+                    remap_kwargs,
                     t0,
                 )
             else:
